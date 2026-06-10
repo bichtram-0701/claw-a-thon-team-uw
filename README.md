@@ -32,13 +32,15 @@ Ask in plain language (Vietnamese or English) — the agent:
 Hours of manual reporting → minutes; deterioration spotted before NPL, not after;
 consistent metrics and narrative every time.
 
-## Try it
+## Try it (live)
+
+Deployed endpoint: https://endpoint-02241868-df01-4fa2-9b36-45145561851c.agentbase-runtime.aiplatform.vngcloud.vn
 
 ```bash
-curl -X POST <endpoint>/invocations -H 'Content-Type: application/json' \
+curl -X POST https://endpoint-02241868-df01-4fa2-9b36-45145561851c.agentbase-runtime.aiplatform.vngcloud.vn/invocations -H 'Content-Type: application/json' \
   -d '{"message": "which accounts are at risk?"}'
 
-curl -X POST <endpoint>/invocations -H 'Content-Type: application/json' \
+curl -X POST https://endpoint-02241868-df01-4fa2-9b36-45145561851c.agentbase-runtime.aiplatform.vngcloud.vn/invocations -H 'Content-Type: application/json' \
   -d '{"message": "cho tôi báo cáo tuần", "language": "vi"}'
 ```
 
