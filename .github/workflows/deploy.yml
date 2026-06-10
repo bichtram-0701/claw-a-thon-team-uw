@@ -89,7 +89,7 @@ jobs:
           IMAGE="${{ steps.cr.outputs.image }}"
           echo "${{ steps.cr.outputs.secret }}" | docker login "${{ steps.cr.outputs.registry }}" \
             -u "${{ steps.cr.outputs.user }}" --password-stdin
-          docker build --platform linux/amd64 -t "$IMAGE" .
+          docker build --platform linux/amd64 --build-arg GIT_SHA="${{ github.sha }}" -t "$IMAGE" .
           docker push "$IMAGE"
           echo "Pushed $IMAGE"
 

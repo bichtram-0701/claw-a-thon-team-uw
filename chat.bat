@@ -9,8 +9,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "  $q = Read-Host 'You';" ^
   "  if ([string]::IsNullOrWhiteSpace($q)) { break };" ^
   "  try {" ^
-  "    $body = @{ message = $q } | ConvertTo-Json;" ^
-  "    $r = Invoke-RestMethod -Method Post -Uri $url -ContentType 'application/json' -Body $body;" ^
+  "    $body = [System.Text.Encoding]::UTF8.GetBytes((@{ message = $q } | ConvertTo-Json));" ^
+  "    $r = Invoke-RestMethod -Method Post -Uri $url -ContentType 'application/json; charset=utf-8' -Body $body;" ^
   "    Write-Host ('Agent (' + $r.intent + '):') -ForegroundColor Cyan;" ^
   "    if ($r.answer) { Write-Host $r.answer } else { $r.result | ConvertTo-Json -Depth 6 | Write-Host };" ^
   "  } catch { Write-Host ('Error: ' + $_.Exception.Message) -ForegroundColor Red };" ^

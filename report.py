@@ -18,9 +18,7 @@ def _client():
     if not (api_key and base_url):
         return None, None
     from openai import OpenAI
-    # Hard cap well below the platform gateway timeout, so fallbacks fire
-    # while we can still answer the request.
-    client = OpenAI(api_key=api_key, base_url=base_url, timeout=18)
+    client = OpenAI(api_key=api_key, base_url=base_url, timeout=25)
     if not model:  # auto-discover: prefer a Qwen model from /models
         try:
             ids = [m.id for m in client.models.list()]
@@ -34,22 +32,23 @@ def _client():
     return client, model
 
 
-<<<<<<< HEAD
-def llm_chat(system: str, user: str, max_tokens: int = 600) -> str | None:
-    """One LLM call; returns None on any failure (caller falls back)."""
-=======
 _MODEL_OVERRIDE = None  # set when the configured model name 404s and we autodiscover
 
 
 def _call(client, model, system, user, max_tokens):
+    # Qwen 3 "thinks" before answering and can burn the whole token budget on
+    # reasoning, leaving content empty. Ask the server to skip thinking; keep
+    # budgets generous in case the flag is ignored. Empty content -> None.
     resp = client.chat.completions.create(
         model=model,
         messages=[{"role": "system", "content": system},
                   {"role": "user", "content": user}],
         temperature=0.3,
         max_tokens=max_tokens,
+        extra_body={"chat_template_kwargs": {"enable_thinking": False}},
     )
-    return resp.choices[0].message.content
+    content = (resp.choices[0].message.content or "").strip()
+    return content or None
 
 
 def _discover_model(client) -> str | None:
@@ -67,7 +66,6 @@ def llm_chat(system: str, user: str, max_tokens: int = 900) -> str | None:
     if client is None:
         return None
     model = _MODEL_OVERRIDE or model
->>>>>>> d6e4c853333c851946a1b1cbd5ec432356bd916a
     try:
         return _call(client, model, system, user, max_tokens)
     except Exception as e:  # noqa: BLE001
@@ -92,7 +90,7 @@ def classify_intent(message: str) -> str | None:
         "flagged = at-risk accounts/alerts; province = regional breakdown; "
         "segment = product/segment breakdown; report = full written report; "
         "summary = overall health numbers; help = anything else. Reply with the single word only.",
-        message, max_tokens=8)
+        message, max_tokens=64)
     if out:
         word = out.strip().lower().split()[0].strip(".,!")
         if word in VALID_INTENTS:
@@ -172,4 +170,4 @@ def narrate(question: str, result: dict, lang: str = "vi") -> str | None:
              "You are a lending portfolio analyst assistant. Answer the user's question concisely "
              "(max 5 sentences) using ONLY the JSON result.")
     return llm_chat(sys_p, f"Question: {question}\nResult JSON:\n{json.dumps(result, ensure_ascii=False)}",
-                    max_tokens=300)
+                    max_tokens=700)
