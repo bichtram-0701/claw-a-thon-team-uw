@@ -8,14 +8,28 @@ import os
 VALID_INTENTS = ["summary", "flagged", "province", "segment", "report", "help"]
 
 
+_MODEL_CACHE: dict = {}
+
+
 def _client():
     api_key = os.environ.get("LLM_API_KEY")
     base_url = os.environ.get("LLM_BASE_URL")
-    model = os.environ.get("LLM_MODEL")
-    if not (api_key and base_url and model):
+    model = os.environ.get("LLM_MODEL") or _MODEL_CACHE.get("name")
+    if not (api_key and base_url):
         return None, None
     from openai import OpenAI
-    return OpenAI(api_key=api_key, base_url=base_url, timeout=60), model
+    client = OpenAI(api_key=api_key, base_url=base_url, timeout=60)
+    if not model:  # auto-discover: prefer a Qwen model from /models
+        try:
+            ids = [m.id for m in client.models.list()]
+            pref = [i for i in ids if "qwen" in i.lower()] or ids
+            model = pref[0] if pref else None
+            _MODEL_CACHE["name"] = model
+        except Exception:  # noqa: BLE001
+            return None, None
+    if not model:
+        return None, None
+    return client, model
 
 
 def llm_chat(system: str, user: str, max_tokens: int = 900) -> str | None:

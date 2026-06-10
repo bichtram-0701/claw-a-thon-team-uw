@@ -11,9 +11,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "  try {" ^
   "    $body = @{ message = $q } | ConvertTo-Json;" ^
   "    $r = Invoke-RestMethod -Method Post -Uri $url -ContentType 'application/json' -Body $body;" ^
-  "    $label = if ($r.llm_used) { 'Agent (Qwen 3)' } else { 'Agent (keyword mode)' };" ^
-  "    Write-Host ($label + ':') -ForegroundColor Cyan;" ^
-  "    Write-Host $r.answer;" ^
+  "    Write-Host ('Agent (' + $r.intent + '):') -ForegroundColor Cyan;" ^
+  "    if ($r.answer) { Write-Host $r.answer } else { $r.result | ConvertTo-Json -Depth 6 | Write-Host };" ^
   "  } catch { Write-Host ('Error: ' + $_.Exception.Message) -ForegroundColor Red };" ^
   "  Write-Host '';" ^
   "}"
