@@ -5,7 +5,7 @@ Every LLM call degrades gracefully — the agent never breaks if MaaS is down.
 """
 import os
 
-VALID_INTENTS = ["summary", "flagged", "province", "segment", "report", "help"]
+VALID_INTENTS = ["summary", "flagged", "province", "segment", "funnel", "report", "help"]
 
 
 _MODEL_CACHE: dict = {}
@@ -86,9 +86,10 @@ def classify_intent(message: str) -> str | None:
     """LLM intent routing when keyword routing misses. Returns None offline."""
     out = llm_chat(
         "Classify the user's question about a loan portfolio into exactly one word from: "
-        "summary, flagged, province, segment, report, help. "
+        "summary, flagged, province, segment, funnel, report, help. "
         "flagged = at-risk accounts/alerts; province = regional breakdown; "
-        "segment = product/segment breakdown; report = full written report; "
+        "segment = product/segment breakdown; funnel = application pipeline, conversion or "
+        "drop-off rates; report = full written report; "
         "summary = overall health numbers; help = anything else. Reply with the single word only.",
         message, max_tokens=64)
     if out:

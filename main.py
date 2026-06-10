@@ -23,6 +23,7 @@ from greennode_agentbase import (
     RequestContext,
 )
 
+import funnel as fn
 import metrics as mx
 import report as rp
 
@@ -136,6 +137,8 @@ def full_report(payload: dict) -> dict:
 # Keyword matching first (free); LLM classification when keywords miss.
 
 ROUTES = [
+    ({"funnel", "conversion", "drop-off", "dropoff", "application", "applications",
+      "chuyen doi", "chuyển đổi", "phễu", "pheu", "ho so", "hồ sơ"}, "funnel"),
     ({"report", "bao cao", "báo cáo", "weekly", "tuan", "tuần"}, "report"),
     ({"flag", "watch", "alert", "risk", "npl", "canh bao", "cảnh báo", "rui ro", "rủi ro"}, "flagged"),
     ({"province", "region", "tinh", "tỉnh", "khu vuc", "khu vực"}, "province"),
@@ -188,6 +191,8 @@ def _handle(payload: dict) -> dict:
             "by_segment": breakdown("segment"),
             "vintage_recent_vs_older": vintage_analysis(),
         }
+    elif intent == "funnel":
+        result = fn.funnel_picture()
     elif intent == "report":
         result = full_report(payload)
         answer = result["report_markdown"]
@@ -196,9 +201,28 @@ def _handle(payload: dict) -> dict:
             "hint": "Try asking about: portfolio summary, flagged/at-risk accounts, "
                     "breakdown by province, segment/product, or a full report.",
         }
+        # General/definition questions: let the LLM answer from context
+        # (portfolio stats + metric definitions) instead of shrugging.
+        context = {
+            "about_me": "Lending Portfolio Watchdog by Team UW — analyzes a synthetic loan portfolio.",
+            "definitions": {
+                "bad_rate_pct": "share of loans that are overdue or NPL (count-based, not balance-based)",
+                "npl": f"non-performing loan: days_past_due >= {NPL_DPD_THRESHOLD}",
+                "dpd": "days past due — how many days a payment is late",
+                "flagged": f"loans within {WATCH_WINDOW} days of rolling into NPL",
+                "vintage": "loans grouped by origination period; recent = on book <= 180 days",
+            },
+            "summary": portfolio_summary(),
+        }
+        answer = (rp.narrate(message, context, lang) if message.strip() else None) or (
+            "Hi! I'm the Lending Portfolio Watchdog (Team UW). I analyze a loan "
+            "portfolio and answer questions like: 'portfolio summary', 'which "
+            "accounts are at risk?', 'breakdown by province', or 'give me the "
+            "weekly report'. Tiếng Việt cũng được nhé!"
+        )
 
     # Natural-language phrasing for Q&A intents (LLM; skipped when offline)
-    if answer is None and intent in ("summary", "flagged", "province", "segment") and message:
+    if answer is None and intent in ("summary", "flagged", "province", "segment", "funnel") and message:
         answer = rp.narrate(message, result, lang)
 
     return {

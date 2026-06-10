@@ -63,6 +63,22 @@ jobs:
             -d '{"from": 0, "limit": 100}' \
             "$RUNTIME_API/agent-runtimes/$ID/logs" | jq -r '.. | .message? // empty' | tail -60
 
+      - name: CORS check (can browsers call the endpoint for chat.html?)
+        run: |
+          AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
+          URL=$(curl -sf -H "$AUTH" "$RUNTIME_API/agent-runtimes/$ID/endpoints" \
+            | jq -r '.listData[]? // .[]? | select(.url) | .url' | head -1)
+          echo "--- OPTIONS preflight (what a browser sends first):"
+          curl -s -D - -o /dev/null -m 15 -X OPTIONS "$URL/invocations" \
+            -H "Origin: https://bichtram-0701.github.io" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Access-Control-Request-Headers: content-type" | head -20
+          echo "--- POST response headers:"
+          curl -s -D - -o /dev/null -m 30 -X POST "$URL/invocations" \
+            -H "Origin: https://bichtram-0701.github.io" -H "Content-Type: application/json" \
+            -d '{"message": "hi"}' | head -20
+          echo "VERDICT: if you see 'access-control-allow-origin' above, chat.html will work in browsers."
+
       - name: Direct MaaS sanity check (is the LLM key/model OK?)
         run: |
           KEY="${{ secrets.LLM_API_KEY }}"
