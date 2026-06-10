@@ -1,0 +1,6 @@
+# Core agent runs on the Python standard library only (urllib, csv, json).
+# No third-party packages are required to run the funnel analysis or call MaaS.
+#
+# Optional: use the official LangChain GreenNode integration instead of the
+# built-in urllib client.
+# langchain-greennode>=0.1.0
