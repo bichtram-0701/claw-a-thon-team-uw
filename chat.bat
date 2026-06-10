@@ -1,0 +1,19 @@
+@echo off
+title Lending Watchdog - Team UW
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$url = 'https://endpoint-02241868-df01-4fa2-9b36-45145561851c.agentbase-runtime.aiplatform.vngcloud.vn/invocations';" ^
+  "Write-Host ''; Write-Host '=== Lending Portfolio Watchdog (live on AgentBase) ===' -ForegroundColor Green;" ^
+  "Write-Host 'Try: portfolio summary | at-risk accounts | breakdown by province | by segment' -ForegroundColor DarkGray;" ^
+  "Write-Host 'Press Enter on an empty line to quit.' -ForegroundColor DarkGray; Write-Host '';" ^
+  "while ($true) {" ^
+  "  $q = Read-Host 'You';" ^
+  "  if ([string]::IsNullOrWhiteSpace($q)) { break };" ^
+  "  try {" ^
+  "    $body = @{ message = $q } | ConvertTo-Json;" ^
+  "    $r = Invoke-RestMethod -Method Post -Uri $url -ContentType 'application/json' -Body $body;" ^
+  "    $label = if ($r.llm_used) { 'Agent (Qwen 3)' } else { 'Agent (keyword mode)' };" ^
+  "    Write-Host ($label + ':') -ForegroundColor Cyan;" ^
+  "    Write-Host $r.answer;" ^
+  "  } catch { Write-Host ('Error: ' + $_.Exception.Message) -ForegroundColor Red };" ^
+  "  Write-Host '';" ^
+  "}"

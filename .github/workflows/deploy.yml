@@ -108,6 +108,9 @@ jobs:
         id: runtime
         run: |
           AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
+          if [ -z "${{ secrets.LLM_API_KEY }}" ]; then
+            echo "::warning::LLM_API_KEY secret not set - agent will run in keyword fallback mode (no Qwen)."
+          fi
           BODY=$(jq -n \
             --arg name  "$RUNTIME_NAME" \
             --arg desc  "Lending Portfolio Watchdog - Claw-a-thon 2026 Team UW (synthetic data only)" \
@@ -115,8 +118,11 @@ jobs:
             --arg flavor "${{ steps.flavor.outputs.id }}" \
             --arg user  "${{ steps.cr.outputs.user }}" \
             --arg pass  "${{ steps.cr.outputs.secret }}" \
+            --arg llmkey "${{ secrets.LLM_API_KEY }}" \
+            --arg llmurl "https://maas-llm-aiplatform-hcm.api.vngcloud.vn/v1" \
             '{name: $name, description: $desc, imageUrl: $image,
-              command: [], args: [], environmentVariables: {},
+              command: [], args: [],
+              environmentVariables: (if $llmkey == "" then {} else {LLM_API_KEY: $llmkey, LLM_BASE_URL: $llmurl} end),
               flavorId: $flavor,
               imageAuth: {enabled: true, username: $user, password: $pass},
               autoscaling: {minReplicas: 1, maxReplicas: 1, cpuUtilization: 50, memoryUtilization: 50}}')
