@@ -18,7 +18,9 @@ def _client():
     if not (api_key and base_url):
         return None, None
     from openai import OpenAI
-    client = OpenAI(api_key=api_key, base_url=base_url, timeout=60)
+    # Hard cap well below the platform gateway timeout, so fallbacks fire
+    # while we can still answer the request.
+    client = OpenAI(api_key=api_key, base_url=base_url, timeout=18)
     if not model:  # auto-discover: prefer a Qwen model from /models
         try:
             ids = [m.id for m in client.models.list()]
@@ -32,7 +34,7 @@ def _client():
     return client, model
 
 
-def llm_chat(system: str, user: str, max_tokens: int = 900) -> str | None:
+def llm_chat(system: str, user: str, max_tokens: int = 600) -> str | None:
     """One LLM call; returns None on any failure (caller falls back)."""
     try:
         client, model = _client()

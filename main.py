@@ -157,6 +157,20 @@ def route(message: str) -> str:
 
 @app.entrypoint
 def handler(payload: dict, context: RequestContext) -> dict:
+    try:
+        return _handle(payload)
+    except Exception as e:  # noqa: BLE001 — never return a bare 500 to the caller
+        import traceback
+        return {
+            "status": "error",
+            "answer": "Sorry, something went wrong processing that question. Try rephrasing.",
+            "error": type(e).__name__ + ": " + str(e),
+            "trace_tail": traceback.format_exc().splitlines()[-3:],
+            "timestamp": datetime.now().isoformat(),
+        }
+
+
+def _handle(payload: dict) -> dict:
     message = str(payload.get("message", ""))
     lang = payload.get("language", "vi")
     intent = route(message)
