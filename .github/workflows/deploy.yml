@@ -186,19 +186,17 @@ jobs:
       - name: Wait for ACTIVE
         run: |
           AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
+          # ERROR can be leftover state from a previous bad version while the
+          # new one is still rolling out - keep polling, fail only on timeout.
           for i in $(seq 1 60); do
             R=$(curl -sf -H "$AUTH" "$RUNTIME_API/agent-runtimes/${{ steps.runtime.outputs.id }}")
             STATUS=$(echo "$R" | jq -r '.status')
-            echo "[$i/60] status: $STATUS"
-            case "$STATUS" in
-              ACTIVE) exit 0 ;;
-              ERROR|FAILED)
-                echo "::error::Runtime failed: $(echo "$R" | jq -r '.statusReason // "no reason given"')"
-                exit 1 ;;
-            esac
+            REASON=$(echo "$R" | jq -r '.statusReason // ""')
+            echo "[$i/60] status: $STATUS ${REASON:+($REASON)}"
+            [ "$STATUS" = "ACTIVE" ] && exit 0
             sleep 10
           done
-          echo "::error::Timed out waiting for ACTIVE (10 min)"
+          echo "::error::Runtime not ACTIVE after 10 min. Last status: $STATUS ${REASON:+- $REASON}. Check logs via the Debug agent workflow."
           exit 1
 
       - name: Health check & summary
@@ -209,11 +207,24 @@ jobs:
           echo "Endpoint: $URL"
           CODE=$(curl -s -o /dev/null -w "%{http_code}" -m 30 "$URL/health" || echo "000")
           echo "Health check: HTTP $CODE"
+          # Verify the SERVED version matches this commit (no ghost versions:
+          # the platform keeps the old container serving if the new one crashes)
+          WANT="$(echo "${{ github.sha }}" | cut -c1-7)"
+          GOT="unknown"
+          for i in $(seq 1 18); do
+            GOT=$(curl -s -m 20 -X POST "$URL/invocations" -H "Content-Type: application/json" \
+              -d '{"message": "version check"}' | jq -r '.version // "unknown"' || echo "unknown")
+            echo "[$i/18] serving version: $GOT (want $WANT)"
+            [ "$GOT" = "$WANT" ] && break
+            sleep 10
+          done
           {
             echo "## Lending Watchdog deployed"
             echo "- **Runtime ID:** ${{ steps.runtime.outputs.id }}"
             echo "- **Image:** ${{ steps.cr.outputs.image }}"
             echo "- **Endpoint:** $URL"
             echo "- **Health:** HTTP $CODE"
+            echo "- **Serving version:** $GOT (this commit: $WANT)"
           } >> "$GITHUB_STEP_SUMMARY"
-          [ "$CODE" = "200" ] || { echo "::warning::Health returned $CODE - check runtime logs in the portal"; exit 1; }
+          [ "$CODE" = "200" ] || { echo "::error::Health returned $CODE"; exit 1; }
+          [ "$GOT" = "$WANT" ] || { echo "::error::Old version still serving ($GOT != $WANT) - new container likely crashing. Run the Debug agent workflow for logs."; exit 1; }

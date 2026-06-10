@@ -123,7 +123,7 @@ def vintage_analysis() -> dict:
 def full_report(payload: dict) -> dict:
     """Manager-ready portfolio report (markdown). Optional prior-period CSV
     in payload["prev_csv_text"] enables trend analysis."""
-    lang = payload.get("language", "vi")
+    lang = payload.get("language", "en")
     cur = mx.analyze(mx.from_rows(PORTFOLIO))
     delta = None
     if payload.get("prev_csv_text"):
@@ -172,7 +172,7 @@ def handler(payload: dict, context: RequestContext) -> dict:
 
 def _handle(payload: dict) -> dict:
     message = str(payload.get("message", ""))
-    lang = payload.get("language", "vi")
+    lang = payload.get("language", "en")  # default English; pass "vi" for Vietnamese
     intent = route(message)
 
     answer = None
