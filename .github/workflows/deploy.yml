@@ -17,6 +17,8 @@ on:
     branches: [main]
     paths:
       - "main.py"
+      - "metrics.py"
+      - "report.py"
       - "requirements.txt"
       - "Dockerfile"
       - "data/**"
@@ -35,6 +37,9 @@ env:
   IAM_TOKEN_URL: https://iam.api.vngcloud.vn/accounts-api/v2/auth/token
   CR_API: https://agentbase.api.vngcloud.vn/cr/api/v1
   RUNTIME_API: https://agentbase.api.vngcloud.vn/runtime
+  AIP_API: https://aiplatform-hcm.api.vngcloud.vn
+  LLM_BASE_URL: https://maas-llm-aiplatform-hcm.api.vngcloud.vn/v1
+  LLM_KEY_NAME: claw-uw-llm-key
 
 jobs:
   deploy:
@@ -104,13 +109,39 @@ jobs:
           echo "Using flavor: $FLAVOR_ID"
           echo "id=$FLAVOR_ID" >> "$GITHUB_OUTPUT"
 
+      - name: Provision LLM key & model (MaaS)
+        id: llm
+        run: |
+          AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
+          # get-or-create the platform API key
+          KEY=$(curl -sf -H "$AUTH" "$AIP_API/v1/api-keys/$LLM_KEY_NAME" | jq -r '.data.key // .key // empty' || true)
+          if [ -z "$KEY" ]; then
+            echo "Key not found - creating $LLM_KEY_NAME"
+            KEY=$(curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" \
+              -d "{\"name\": \"$LLM_KEY_NAME\", \"isDefault\": false}" \
+              "$AIP_API/v2/api-keys" | jq -r '.data.key // .key // empty')
+          fi
+          [ -n "$KEY" ] || { echo "::error::Could not obtain LLM API key"; exit 1; }
+          echo "::add-mask::$KEY"
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+          # pick an ENABLED model, preferring qwen then gemma
+          MODELS=$(curl -sf -H "$AUTH" "$AIP_API/v1/models" || true)
+          MODEL=$(echo "$MODELS" | jq -r '
+            [.. | objects | select((.modelStatus? // .status?) == "ENABLED")
+             | (.modelName // .name // .id // empty)] | unique
+            | (map(select(test("(?i)qwen"))) + map(select(test("(?i)gemma"))) + .)
+            | first // empty')
+          if [ -z "$MODEL" ]; then
+            echo "::warning::No ENABLED model found via API; using gemma-4-31b-it"
+            MODEL="gemma-4-31b-it"
+          fi
+          echo "Using model: $MODEL"
+          echo "model=$MODEL" >> "$GITHUB_OUTPUT"
+
       - name: Create or update runtime
         id: runtime
         run: |
           AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
-          if [ -z "${{ secrets.LLM_API_KEY }}" ]; then
-            echo "::warning::LLM_API_KEY secret not set - agent will run in keyword fallback mode (no Qwen)."
-          fi
           BODY=$(jq -n \
             --arg name  "$RUNTIME_NAME" \
             --arg desc  "Lending Portfolio Watchdog - Claw-a-thon 2026 Team UW (synthetic data only)" \
@@ -118,11 +149,12 @@ jobs:
             --arg flavor "${{ steps.flavor.outputs.id }}" \
             --arg user  "${{ steps.cr.outputs.user }}" \
             --arg pass  "${{ steps.cr.outputs.secret }}" \
-            --arg llmkey "${{ secrets.LLM_API_KEY }}" \
-            --arg llmurl "https://maas-llm-aiplatform-hcm.api.vngcloud.vn/v1" \
+            --arg llmkey "${{ steps.llm.outputs.key }}" \
+            --arg llmurl "$LLM_BASE_URL" \
+            --arg llmmodel "${{ steps.llm.outputs.model }}" \
             '{name: $name, description: $desc, imageUrl: $image,
               command: [], args: [],
-              environmentVariables: (if $llmkey == "" then {} else {LLM_API_KEY: $llmkey, LLM_BASE_URL: $llmurl} end),
+              environmentVariables: {LLM_API_KEY: $llmkey, LLM_BASE_URL: $llmurl, LLM_MODEL: $llmmodel},
               flavorId: $flavor,
               imageAuth: {enabled: true, username: $user, password: $pass},
               autoscaling: {minReplicas: 1, maxReplicas: 1, cpuUtilization: 50, memoryUtilization: 50}}')

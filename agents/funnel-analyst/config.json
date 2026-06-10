@@ -1,0 +1,11 @@
+{
+  "funnel_name": "SaaS Onboarding Funnel",
+  "stages": [
+    {"key": "visited",    "label": "Visited",     "ts_column": "visited_at"},
+    {"key": "signed_up",  "label": "Signed Up",   "ts_column": "signed_up_at"},
+    {"key": "activated",  "label": "Activated",   "ts_column": "activated_at"},
+    {"key": "subscribed", "label": "Subscribed",  "ts_column": "subscribed_at"},
+    {"key": "renewed",    "label": "Renewed",     "ts_column": "renewed_at"}
+  ],
+  "segment_dimensions": ["channel", "plan", "region", "device"]
+}

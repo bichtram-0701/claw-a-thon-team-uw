@@ -1,35 +1,36 @@
-"""Lending Portfolio Watchdog — v1 (Qwen 3 via GreenNode MaaS).
+"""Lending Portfolio Watchdog — v1 (Q&A + watchdog + LLM report).
 
-Architecture: analysis runs in plain Python over the synthetic CSV (cheap,
-deterministic); Qwen 3 understands the question and phrases the answer
-from those precomputed numbers. If the LLM is unreachable or unconfigured,
-the agent degrades gracefully to v0 keyword routing with raw JSON answers.
+v0 (Rino): synthetic portfolio, keyword Q&A routing, watchdog flags.
+v1 adds:  - "report" intent: full manager-ready portfolio report (metrics.py + report.py)
+          - LLM (MaaS Qwen/Gemma): intent classification when keywords miss,
+            natural-language answers, narrative reports
+          - vintage analysis: recent vs older originations by product
+          - graceful fallback: every LLM feature degrades to deterministic
+            output, so the agent works even with zero MaaS availability.
 
 Team UW — Claw-a-thon 2026. Data is 100% synthetic (see data/).
 """
 
 import csv
-import json
 import os
 from collections import defaultdict
 from datetime import datetime
 
-import httpx
+from dotenv import load_dotenv
 from greennode_agentbase import (
     GreenNodeAgentBaseApp,
     PingStatus,
     RequestContext,
 )
 
+import metrics as mx
+import report as rp
+
+load_dotenv()
+
 DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "loan_portfolio_synthetic.csv")
 NPL_DPD_THRESHOLD = 91          # days past due at which a loan becomes NPL
 WATCH_WINDOW = 6                # flag loans within this many days of the threshold
-
-LLM_API_KEY = os.environ.get("LLM_API_KEY", "")
-LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "https://maas-llm-aiplatform-hcm.api.vngcloud.vn/v1")
-LLM_MODEL = os.environ.get("LLM_MODEL", "")  # empty = auto-discover a Qwen model
-LLM_TIMEOUT = 30.0
-MAX_ANSWER_TOKENS = 500
 
 app = GreenNodeAgentBaseApp()
 
@@ -53,6 +54,7 @@ PORTFOLIO = load_portfolio()
 
 
 def bad_rate(rows: list[dict]) -> float:
+    """Share of loans overdue or NPL, in %."""
     if not rows:
         return 0.0
     bad = sum(1 for r in rows if r["status"] in ("overdue", "npl"))
@@ -60,18 +62,20 @@ def bad_rate(rows: list[dict]) -> float:
 
 
 def portfolio_summary() -> dict:
+    total_outstanding = sum(r["outstanding_vnd"] for r in PORTFOLIO)
     by_status = defaultdict(int)
     for r in PORTFOLIO:
         by_status[r["status"]] += 1
     return {
         "loans_total": len(PORTFOLIO),
-        "outstanding_vnd": sum(r["outstanding_vnd"] for r in PORTFOLIO),
+        "outstanding_vnd": total_outstanding,
         "by_status": dict(by_status),
         "bad_rate_pct": bad_rate(PORTFOLIO),
     }
 
 
 def flagged_accounts() -> dict:
+    """Loans within WATCH_WINDOW days of rolling into NPL."""
     lo = NPL_DPD_THRESHOLD - WATCH_WINDOW
     flagged = [
         {
@@ -116,80 +120,23 @@ def vintage_analysis() -> dict:
     return out
 
 
-def full_picture() -> dict:
-    """Everything Qwen needs to answer any portfolio question. ~2 KB."""
-    return {
-        "summary": portfolio_summary(),
-        "flagged_near_npl": flagged_accounts(),
-        "by_province": breakdown("province"),
-        "by_product": breakdown("product_type"),
-        "by_customer_segment": breakdown("segment"),
-        "vintage_recent_vs_older": vintage_analysis(),
-        "definitions": {
-            "bad_rate_pct": "share of loans overdue or NPL",
-            "npl": "loan with days_past_due >= " + str(NPL_DPD_THRESHOLD),
-            "flagged": "loans within " + str(WATCH_WINDOW) + " days of becoming NPL",
-        },
-    }
+def full_report(payload: dict) -> dict:
+    """Manager-ready portfolio report (markdown). Optional prior-period CSV
+    in payload["prev_csv_text"] enables trend analysis."""
+    lang = payload.get("language", "vi")
+    cur = mx.analyze(mx.from_rows(PORTFOLIO))
+    delta = None
+    if payload.get("prev_csv_text"):
+        delta = mx.compare(cur, mx.analyze(mx.load_csv(payload["prev_csv_text"])))
+    md, mode = rp.portfolio_report(cur, delta, lang)
+    return {"report_markdown": md, "report_mode": mode, "metrics": cur, "delta": delta}
 
 
-# ------------------------------------------------------------------ LLM brain
-
-_model_cache = {"name": LLM_MODEL}
-
-SYSTEM_PROMPT = (
-    "You are Lending Portfolio Watchdog, a risk analysis assistant built by "
-    "Team UW for a loan portfolio team. You receive precomputed portfolio "
-    "statistics as JSON and must answer the user's question using ONLY those "
-    "numbers - never invent figures. Be concise and businesslike. Lead with "
-    "the direct answer, quote concrete numbers, and add one short insight if "
-    "the data shows something notable (e.g. a deteriorating segment). Amounts "
-    "are in VND. Answer in the same language as the question (Vietnamese or "
-    "English). If the question is unrelated to the portfolio, say what you "
-    "can help with instead. All data is synthetic demo data for Claw-a-thon 2026."
-)
-
-
-def resolve_model(client) -> str:
-    """Pick a Qwen model from the OpenAI-compatible /models list (cached)."""
-    if _model_cache["name"]:
-        return _model_cache["name"]
-    resp = client.get(LLM_BASE_URL + "/models")
-    resp.raise_for_status()
-    ids = [m.get("id", "") for m in resp.json().get("data", [])]
-    qwen = [i for i in ids if "qwen" in i.lower()]
-    _model_cache["name"] = qwen[0] if qwen else (ids[0] if ids else "")
-    return _model_cache["name"]
-
-
-def ask_llm(question: str) -> str:
-    headers = {"Authorization": "Bearer " + LLM_API_KEY}
-    with httpx.Client(timeout=LLM_TIMEOUT, headers=headers) as client:
-        model = resolve_model(client)
-        if not model:
-            raise RuntimeError("no model available")
-        body = {
-            "model": model,
-            "max_tokens": MAX_ANSWER_TOKENS,
-            "temperature": 0.2,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": "Portfolio statistics (JSON):\n"
-                    + json.dumps(full_picture(), ensure_ascii=False)
-                    + "\n\nQuestion: " + question,
-                },
-            ],
-        }
-        resp = client.post(LLM_BASE_URL + "/chat/completions", json=body)
-        resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"].strip()
-
-
-# ----------------------------------------------------- v0 fallback (no LLM)
+# ------------------------------------------------------------- intent router
+# Keyword matching first (free); LLM classification when keywords miss.
 
 ROUTES = [
+    ({"report", "bao cao", "báo cáo", "weekly", "tuan", "tuần"}, "report"),
     ({"flag", "watch", "alert", "risk", "npl", "canh bao", "cảnh báo", "rui ro", "rủi ro"}, "flagged"),
     ({"province", "region", "tinh", "tỉnh", "khu vuc", "khu vực"}, "province"),
     ({"segment", "phan khuc", "phân khúc", "product", "san pham", "sản phẩm"}, "segment"),
@@ -197,21 +144,12 @@ ROUTES = [
 ]
 
 
-def keyword_fallback(message: str) -> dict:
+def route(message: str) -> str:
     msg = message.lower()
     for keywords, intent in ROUTES:
         if any(k in msg for k in keywords):
-            break
-    else:
-        intent = "help"
-    data = {
-        "summary": portfolio_summary,
-        "flagged": flagged_accounts,
-        "province": lambda: breakdown("province"),
-        "segment": lambda: {"by_product": breakdown("product_type"), "by_segment": breakdown("segment")},
-        "help": lambda: {"hint": "Ask about: portfolio summary, at-risk accounts, provinces, segments."},
-    }[intent]()
-    return {"intent": intent, "data": data}
+            return intent
+    return rp.classify_intent(message) or "help"
 
 
 # ---------------------------------------------------------------- entrypoint
@@ -219,31 +157,44 @@ def keyword_fallback(message: str) -> dict:
 
 @app.entrypoint
 def handler(payload: dict, context: RequestContext) -> dict:
-    message = str(payload.get("message", "")).strip() or "portfolio summary"
+    message = str(payload.get("message", ""))
+    lang = payload.get("language", "vi")
+    intent = route(message)
 
-    answer, llm_used, fallback = None, False, None
-    if LLM_API_KEY:
-        try:
-            answer = ask_llm(message)
-            llm_used = True
-        except Exception as e:  # any LLM failure degrades gracefully
-            fallback = "LLM unavailable (" + type(e).__name__ + "); using keyword mode"
-    if not llm_used:
-        kw = keyword_fallback(message)
-        answer = json.dumps(kw["data"], ensure_ascii=False, indent=2)
-        if not fallback:
-            fallback = "LLM not configured; using keyword mode"
+    answer = None
+    if intent == "summary":
+        result = portfolio_summary()
+    elif intent == "flagged":
+        result = flagged_accounts()
+    elif intent == "province":
+        result = breakdown("province")
+    elif intent == "segment":
+        result = {
+            "by_product": breakdown("product_type"),
+            "by_segment": breakdown("segment"),
+            "vintage_recent_vs_older": vintage_analysis(),
+        }
+    elif intent == "report":
+        result = full_report(payload)
+        answer = result["report_markdown"]
+    else:
+        result = {
+            "hint": "Try asking about: portfolio summary, flagged/at-risk accounts, "
+                    "breakdown by province, segment/product, or a full report.",
+        }
 
-    result = {
+    # Natural-language phrasing for Q&A intents (LLM; skipped when offline)
+    if answer is None and intent in ("summary", "flagged", "province", "segment") and message:
+        answer = rp.narrate(message, result, lang)
+
+    return {
         "status": "success",
+        "intent": intent,
         "answer": answer,
-        "llm_used": llm_used,
+        "result": result,
         "disclaimer": "Synthetic data only — Claw-a-thon 2026 demo.",
         "timestamp": datetime.now().isoformat(),
     }
-    if fallback:
-        result["note"] = fallback
-    return result
 
 
 @app.ping

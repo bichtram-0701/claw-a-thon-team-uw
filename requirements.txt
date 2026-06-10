@@ -1,2 +1,4 @@
 greennode-agentbase
 python-dotenv
+pandas
+openai
