@@ -166,9 +166,11 @@ def narrate(question: str, result: dict, lang: str = "vi") -> str | None:
     """Phrase a tool result as a short natural-language answer. None when offline."""
     import json
     sys_p = ("Ban la tro ly phan tich danh muc cho vay. Tra loi cau hoi cua nguoi dung "
-             "ngan gon (toi da 5 cau) dua DUY NHAT tren JSON ket qua. Tra loi bang tieng Viet."
+             "ngan gon dua DUY NHAT tren JSON ket qua. Neu nguoi dung muon bang/so sanh, "
+             "dung bang markdown. Nguoc lai toi da 5 cau. Tra loi bang tieng Viet."
              if lang == "vi" else
-             "You are a lending portfolio analyst assistant. Answer the user's question concisely "
-             "(max 5 sentences) using ONLY the JSON result.")
+             "You are a lending portfolio analyst assistant. Answer the user's question using ONLY "
+             "the JSON result. If the user asks for a table or comparison, format it as a markdown "
+             "table. Otherwise answer concisely (max 5 sentences).")
     return llm_chat(sys_p, f"Question: {question}\nResult JSON:\n{json.dumps(result, ensure_ascii=False)}",
                     max_tokens=700)

@@ -37,6 +37,8 @@ def _rate(rows, frm, to):
 def stage_conversion(rows=None) -> dict:
     rows = rows if rows is not None else FUNNEL
     out = {"applications": len(rows)}
+    # absolute number of applications reaching each stage
+    out["reached_count"] = {s: len(_reached(rows, s)) for s in STAGES}
     for frm, to in zip(STAGES, STAGES[1:]):
         out[f"{frm}->{to}_pct"] = _rate(rows, frm, to)
     out["end_to_end_pct"] = _rate(rows, "applied", "disbursed")

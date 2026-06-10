@@ -160,6 +160,7 @@ def full_report(payload: dict) -> dict:
 
 ROUTES = [
     ({"funnel", "conversion", "drop-off", "dropoff", "application", "applications",
+      "step", "stage", "pipeline", "disburse", "approval rate",
       "chuyen doi", "chuyển đổi", "phễu", "pheu", "ho so", "hồ sơ"}, "funnel"),
     ({"report", "bao cao", "báo cáo", "weekly", "tuan", "tuần"}, "report"),
     ({"flag", "watch", "alert", "risk", "npl", "canh bao", "cảnh báo", "rui ro", "rủi ro"}, "flagged"),
