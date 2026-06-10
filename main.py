@@ -1,9 +1,11 @@
-"""Lending Portfolio Watchdog — v0 (no LLM).
+"""Lending Portfolio Watchdog — v1 (Q&A + watchdog + LLM report).
 
-Minimal AgentBase agent that answers portfolio questions from the synthetic
-loan CSV using keyword routing. Purpose: validate the deploy pipeline
-end-to-end with zero MaaS token consumption. v1 will add Qwen 3 for
-natural-language understanding and phrasing.
+v0 (Rino): synthetic portfolio, keyword Q&A routing, watchdog flags.
+v1 adds:  - "report" intent: full manager-ready portfolio report
+          - LLM (MaaS Qwen/Gemma): intent classification when keywords miss,
+            natural-language answers, narrative reports
+          - graceful fallback: every LLM feature degrades to deterministic
+            output, so the agent works even with zero MaaS availability.
 
 Team UW — Claw-a-thon 2026. Data is 100% synthetic (see data/).
 """
@@ -13,11 +15,17 @@ import os
 from collections import defaultdict
 from datetime import datetime
 
+from dotenv import load_dotenv
 from greennode_agentbase import (
     GreenNodeAgentBaseApp,
     PingStatus,
     RequestContext,
 )
+
+import metrics as mx
+import report as rp
+
+load_dotenv()
 
 DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "loan_portfolio_synthetic.csv")
 NPL_DPD_THRESHOLD = 91          # days past due at which a loan becomes NPL
@@ -94,10 +102,23 @@ def breakdown(field: str) -> dict:
     }
 
 
+def full_report(payload: dict) -> dict:
+    """Manager-ready portfolio report (markdown). Optional prior-period CSV
+    in payload["prev_csv_text"] enables trend analysis."""
+    lang = payload.get("language", "vi")
+    cur = mx.analyze(mx.from_rows(PORTFOLIO))
+    delta = None
+    if payload.get("prev_csv_text"):
+        delta = mx.compare(cur, mx.analyze(mx.load_csv(payload["prev_csv_text"])))
+    md, mode = rp.portfolio_report(cur, delta, lang)
+    return {"report_markdown": md, "report_mode": mode, "metrics": cur, "delta": delta}
+
+
 # ------------------------------------------------------------- intent router
-# v0: dumb keyword matching. v1 replaces this with Qwen 3.
+# Keyword matching first (free); LLM classification when keywords miss.
 
 ROUTES = [
+    ({"report", "bao cao", "báo cáo", "weekly", "tuan", "tuần"}, "report"),
     ({"flag", "watch", "alert", "risk", "npl", "canh bao", "cảnh báo", "rui ro", "rủi ro"}, "flagged"),
     ({"province", "region", "tinh", "tỉnh", "khu vuc", "khu vực"}, "province"),
     ({"segment", "phan khuc", "phân khúc", "product", "san pham", "sản phẩm"}, "segment"),
@@ -110,7 +131,7 @@ def route(message: str) -> str:
     for keywords, intent in ROUTES:
         if any(k in msg for k in keywords):
             return intent
-    return "help"
+    return rp.classify_intent(message) or "help"
 
 
 # ---------------------------------------------------------------- entrypoint
@@ -119,8 +140,10 @@ def route(message: str) -> str:
 @app.entrypoint
 def handler(payload: dict, context: RequestContext) -> dict:
     message = str(payload.get("message", ""))
+    lang = payload.get("language", "vi")
     intent = route(message)
 
+    answer = None
     if intent == "summary":
         result = portfolio_summary()
     elif intent == "flagged":
@@ -132,15 +155,23 @@ def handler(payload: dict, context: RequestContext) -> dict:
             "by_product": breakdown("product_type"),
             "by_segment": breakdown("segment"),
         }
+    elif intent == "report":
+        result = full_report(payload)
+        answer = result["report_markdown"]
     else:
         result = {
             "hint": "Try asking about: portfolio summary, flagged/at-risk accounts, "
-                    "breakdown by province, or breakdown by segment/product.",
+                    "breakdown by province, segment/product, or a full report.",
         }
+
+    # Natural-language phrasing for Q&A intents (LLM; skipped when offline)
+    if answer is None and intent in ("summary", "flagged", "province", "segment") and message:
+        answer = rp.narrate(message, result, lang)
 
     return {
         "status": "success",
         "intent": intent,
+        "answer": answer,
         "result": result,
         "disclaimer": "Synthetic data only — Claw-a-thon 2026 demo.",
         "timestamp": datetime.now().isoformat(),
