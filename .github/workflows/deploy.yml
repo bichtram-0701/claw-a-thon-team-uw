@@ -113,15 +113,20 @@ jobs:
         id: llm
         run: |
           AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
-          # get-or-create the platform API key
-          KEY=$(curl -sf -H "$AUTH" "$AIP_API/v1/api-keys/$LLM_KEY_NAME" | jq -r '.data.key // .key // empty' || true)
+          # 1st choice: the team's key stored as a repo secret (simple, reliable)
+          KEY="${{ secrets.LLM_API_KEY }}"
+          # Fallback: get-or-create a platform key via API (every curl guarded —
+          # 'create' returns an error when the key already exists, which is not fatal)
+          if [ -z "$KEY" ]; then
+            KEY=$(curl -sf -H "$AUTH" "$AIP_API/v1/api-keys/$LLM_KEY_NAME" | jq -r '.data.key // .key // empty' || true)
+          fi
           if [ -z "$KEY" ]; then
             echo "Key not found - creating $LLM_KEY_NAME"
             KEY=$(curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" \
               -d "{\"name\": \"$LLM_KEY_NAME\", \"isDefault\": false}" \
-              "$AIP_API/v2/api-keys" | jq -r '.data.key // .key // empty')
+              "$AIP_API/v2/api-keys" | jq -r '.data.key // .key // empty' || true)
           fi
-          [ -n "$KEY" ] || { echo "::error::Could not obtain LLM API key"; exit 1; }
+          [ -n "$KEY" ] || { echo "::error::No LLM key: add repo secret LLM_API_KEY (Settings > Secrets > Actions) with the team MaaS key."; exit 1; }
           echo "::add-mask::$KEY"
           echo "key=$KEY" >> "$GITHUB_OUTPUT"
           # ask the MaaS serving endpoint for its real model ids (source of truth)
