@@ -1,0 +1,177 @@
+# Deploy the Lending Portfolio Watchdog to GreenNode AgentBase.
+#
+# Why this exists: our vibe-code environment has no Docker and no network
+# route to vngcloud.vn, so GitHub's servers do the build + deploy instead.
+# Runs on every push to main (code paths only) or manually via "Run workflow".
+#
+# Required repo secrets (Settings > Secrets and variables > Actions):
+#   GREENNODE_CLIENT_ID      - IAM service account client id
+#   GREENNODE_CLIENT_SECRET  - IAM service account client secret
+#
+# API endpoints taken from the BTC's greennode-agentbase-skills pack.
+
+name: Deploy to AgentBase
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "main.py"
+      - "requirements.txt"
+      - "Dockerfile"
+      - "data/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  RUNTIME_NAME: lending-watchdog
+  IMAGE_NAME: lending-watchdog
+  # Compute size: we want 2 vCPU / 4 GB ("2x4" per the competition guide).
+  FLAVOR_PATTERN: "2x4"
+  IAM_TOKEN_URL: https://iam.api.vngcloud.vn/accounts-api/v2/auth/token
+  CR_API: https://agentbase.api.vngcloud.vn/cr/api/v1
+  RUNTIME_API: https://agentbase.api.vngcloud.vn/runtime
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get IAM token
+        id: token
+        run: |
+          RESP=$(curl -sf -X POST "$IAM_TOKEN_URL" \
+            -u "${{ secrets.GREENNODE_CLIENT_ID }}:${{ secrets.GREENNODE_CLIENT_SECRET }}" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=client_credentials")
+          TOKEN=$(echo "$RESP" | jq -r '.access_token // empty')
+          if [ -z "$TOKEN" ]; then
+            echo "::error::Could not get IAM token. Check GREENNODE_CLIENT_ID/SECRET secrets."
+            echo "$RESP" | jq 'del(.access_token)' || true
+            exit 1
+          fi
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Get Container Registry info & credentials
+        id: cr
+        run: |
+          AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
+          REPO=$(curl -sf -H "$AUTH" "$CR_API/repository")
+          CRED=$(curl -sf -H "$AUTH" "$CR_API/registry-credential")
+          REGISTRY=$(echo "$REPO" | jq -r '.registryUrl')
+          REPONAME=$(echo "$REPO" | jq -r '.name')
+          CR_USER=$(echo "$CRED" | jq -r '.username')
+          CR_SECRET=$(echo "$CRED" | jq -r '.secret')
+          echo "::add-mask::$CR_SECRET"
+          {
+            echo "registry=$REGISTRY"
+            echo "repo=$REPONAME"
+            echo "user=$CR_USER"
+            echo "secret=$CR_SECRET"
+            echo "image=$REGISTRY/$REPONAME/$IMAGE_NAME:v${{ github.run_number }}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Registry: $REGISTRY / repo: $REPONAME"
+
+      - name: Build and push image
+        run: |
+          IMAGE="${{ steps.cr.outputs.image }}"
+          echo "${{ steps.cr.outputs.secret }}" | docker login "${{ steps.cr.outputs.registry }}" \
+            -u "${{ steps.cr.outputs.user }}" --password-stdin
+          docker build --platform linux/amd64 -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "Pushed $IMAGE"
+
+      - name: Resolve compute flavor
+        id: flavor
+        run: |
+          AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
+          FLAVORS=$(curl -sf -H "$AUTH" "$RUNTIME_API/flavors")
+          echo "Available flavors:"
+          echo "$FLAVORS" | jq -r '.. | objects | select(.id?) | "\(.id)\t\(.name // "")"' | sort -u
+          FLAVOR_ID=$(echo "$FLAVORS" | jq -r --arg p "$FLAVOR_PATTERN" \
+            '[.. | objects | select(.id?) | select((.id + (.name // "")) | test($p))] | first | .id // empty')
+          if [ -z "$FLAVOR_ID" ]; then
+            echo "::error::No flavor matching '$FLAVOR_PATTERN' found - check the list above, then set FLAVOR_PATTERN."
+            exit 1
+          fi
+          echo "Using flavor: $FLAVOR_ID"
+          echo "id=$FLAVOR_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update runtime
+        id: runtime
+        run: |
+          AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
+          BODY=$(jq -n \
+            --arg name  "$RUNTIME_NAME" \
+            --arg desc  "Lending Portfolio Watchdog - Claw-a-thon 2026 Team UW (synthetic data only)" \
+            --arg image "${{ steps.cr.outputs.image }}" \
+            --arg flavor "${{ steps.flavor.outputs.id }}" \
+            --arg user  "${{ steps.cr.outputs.user }}" \
+            --arg pass  "${{ steps.cr.outputs.secret }}" \
+            '{name: $name, description: $desc, imageUrl: $image,
+              command: [], args: [], environmentVariables: {},
+              flavorId: $flavor,
+              imageAuth: {enabled: true, username: $user, password: $pass},
+              autoscaling: {minReplicas: 1, maxReplicas: 1, cpuUtilization: 50, memoryUtilization: 50}}')
+
+          # Does a runtime with our name already exist?
+          EXISTING=$(curl -sf -H "$AUTH" "$RUNTIME_API/agent-runtimes?page=1&size=50" \
+            | jq -r --arg n "$RUNTIME_NAME" '.listData[]? | select(.name == $n) | .id' | head -1)
+
+          if [ -z "$EXISTING" ]; then
+            echo "Creating new runtime..."
+            RESP=$(curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" \
+              -d "$BODY" "$RUNTIME_API/agent-runtimes")
+            RUNTIME_ID=$(echo "$RESP" | jq -r '.id')
+          else
+            echo "Updating runtime $EXISTING (new version)..."
+            # update body = create body minus name
+            curl -sf -X PATCH -H "$AUTH" -H "Content-Type: application/json" \
+              -d "$(echo "$BODY" | jq 'del(.name)')" \
+              "$RUNTIME_API/agent-runtimes/$EXISTING" > /dev/null
+            RUNTIME_ID="$EXISTING"
+          fi
+          echo "Runtime ID: $RUNTIME_ID"
+          echo "id=$RUNTIME_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for ACTIVE
+        run: |
+          AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
+          for i in $(seq 1 60); do
+            R=$(curl -sf -H "$AUTH" "$RUNTIME_API/agent-runtimes/${{ steps.runtime.outputs.id }}")
+            STATUS=$(echo "$R" | jq -r '.status')
+            echo "[$i/60] status: $STATUS"
+            case "$STATUS" in
+              ACTIVE) exit 0 ;;
+              ERROR|FAILED)
+                echo "::error::Runtime failed: $(echo "$R" | jq -r '.statusReason // "no reason given"')"
+                exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "::error::Timed out waiting for ACTIVE (10 min)"
+          exit 1
+
+      - name: Health check & summary
+        run: |
+          AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
+          EP=$(curl -sf -H "$AUTH" "$RUNTIME_API/agent-runtimes/${{ steps.runtime.outputs.id }}/endpoints")
+          URL=$(echo "$EP" | jq -r '.listData[]? // .[]? | select(.url) | .url' | head -1)
+          echo "Endpoint: $URL"
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" -m 30 "$URL/health" || echo "000")
+          echo "Health check: HTTP $CODE"
+          {
+            echo "## Lending Watchdog deployed"
+            echo "- **Runtime ID:** ${{ steps.runtime.outputs.id }}"
+            echo "- **Image:** ${{ steps.cr.outputs.image }}"
+            echo "- **Endpoint:** $URL"
+            echo "- **Health:** HTTP $CODE"
+          } >> "$GITHUB_STEP_SUMMARY"
+          [ "$CODE" = "200" ] || { echo "::warning::Health returned $CODE - check runtime logs in the portal"; exit 1; }
