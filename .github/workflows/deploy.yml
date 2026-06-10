@@ -124,16 +124,15 @@ jobs:
           [ -n "$KEY" ] || { echo "::error::Could not obtain LLM API key"; exit 1; }
           echo "::add-mask::$KEY"
           echo "key=$KEY" >> "$GITHUB_OUTPUT"
-          # pick an ENABLED model, preferring qwen then gemma
-          MODELS=$(curl -sf -H "$AUTH" "$AIP_API/v1/models" || true)
+          # ask the MaaS serving endpoint for its real model ids (source of truth)
+          MODELS=$(curl -sf -H "Authorization: Bearer $KEY" "$LLM_BASE_URL/models" || true)
           MODEL=$(echo "$MODELS" | jq -r '
-            [.. | objects | select((.modelStatus? // .status?) == "ENABLED")
-             | (.modelName // .name // .id // empty)] | unique
+            [.data[]?.id // empty]
             | (map(select(test("(?i)qwen"))) + map(select(test("(?i)gemma"))) + .)
             | first // empty')
           if [ -z "$MODEL" ]; then
-            echo "::warning::No ENABLED model found via API; using gemma-4-31b-it"
-            MODEL="gemma-4-31b-it"
+            echo "::warning::Could not list serving models; using qwen3-5-27b"
+            MODEL="qwen3-5-27b"
           fi
           echo "Using model: $MODEL"
           echo "model=$MODEL" >> "$GITHUB_OUTPUT"

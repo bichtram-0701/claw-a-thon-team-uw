@@ -32,21 +32,47 @@ def _client():
     return client, model
 
 
+_MODEL_OVERRIDE = None  # set when the configured model name 404s and we autodiscover
+
+
+def _call(client, model, system, user, max_tokens):
+    resp = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "system", "content": system},
+                  {"role": "user", "content": user}],
+        temperature=0.3,
+        max_tokens=max_tokens,
+    )
+    return resp.choices[0].message.content
+
+
+def _discover_model(client) -> str | None:
+    """Ask the serving endpoint for its real model ids; prefer qwen, then gemma."""
+    ids = [m.id for m in client.models.list().data]
+    return (next((i for i in ids if "qwen" in i.lower()), None)
+            or next((i for i in ids if "gemma" in i.lower()), None)
+            or (ids[0] if ids else None))
+
+
 def llm_chat(system: str, user: str, max_tokens: int = 900) -> str | None:
-    """One LLM call; returns None on any failure (caller falls back)."""
+    """One LLM call; self-heals wrong model names; returns None on failure."""
+    global _MODEL_OVERRIDE
+    client, model = _client()
+    if client is None:
+        return None
+    model = _MODEL_OVERRIDE or model
     try:
-        client, model = _client()
-        if client is None:
-            return None
-        resp = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "system", "content": system},
-                      {"role": "user", "content": user}],
-            temperature=0.3,
-            max_tokens=max_tokens,
-        )
-        return resp.choices[0].message.content
+        return _call(client, model, system, user, max_tokens)
     except Exception as e:  # noqa: BLE001
+        if "not found" in str(e).lower() or "404" in str(e):
+            try:
+                pick = _discover_model(client)
+                if pick and pick != model:
+                    print(f"Model '{model}' not found; switching to '{pick}'")
+                    _MODEL_OVERRIDE = pick
+                    return _call(client, pick, system, user, max_tokens)
+            except Exception as e2:  # noqa: BLE001
+                print(f"Model autodiscovery failed ({e2})")
         print(f"LLM call failed ({e}); falling back")
         return None
 
