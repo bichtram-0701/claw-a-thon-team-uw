@@ -60,7 +60,10 @@
 <footer>All data is synthetic — no real customer information. Powered by GreenNode AgentBase + MaaS.</footer>
 
 <script>
-const ENDPOINT = "https://endpoint-02241868-df01-4fa2-9b36-45145561851c.agentbase-runtime.aiplatform.vngcloud.vn/invocations";
+// Same-origin when served by the agent itself; absolute URL when opened as a local file.
+const ENDPOINT = location.protocol.startsWith("http")
+  ? "/invocations"
+  : "https://endpoint-02241868-df01-4fa2-9b36-45145561851c.agentbase-runtime.aiplatform.vngcloud.vn/invocations";
 const chat = document.getElementById("chat"), form = document.getElementById("form"),
       input = document.getElementById("input"), send = document.getElementById("send");
 

@@ -22,6 +22,10 @@ from greennode_agentbase import (
     PingStatus,
     RequestContext,
 )
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import FileResponse
+from starlette.routing import Route
 
 import funnel as fn
 import metrics as mx
@@ -33,7 +37,25 @@ DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "loan_portfolio_synt
 NPL_DPD_THRESHOLD = 91          # days past due at which a loan becomes NPL
 WATCH_WINDOW = 6                # flag loans within this many days of the threshold
 
-app = GreenNodeAgentBaseApp()
+# CORS: allow browsers (e.g. the chat page, GitHub Pages) to call /invocations.
+_middleware = [Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])]
+try:  # keep the SDK's own middleware if importable (private API, may move)
+    from greennode_agentbase.runtime.app import XAccelBufferingMiddleware
+    _middleware.insert(0, Middleware(XAccelBufferingMiddleware))
+except ImportError:
+    pass
+
+app = GreenNodeAgentBaseApp(middleware=_middleware)
+
+# Serve the chat UI at the endpoint root — same origin, no CORS needed.
+_CHAT_PAGE = os.path.join(os.path.dirname(__file__), "chat.html")
+
+
+async def _serve_chat(request):
+    return FileResponse(_CHAT_PAGE, media_type="text/html")
+
+
+app.router.routes.append(Route("/", _serve_chat, methods=["GET"]))
 
 # ---------------------------------------------------------------- data layer
 # (the "adapter": v-next swaps this loader for a real data source)
