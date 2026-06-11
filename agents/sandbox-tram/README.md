@@ -15,7 +15,8 @@ Comparison windows are rolling 7 days ending at the latest date in the data.
 |------|------|
 | `generate_data.py` | Builds `data/disbursements.csv` (70 days, ends 2026-06-11) |
 | `metrics.py` | The "tools" — time-series calculations (pandas) |
-| `ask.py` | Tiny rule-based agent: question in, answer out |
+| `ask.py` | Agent: computes facts, then Qwen phrases them in Vietnamese |
+| `llm_client.py` | MaaS (Qwen) client — numbers stay code-computed, LLM only phrases |
 | `server.py` | HTTP wrapper for AgentBase: `GET /health`, `GET /ask`, `POST /invocations` |
 | `Dockerfile` | Container image (port 8080) for deploying to AgentBase |
 
@@ -34,6 +35,11 @@ $py = "$env:LOCALAPPDATA\Python\pythoncore-3.14-64\python.exe"
 & $py ask.py                     # run all sample questions
 & $py ask.py "MPU this week vs last week"   # ask one
 ```
+
+## Qwen (natural language)
+Set `LLM_API_KEY` + `LLM_MODEL=Qwen-3-27B` (see `.env.example`). Without a key,
+the agent falls back to a fixed template so it always works. The LLM only
+rephrases the computed numbers — it never invents them.
 
 ## Note
 "Today" = the latest date in the CSV (deterministic, not the real clock).
