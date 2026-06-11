@@ -11,7 +11,7 @@ from datetime import date, timedelta
 DATA_PATH = os.path.join(os.path.dirname(__file__), "data", "funnel_synthetic.csv")
 STAGES = ["applied", "docs_submitted", "approved", "disbursed"]
 _IDX = {s: i for i, s in enumerate(STAGES)}
-RECENT_DAYS = 28
+RECENT_DAYS = 90
 
 
 def load_funnel() -> list[dict]:
@@ -90,5 +90,8 @@ def funnel_picture() -> dict:
             "funnel_stages": " -> ".join(STAGES),
             "end_to_end_pct": "share of applications that reach disbursement",
             "recent": f"applications in the last {RECENT_DAYS} days",
+            "relation_to_portfolio": "funnel covers 24 months of applications; its ~841 "
+                                     "disbursed loans, minus early repayments, form the "
+                                     "800-loan active portfolio",
         },
     }

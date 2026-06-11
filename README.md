@@ -3,8 +3,12 @@
 > Claw-a-thon 2026 — **Team UW** — Track: **Data Analysis**
 
 AI agent on GreenNode AgentBase that answers loan-portfolio questions in plain
-language, automatically flags accounts about to roll into NPL, and writes
-manager-ready portfolio reports — turning hours of manual analysis into minutes.
+language, automatically flags accounts about to roll into NPL, analyzes the
+application funnel, and writes manager-ready portfolio reports — turning hours
+of manual analysis into minutes.
+
+**💬 Try it in your browser (no install):**
+https://endpoint-02241868-df01-4fa2-9b36-45145561851c.agentbase-runtime.aiplatform.vngcloud.vn/
 
 ## Problem
 
@@ -23,9 +27,13 @@ Ask in plain language (Vietnamese or English) — the agent:
 
 1. **Q&A** — "How is the portfolio doing?", "Which segment has rising risk?", "Compare provinces"
 2. **Watchdog** — auto-flags accounts within 6 days of the 90-DPD NPL cliff
-3. **Reports** — full markdown report: NPL ratio, DPD buckets, concentration,
+3. **Funnel analytics** — application pipeline (applied → docs → approved → disbursed):
+   conversion by product/channel, drop-off reasons, approval-rate shifts
+4. **Reports** — full markdown report: NPL ratio, DPD buckets, concentration,
    period-over-period trend, written by MaaS LLM (Qwen/Gemma) with a deterministic
    fallback so the agent never breaks
+5. **Web chat UI** — served by the agent itself at the endpoint root; anyone with
+   the link can use it from a browser
 
 ## Value
 
@@ -65,7 +73,12 @@ post-competition requires no change to agent logic.
 
 ## Data
 
-100% synthetic (seeded generator, no PII, no real customers). Cite: "Claw-a-thon 2026".
+100% synthetic (seeded generators, no PII, no real customers), and internally
+consistent: 1,700 applications over 24 months → 841 disbursed (47.6% end-to-end)
+→ today's 800-loan active portfolio (the difference = early repayments). The data
+embeds realistic patterns for the agent to find: a deteriorating recent motorbike
+vintage, two weak provinces, web-channel drop-off at document upload, and 14
+accounts days away from NPL.
 
 ## Team
 
