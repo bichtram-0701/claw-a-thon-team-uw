@@ -1,0 +1,6 @@
+.env
+*.greennode.json
+.greennode.json
+__pycache__/
+*.pyc
+data/*.csv
