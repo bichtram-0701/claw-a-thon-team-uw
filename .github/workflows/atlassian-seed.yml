@@ -1,0 +1,24 @@
+# Populate the free Atlassian workspace with the synthetic sprint.
+# Run manually: Actions > "Seed Atlassian workspace" > Run workflow.
+# Safe to re-run: existing issues/pages are skipped.
+
+name: Seed Atlassian workspace
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install httpx
+      - name: Seed
+        env:
+          ATLASSIAN_SITE: ${{ secrets.ATLASSIAN_SITE }}
+          ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
+          ATLASSIAN_TOKEN: ${{ secrets.ATLASSIAN_TOKEN }}
+        run: python scripts/seed_atlassian.py

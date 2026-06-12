@@ -156,9 +156,13 @@ jobs:
             --arg llmkey "${{ steps.llm.outputs.key }}" \
             --arg llmurl "$LLM_BASE_URL" \
             --arg llmmodel "${{ steps.llm.outputs.model }}" \
+            --arg atlsite "${{ secrets.ATLASSIAN_SITE }}" \
+            --arg atlemail "${{ secrets.ATLASSIAN_EMAIL }}" \
+            --arg atltoken "${{ secrets.ATLASSIAN_TOKEN }}" \
             '{name: $name, description: $desc, imageUrl: $image,
               command: [], args: [],
-              environmentVariables: {LLM_API_KEY: $llmkey, LLM_BASE_URL: $llmurl, LLM_MODEL: $llmmodel},
+              environmentVariables: {LLM_API_KEY: $llmkey, LLM_BASE_URL: $llmurl, LLM_MODEL: $llmmodel,
+                                     ATLASSIAN_SITE: $atlsite, ATLASSIAN_EMAIL: $atlemail, ATLASSIAN_TOKEN: $atltoken},
               flavorId: $flavor,
               imageAuth: {enabled: true, username: $user, password: $pass},
               autoscaling: {minReplicas: 1, maxReplicas: 1, cpuUtilization: 50, memoryUtilization: 50}}')

@@ -1,0 +1,32 @@
+# Verify Atlassian credentials + list what the agent will see.
+# Run manually: Actions > "Verify Atlassian" > Run workflow.
+# Needs repo secrets: ATLASSIAN_SITE, ATLASSIAN_EMAIL, ATLASSIAN_TOKEN.
+
+name: Verify Atlassian
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Who am I (token check)
+        run: |
+          SITE="${{ secrets.ATLASSIAN_SITE }}"
+          R=$(curl -sf -u "${{ secrets.ATLASSIAN_EMAIL }}:${{ secrets.ATLASSIAN_TOKEN }}" \
+            "$SITE/rest/api/3/myself") || { echo "::error::Auth failed - check the three ATLASSIAN_* secrets"; exit 1; }
+          echo "$R" | jq '{displayName, emailAddress, accountType}'
+
+      - name: Jira projects visible
+        run: |
+          curl -sf -u "${{ secrets.ATLASSIAN_EMAIL }}:${{ secrets.ATLASSIAN_TOKEN }}" \
+            "${{ secrets.ATLASSIAN_SITE }}/rest/api/3/project/search" \
+            | jq -r '.values[]? | "\(.key)\t\(.name)"' || echo "(no projects yet - create one in the Jira UI)"
+
+      - name: Confluence spaces visible
+        run: |
+          curl -sf -u "${{ secrets.ATLASSIAN_EMAIL }}:${{ secrets.ATLASSIAN_TOKEN }}" \
+            "${{ secrets.ATLASSIAN_SITE }}/wiki/api/v2/spaces" \
+            | jq -r '.results[]? | "\(.key)\t\(.name)"' || echo "(no spaces yet - create one in the Confluence UI)"

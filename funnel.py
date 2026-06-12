@@ -87,6 +87,7 @@ def funnel_picture() -> dict:
         "drop_reasons": drop_reasons(),
         "approval_shift_recent_vs_older": recent_vs_older(),
         "definitions": {
+            "as_of_date": "snapshot as of 2026-06-10; window covers applications from the prior 24 months",
             "funnel_stages": " -> ".join(STAGES),
             "end_to_end_pct": "share of applications that reach disbursement",
             "recent": f"applications in the last {RECENT_DAYS} days",

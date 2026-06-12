@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lending Portfolio Watchdog — Team UW</title>
+<title>Sprint Sidekick — Team UW</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
 <style>
   :root { --bg:#0d1117; --panel:#161b22; --border:#30363d; --text:#e6edf3; --dim:#8b949e; --accent:#2ea043; --user:#1f6feb; }
@@ -38,26 +38,26 @@
 </head>
 <body>
 <header>
-  <h1>🛡️ Lending Portfolio <span>Watchdog</span></h1>
-  <p>Team UW — Claw-a-thon 2026 · synthetic demo data · English & Tiếng Việt</p>
+  <h1>⚡ Sprint <span>Sidekick</span></h1>
+  <p>Team UW — Claw-a-thon 2026 · Jira + Confluence briefings · synthetic workspace · EN & VI</p>
 </header>
 
 <div id="chat"></div>
 
 <div id="chips">
-  <span class="chip">portfolio summary</span>
-  <span class="chip">which accounts are at risk?</span>
-  <span class="chip">show me the application funnel</span>
-  <span class="chip">breakdown by province</span>
-  <span class="chip">give me the weekly report</span>
-  <span class="chip">cho tôi báo cáo tuần</span>
+  <span class="chip">what's on my plate today?</span>
+  <span class="chip">how is the sprint going?</span>
+  <span class="chip">anything blocked or overdue?</span>
+  <span class="chip">what did we decide about the risk model?</span>
+  <span class="chip">draft my standup</span>
+  <span class="chip">hôm nay tôi cần làm gì?</span>
 </div>
 
 <form id="form">
-  <input id="input" placeholder="Ask about the portfolio or the application funnel…" autocomplete="off" autofocus>
+  <input id="input" placeholder="Ask about your tasks, the sprint, or team decisions…" autocomplete="off" autofocus>
   <button id="send">Send</button>
 </form>
-<footer>All data is synthetic — no real customer information. Powered by GreenNode AgentBase + MaaS.</footer>
+<footer>Synthetic workspace data — no company systems, no real personal data. Powered by GreenNode AgentBase + MaaS.</footer>
 
 <script>
 // Same-origin when served by the agent itself; absolute URL when opened as a local file.
@@ -75,9 +75,9 @@ function add(cls, html) {
 }
 const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-add("bot", marked.parse("Hi! I'm the **Lending Portfolio Watchdog**. Ask me about portfolio health, " +
-  "at-risk accounts, the application funnel, or request a full report — in English or Tiếng Việt. " +
-  "Try one of the suggestions below 👇"));
+add("bot", marked.parse("Hi! I'm **Sprint Sidekick** — I read our Jira board and Confluence space " +
+  "so you don't have to. Ask what's on your plate, how the sprint is going, what the team decided " +
+  "about something, or get a standup draft — English or Tiếng Việt. Try a suggestion below 👇"));
 
 document.querySelectorAll(".chip").forEach(c =>
   c.addEventListener("click", () => { input.value = c.textContent; form.requestSubmit(); }));
