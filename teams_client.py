@@ -58,6 +58,31 @@ def issue_card(issue: dict, header: str = "Jira task") -> bool:
     return send_card(header, body, url=issue.get("url"))
 
 
+def digest_card(title: str, issues: list[dict], *, empty_msg: str | None = None,
+                accent: str | None = "Attention") -> bool:
+    """Post a summary card listing issues (key · summary · owner · due), grouped
+    by assignee/owner. If issues is empty, posts empty_msg (or nothing)."""
+    if not issues:
+        if empty_msg:
+            return send_card(title, [text_block(empty_msg, color="Good")])
+        return False
+
+    # group by owner/assignee
+    groups: dict[str, list[dict]] = {}
+    for it in issues:
+        who = it.get("owner") or it.get("assignee") or "Unassigned"
+        groups.setdefault(who, []).append(it)
+
+    body = [text_block(f"{len(issues)} task(s) — grouped by owner", color=accent)]
+    for who, items in groups.items():
+        body.append(text_block(f"👤 {who} ({len(items)})", bold=True))
+        for it in items:
+            due = it.get("due") or "no due date"
+            body.append(text_block(
+                f"• [{it.get('key')}] {it.get('summary')} — {it.get('status')} · due {due}"))
+    return send_card(title, body)
+
+
 def send_card(title: str, body_elements: list[dict], url: str | None = None) -> bool:
     """Send an Adaptive Card. body_elements is a list of card elements
     (use text_block / fact_set). url adds an 'Open in Jira' action button."""

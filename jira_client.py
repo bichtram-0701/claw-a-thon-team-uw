@@ -152,6 +152,22 @@ def overdue_issues() -> list[dict]:
     return search("duedate < now() AND statusCategory != Done ORDER BY due ASC")
 
 
+def due_tomorrow_issues() -> list[dict]:
+    """Open issues whose due date is tomorrow (the 17:00 reminder)."""
+    return search(
+        'duedate >= startOfDay("+1d") AND duedate <= endOfDay("+1d") '
+        "AND statusCategory != Done ORDER BY due ASC"
+    )
+
+
+def stale_issues(days: int = 3) -> list[dict]:
+    """Open issues not updated in the last `days` days — nudge the owner."""
+    return search(
+        f"statusCategory != Done AND updated <= -{days}d ORDER BY updated ASC",
+        limit=100,
+    )
+
+
 # --------------------------------------------------------------- write side --
 # Creating/assigning initiatives. Writes are gated by ALLOW_WRITES in main.py.
 
