@@ -63,10 +63,44 @@ def summary() -> dict:
             "e2e_rate": delta("e2e_rate_pct"),
         },
         "months": r,
+        "anomalies": anomalies(),   # significant MoM rate drops to flag
         "note": "Rates are computed from counts; do not invent figures. "
                 "submission=submission/traffic, approval=approval/submission, "
                 "disbursement=disbursement/approval, e2e=disbursement/traffic.",
     }
+
+
+# A drop counts as "significant" if the rate fell by >= DROP_PP percentage points
+# OR by >= DROP_REL percent relative to the prior month.
+DROP_PP = 3.0
+DROP_REL = 20.0
+_RATE_STAGES = [
+    ("submission_rate_pct", "submission", "Submission rate"),
+    ("approval_rate_pct", "approval", "Approval rate"),
+    ("disbursement_rate_pct", "disbursement", "Disbursement rate"),
+]
+
+
+def anomalies(pp: float = DROP_PP, rel: float = DROP_REL) -> list[dict]:
+    """Significant month-over-month rate drops (latest vs previous month), each
+    tagged with the funnel stage so the owner of that stage can be flagged."""
+    r = rows()
+    if len(r) < 2:
+        return []
+    latest, prev = r[-1], r[-2]
+    out = []
+    for key, stage, label in _RATE_STAGES:
+        a, b = prev.get(key), latest.get(key)
+        if a in (None, 0) or b is None:
+            continue
+        d_pp = round(b - a, 1)
+        d_rel = round(100 * (b - a) / a, 1)
+        if d_pp <= -pp or d_rel <= -rel:
+            out.append({"stage": stage, "metric": label,
+                        "prev_month": prev["month"], "prev_pct": a,
+                        "latest_month": latest["month"], "latest_pct": b,
+                        "delta_pp": d_pp, "delta_pct": d_rel})
+    return out
 
 
 def _b(v):

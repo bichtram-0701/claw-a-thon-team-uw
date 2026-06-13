@@ -10,6 +10,9 @@ from datetime import date, timedelta
 
 import httpx
 
+FUNNEL_EPICS = ["Traffic", "Submission", "Approval", "Disbursement"]   # one owner each
+SHARED_EPICS = {"Data & Platform"}                                     # can have many owners
+
 SITE = os.environ["ATLASSIAN_SITE"].rstrip("/")
 AUTH = (os.environ["ATLASSIAN_EMAIL"], os.environ["ATLASSIAN_TOKEN"])
 TODAY = date.today()
@@ -28,54 +31,58 @@ def d(days: int) -> str:
 # blocked flag. Status is one of: To Do / In Progress / In Review / Done.
 #   (summary, due_in_days, labels, target_status)
 ISSUES = [
-    # --- traffic stage (eligible users entering the lending flow) ---
-    ("Re-engagement flow for abandoned applications", 10,
-     ["owner-mai", "stage-traffic"], "To Do"),
-    ("Reduce duplicate OTP sends blocking application start", 7,
-     ["owner-linh", "stage-traffic"], "To Do"),
-    # --- submission stage (successfully submitted & received by partner) ---
-    ("Reduce web docs-upload abandonment", 2,
-     ["owner-linh", "stage-submission"], "In Progress"),
-    ("A/B test: simplified loan application form", 6,
-     ["owner-mai", "stage-submission"], "To Do"),
-    ("Pre-fill KYC from existing customer data", 8,
-     ["owner-linh", "stage-submission"], "To Do"),
-    ("Document upload: support HEIC/PDF on mobile", 3,
-     ["owner-mai", "stage-submission"], "In Review"),
-    ("Fix Vietnamese-character bug in application export", 4,
-     ["owner-nam", "stage-submission"], "To Do"),
-    ("Update KYC document checklist for new circular", 1,
-     ["owner-linh", "stage-submission", "compliance"], "To Do"),
-    # --- approval stage (partner underwriting / approval rate) ---
-    ("Lift motorbike-segment approval rate", 3,
-     ["owner-hathy", "stage-approval"], "In Progress"),
-    ("Approval SLA dashboard for underwriting", 9,
-     ["owner-hathy", "stage-approval"], "To Do"),
-    ("Underwriting auto-decline rules review", 6,
-     ["owner-hathy", "stage-approval"], "In Review"),
-    # --- disbursement stage (approved loans actually paid out) ---
-    ("Cut disbursement drop-off at e-sign step", 4,
-     ["owner-nam", "stage-disbursement"], "To Do"),
-    ("Disbursement webhook idempotency keys", 0,
-     ["owner-nam", "stage-disbursement"], "In Progress"),
-    ("Renew TLS certs for partner disbursement API", -2,
-     ["owner-nam", "stage-disbursement", "blocked", "infra"], "To Do"),
-    # --- cross-cutting (instrumentation, reporting, infra) ---
-    ("Instrument funnel events end-to-end", 1,
-     ["owner-rino", "stage-crosscut"], "In Progress"),
-    ("Migrate risk-score batch job off legacy cron", 2,
-     ["owner-rino", "stage-crosscut", "blocked", "infra"], "To Do"),
-    ("Funnel weekly metrics auto-report", 12,
-     ["owner-rino", "stage-crosscut"], "To Do"),
+    # --- traffic stage (eligible traffic data: logging, reconciliation) ---
+    ("Bug: gap between raw traffic and eligible-traffic counts", 5,
+     ["stage-traffic", "data"], "In Progress"),
+    ("Build eligible-traffic daily log for the E2E funnel", 9,
+     ["stage-traffic", "data"], "To Do"),
+    ("Monitor traffic volume vs monthly forecast", 7,
+     ["stage-traffic", "monitoring"], "To Do"),
+    # --- submission stage (submission log, score mapping, schema) ---
+    ("Bug: score mapping from traffic step to pre-submission step", 2,
+     ["stage-submission", "data"], "In Progress"),
+    ("Data lineage for submission log (applied -> submitted)", 6,
+     ["stage-submission", "data"], "To Do"),
+    ("Schema: standardize submission-stage event log", 3,
+     ["stage-submission", "schema"], "In Review"),
+    ("Bug: null rejection reasons in submission log", 4,
+     ["stage-submission", "data"], "To Do"),
+    ("Monitor docs-upload drop-off in the submission log", 1,
+     ["stage-submission", "monitoring"], "To Do"),
+    # --- approval stage (approval analytics, rejection reasons, backtest) ---
+    ("Bug: approved-user count discrepancy vs partner report", 2,
+     ["stage-approval", "data"], "In Progress"),
+    ("Monitor approval rate by vintage (motorbike cohort)", 8,
+     ["stage-approval", "monitoring"], "To Do"),
+    ("Rejection-reason classification for declined applications", 6,
+     ["stage-approval", "data"], "In Review"),
+    ("Backtest approval-model output vs actuals", 10,
+     ["stage-approval", "data"], "To Do"),
+    # --- disbursement stage (reconciliation against partner records) ---
+    ("Reconcile disbursed amount vs partner statement", 4,
+     ["stage-disbursement", "data"], "To Do"),
+    ("Bug: TNEX disbursement records missing in funnel log", 0,
+     ["stage-disbursement", "data"], "In Progress"),
+    ("Bug: disbursement timestamp mismatch (KYC status map)", -2,
+     ["stage-disbursement", "data", "blocked"], "To Do"),
+    # --- data & platform (build / monitor shared data assets) ---
+    ("Centralize all model outputs from Ant into the Risk database", 1,
+     ["stage-crosscut", "data"], "In Progress"),
+    ("Schema convention for model-output tables", 5,
+     ["stage-crosscut", "schema"], "To Do"),
+    ("Alert: missing records in the E2E funnel log", 2,
+     ["stage-crosscut", "monitoring", "blocked"], "To Do"),
+    ("Refactor log field user_onboarding_info -> user_approval_info", 12,
+     ["stage-crosscut", "data"], "To Do"),
     # --- done pile (recent wins, for momentum / 'what changed') ---
-    ("Launch docs-upload progress indicator", -3,
-     ["owner-linh", "stage-submission"], "Done"),
-    ("Add motorbike-loan approval monitor", -4,
-     ["owner-hathy", "stage-approval"], "Done"),
-    ("Baseline funnel conversion report", -6,
-     ["owner-rino", "stage-crosscut"], "Done"),
-    ("Fix approval-rate calculation rounding", -5,
-     ["owner-hathy", "stage-approval"], "Done"),
+    ("Baseline E2E funnel conversion log", -3,
+     ["stage-crosscut", "data"], "Done"),
+    ("Add motorbike approval-rate monitor", -4,
+     ["stage-approval", "monitoring"], "Done"),
+    ("Data lineage map: traffic -> disbursement", -6,
+     ["stage-crosscut", "data"], "Done"),
+    ("Fix approval-rate rounding in the weekly report", -5,
+     ["stage-approval", "data"], "Done"),
 ]
 
 PAGES = [
@@ -111,24 +118,25 @@ initiative is a single Jira <em>Task</em> (no priority field) and moves through
 To&nbsp;Do → In&nbsp;Progress → In&nbsp;Review → Done.</p>
 """),
     ("Decision log — Funnel", """
-<h2>Decision: docs-upload is the #1 conversion priority this quarter</h2>
+<h2>Decision: instrument the submission step before optimising it</h2>
 <p><strong>Date:</strong> {d1} · <strong>Status:</strong> APPROVED</p>
-<p>Web document upload shows the steepest drop-off in the funnel. Decision: treat
-<strong>"Reduce web docs-upload abandonment"</strong> as the top initiative; pre-fill
-KYC and mobile file-type support follow. Owner: Linh.</p>
-<h2>Decision: switch approval early-warning to a vintage-based view</h2>
+<p>The submission step shows the steepest drop-off, but score mapping from traffic
+to pre-submission is unreliable. Decision: fix the submission-log score mapping and
+stand up data lineage first, then monitor docs-upload drop-off. Owner: the
+Submission Epic owner.</p>
+<h2>Decision: monitor approval rate by vintage</h2>
 <p><strong>Date:</strong> {d2} · <strong>Status:</strong> APPROVED</p>
 <p>Recent motorbike originations approve far below older cohorts (51% vs 70%).
 Decision: track approval rate by vintage so deterioration is caught early.
-Owner: Hathy. Revisit after Q3.</p>
+Owner: the Approval Epic owner. Revisit after Q3.</p>
 """),
     ("Sprint planning — funnel initiatives", """
-<p><strong>Goal:</strong> ship the docs-upload fixes (progress indicator already live)
-and unblock the partner disbursement TLS renewal.</p>
-<ul><li>Capacity: 5 contributors across the funnel stages</li>
-<li>Carry-over: risk-score batch migration (blocked on infra)</li>
-<li><strong>Top risk:</strong> TLS cert renewal for the partner disbursement API is
-blocked AND overdue — escalate if vendor doesn't reply by {d3}.</li></ul>
+<p><strong>Goal:</strong> stand up the E2E funnel log (traffic -> submission ->
+approval -> disbursement) and standardise the submission-stage schema.</p>
+<ul><li>Carry-over: centralising model outputs into the Risk database (in progress)</li>
+<li><strong>Top risk:</strong> the disbursement timestamp-mismatch bug (KYC status map)
+is blocked AND overdue — escalate by {d3}.</li>
+<li>Watch: the "missing records in the E2E funnel log" alert is blocked on upstream data.</li></ul>
 """),
     ("Incident postmortem — duplicate disbursement alerts (2026-06-03)", """
 <h2>Summary</h2><p>The payment gateway retried webhooks during a maintenance window;
@@ -254,6 +262,17 @@ def ensure_epics(c: httpx.Client, key: str, valid: set) -> dict:
     return out
 
 
+def assignable_users(c: httpx.Client, key: str) -> list[dict]:
+    """Real members who can be assigned in this project (humans only)."""
+    r = c.get(f"{SITE}/rest/api/3/user/assignable/search",
+              params={"project": key, "maxResults": 50})
+    if r.status_code != 200:
+        return []
+    return [{"accountId": u["accountId"], "name": u.get("displayName")}
+            for u in r.json()
+            if u.get("accountId") and u.get("accountType", "atlassian") == "atlassian"]
+
+
 def seed_jira(c: httpx.Client):
     key = jira_project_key(c)
     have = existing_summaries(c, key)
@@ -261,15 +280,34 @@ def seed_jira(c: httpx.Client):
     valid = valid_issue_types(c, key)
     print("valid issue types:", ", ".join(sorted(valid)) or "(none discovered)")
     epics = ensure_epics(c, key, valid)
+
+    # Distribute real users: each funnel Epic gets ONE owner (round-robin over the
+    # real members); shared/unsorted work is spread across everyone.
+    users = assignable_users(c, key) or [{"accountId": me, "name": "me"}]
+    print("assignable users:", ", ".join(u["name"] or u["accountId"] for u in users))
+    epic_owner = {name: users[i % len(users)] for i, name in enumerate(FUNNEL_EPICS)}
+    for name, u in epic_owner.items():
+        print(f"  Epic owner: {name} -> {u['name']}")
+    _shared = {"i": 0}
+
+    def pick_assignee(epic_name):
+        if epic_name in epic_owner:
+            return epic_owner[epic_name]["accountId"]
+        u = users[_shared["i"] % len(users)]   # shared/unsorted: rotate everyone
+        _shared["i"] += 1
+        return u["accountId"]
+
     mapped = _map_type("Task", valid)   # simple model: every initiative is a Task
     created = failed = skipped = 0
     for summary, due_in, labels, status in ISSUES:
         if summary in have:
             print("skip (exists):", summary); skipped += 1; continue
-        base = {"project": {"key": key}, "summary": summary,
-                "issuetype": {"name": mapped}, "labels": labels,
-                "assignee": {"accountId": me}}
         epic_name = STAGE_TO_EPIC.get(_stage_label(labels) or "")
+        # assignee is the source of truth now — drop owner-* labels.
+        clean_labels = [l for l in labels if not l.lower().startswith("owner-")]
+        base = {"project": {"key": key}, "summary": summary,
+                "issuetype": {"name": mapped}, "labels": clean_labels,
+                "assignee": {"accountId": pick_assignee(epic_name)}}
         epic_key = epics.get(epic_name) if epic_name else None
         parent = {"parent": {"key": epic_key}} if epic_key else {}
         # richest first; drop parent / duedate if the project rejects them, so a

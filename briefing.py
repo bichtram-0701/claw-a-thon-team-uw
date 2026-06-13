@@ -69,6 +69,18 @@ def manager_digest() -> dict:
     }
 
 
+def stage_owners() -> dict:
+    """Map each funnel stage -> the person who owns it (the most common assignee
+    of that stage's open tasks). Used to route a flagged drop to the right owner."""
+    from collections import Counter
+    buckets: dict = {}
+    for i in jc.all_open_issues():
+        st = i.get("stage")
+        if st:
+            buckets.setdefault(st, []).append(i["owner"])
+    return {st: Counter(o).most_common(1)[0][0] for st, o in buckets.items() if o}
+
+
 def my_briefing() -> dict:
     """Everything 'on my plate': open issues ranked, blockers, overdue."""
     mine = jc.my_open_issues()

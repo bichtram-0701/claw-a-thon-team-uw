@@ -187,5 +187,23 @@ ra = m.handler({"message": "assign KAN-23 to Mai"}, None)
 check("assign intent", ra.get("intent") == "assign")
 check("real assignee", _cap["assign"]["assignee_id"] == "acc-1")
 
+print("flag (MoM drop -> investigation for stage owner):")
+an = fm.anomalies()
+check("one anomaly detected", len(an) == 1)
+check("anomaly is approval stage", an[0]["stage"] == "approval")
+check("anomaly drop >= 3pp", an[0]["delta_pp"] <= -3)
+# make an approval-stage owner exist so the drop routes to a person
+jc.all_open_issues = lambda: [_mk("UW-7", "Approval analytics", "To Do", "Dat Nguyen", "approval", "2026-12-30")]
+check("stage_owners maps approval->Dat", bf.stage_owners().get("approval") == "Dat Nguyen")
+_capf = {}
+jc.create_issue = lambda **k: (_capf.update(flag=k) or {"key": "UW-100", "url": "u"})
+jc.find_assignable_user = lambda q, key=None: {"accountId": "acc-dat", "displayName": q}
+jc.find_epic = lambda name, key=None: "KAN-EPIC"
+rf = m.handler({"message": "flag the drop and assign the owner to investigate"}, None)
+check("flag intent", rf.get("intent") == "flag")
+check("investigation under approval Epic", _capf.get("flag", {}).get("stage") == "approval")
+check("investigation assigned to owner", _capf.get("flag", {}).get("assignee_id") == "acc-dat")
+check("title names Approval rate", "Approval rate" in _capf.get("flag", {}).get("summary", ""))
+
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)

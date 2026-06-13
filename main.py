@@ -70,6 +70,10 @@ STAGE_TO_EPIC = {
 # manager keywords, then the LM oversight view. "assign " has a trailing space
 # so it does not swallow "what's assigned to me" (briefing).
 ROUTES = [
+    # flag first: a "flag … and assign … to investigate" request is a flag action,
+    # and must win over the 'assign' keyword it also contains.
+    ({"flag", "investigate", "open investigation", "open an investigation",
+      "raise an investigation", "look into the drop"}, "flag"),
     ({"create ", "create a", "add ticket", "add a ticket", "new ticket",
       "new initiative", "open a ticket", "file a ticket", "log a ticket",
       "tao ticket", "tạo ticket", "tao moi", "them ticket"}, "create"),
@@ -81,7 +85,9 @@ ROUTES = [
       "việc của tôi", "viec cua toi"}, "briefing"),
     ({"metric", "conversion", "submission rate", "approval rate", "disbursement rate",
       "traffic", "ticket size", "funnel performance", "funnel numbers", "funnel table",
-      "performance", "e2e", "throughput", "how is the funnel doing", "ty le", "chuyen doi"},
+      "performance", "e2e", "throughput", "how is the funnel doing", "ty le", "chuyen doi",
+      "compare", "what changed", "concerning", "drop", "dropped", "month over month",
+      "mom", "vs last month", "anomal"},
      "metrics"),
     ({"oversight", "overview", "funnel", "digest", "who is working", "who's working",
       "who owns", "ownership", "on track", "off track", "off-track", "critical",
@@ -92,7 +98,7 @@ ROUTES = [
       "tiến độ", "tien do", "nhóm", "nhom"}, "sprint"),
 ]
 
-VALID = {"create", "assign", "metrics", "oversight", "briefing", "sprint", "knowledge", "standup", "help"}
+VALID = {"create", "assign", "flag", "metrics", "oversight", "briefing", "sprint", "knowledge", "standup", "help"}
 
 
 def route(message: str) -> str:
@@ -108,8 +114,10 @@ def rp_classify(message: str) -> str | None:
         "Classify the user's message about a lending-funnel initiative tracker into exactly "
         "one word from: create, assign, oversight, briefing, sprint, knowledge, standup, help. "
         "create = make a NEW initiative/ticket; assign = set the owner of an EXISTING ticket; "
+        "flag = a significant month-over-month metric DROP should be flagged and an investigation "
+        "opened for the stage owner; "
         "metrics = funnel PERFORMANCE numbers/conversion rates per month (traffic, submission, "
-        "approval, disbursement, ticket size); "
+        "approval, disbursement, ticket size), including comparing months; "
         "oversight = the lead's view of all initiatives: who owns what, what's critical, what's "
         "on/off track, funnel overview; briefing = the user's OWN tasks/priorities; "
         "sprint = simple status mix / workload of the whole team; knowledge = past decisions, "
@@ -217,6 +225,8 @@ def _handle(payload: dict) -> dict:
 
     if intent in ("create", "assign"):
         return _handle_write(intent, message)
+    if intent == "flag":
+        return _handle_flag(message)
 
     answer = None
     if intent == "metrics":
@@ -227,7 +237,18 @@ def _handle(payload: dict) -> dict:
             "from this funnel data: name the latest month, its end-to-end rate, and the single most "
             "notable month-over-month change. Use ONLY these numbers, never invent. " + lang_hint,
             json.dumps(result, ensure_ascii=False), max_tokens=200)
-        answer = (headline + "\n\n" if headline else "") + fm.render_markdown()
+        heads_up = ""
+        if result.get("anomalies"):
+            owners = bf.stage_owners()
+            al = []
+            for a in result["anomalies"]:
+                o = owners.get(a["stage"])
+                al.append(f"**{a['metric']}** fell {abs(a['delta_pp'])}pp "
+                          f"({a['prev_pct']}%→{a['latest_pct']}%) {a['prev_month']}→{a['latest_month']}"
+                          + (f", owned by {o}" if o else ""))
+            heads_up = ("> ⚠ **Needs attention:** " + "; ".join(al) +
+                        ". Say \"flag it\" and I'll open an investigation for the owner.\n\n")
+        answer = heads_up + (headline + "\n\n" if headline else "") + fm.render_markdown()
     elif intent == "oversight":
         result = bf.manager_digest()
     elif intent == "briefing":
@@ -269,6 +290,47 @@ def _handle(payload: dict) -> dict:
         answer = out or json.dumps(result, ensure_ascii=False, indent=2)
 
     return _respond(intent, answer, result)
+
+
+def _handle_flag(message: str) -> dict:
+    """Detect significant MoM rate drops and open an investigation Task for the
+    owner of the affected stage (under that stage's Epic)."""
+    drops = fm.anomalies()
+    if not drops:
+        return _respond("flag", "No significant month-over-month drops right now — "
+                                "the funnel looks stable.", {"anomalies": []})
+    owners = bf.stage_owners()
+    lines, created = [], []
+    for a in drops:
+        owner = owners.get(a["stage"])
+        line = (f"{a['metric']} fell {abs(a['delta_pp'])}pp "
+                f"({a['prev_pct']}%→{a['latest_pct']}%, {a['delta_pct']}%) "
+                f"from {a['prev_month']} to {a['latest_month']}")
+        if owner:
+            line += f" — owner: {owner}"
+        if ALLOW_WRITES:
+            assignee_id = None
+            if owner:
+                u = jc.find_assignable_user(owner)
+                if u:
+                    assignee_id = u["accountId"]
+            epic_name = STAGE_TO_EPIC.get(a["stage"])
+            epic_key = jc.find_epic(epic_name) if epic_name else None
+            title = (f"Investigate: {a['metric']} dropped {abs(a['delta_pp'])}pp in "
+                     f"{a['latest_month']} ({a['prev_pct']}%→{a['latest_pct']}%)")
+            res = jc.create_issue(summary=title, stage=a["stage"], owner=None, due=None,
+                                  assignee_id=assignee_id, epic_key=epic_key)
+            if res.get("key"):
+                created.append(res["key"])
+                line += f" → opened {res['key']}" + (f" for {owner}" if owner else "")
+            elif res.get("error"):
+                line += " (couldn't open task)"
+        lines.append("- " + line)
+    verb = "Flagged and opened investigation task(s)" if created else "Flagged"
+    answer = f"{verb} for {len(drops)} significant drop(s):\n\n" + "\n".join(lines)
+    if not ALLOW_WRITES:
+        answer += "\n\n_(Writes are off, so I only flagged them.)_"
+    return _respond("flag", answer, {"anomalies": drops, "created": created})
 
 
 def _handle_write(intent: str, message: str) -> dict:

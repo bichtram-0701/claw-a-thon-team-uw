@@ -15,6 +15,6 @@
     {"month": "2026-02", "traffic": 6400, "submission": 1536, "approval": 276, "disbursement": 268, "disbursement_amount_vnd": 3082000000},
     {"month": "2026-03", "traffic": 9800, "submission": 2940, "approval": 382, "disbursement": 371, "disbursement_amount_vnd": 4229400000},
     {"month": "2026-04", "traffic": 10200, "submission": 2856, "approval": 428, "disbursement": 411, "disbursement_amount_vnd": 5055300000},
-    {"month": "2026-05", "traffic": 10500, "submission": 2835, "approval": 425, "disbursement": 408, "disbursement_amount_vnd": 5467200000}
+    {"month": "2026-05", "traffic": 10500, "submission": 2835, "approval": 312, "disbursement": 300, "disbursement_amount_vnd": 4020000000}
   ]
 }
