@@ -1,0 +1,81 @@
+"""Microsoft Teams notifier — Funnel Watchtower / PM agent, Team UW.
+
+Posts Adaptive Cards to a Teams channel via a Power Automate "webhook" workflow
+(TEAMS_WEBHOOK_URL). The Workflows trigger accepts a Teams message payload with an
+attached Adaptive Card. Degrades gracefully: if the URL is unset or the POST fails,
+it returns False instead of raising, so Jira actions never break on a Teams hiccup.
+"""
+import os
+
+import httpx
+
+WEBHOOK_URL = os.environ.get("TEAMS_WEBHOOK_URL", "")
+TIMEOUT = 15.0
+
+
+def configured() -> bool:
+    return bool(WEBHOOK_URL)
+
+
+def text_block(text: str, *, bold=False, color=None, size=None) -> dict:
+    el = {"type": "TextBlock", "text": text, "wrap": True}
+    if bold:
+        el["weight"] = "Bolder"
+    if color:           # "Attention" = red, "Good" = green, "Warning" = amber
+        el["color"] = color
+    if size:            # "Large", "Medium", ...
+        el["size"] = size
+    return el
+
+
+def fact_set(facts: list[tuple[str, str]]) -> dict:
+    return {"type": "FactSet",
+            "facts": [{"title": k, "value": v} for k, v in facts]}
+
+
+# Full field order shown on a Jira issue panel.
+ISSUE_FIELD_ORDER = [
+    ("Key", "key"), ("Type", "type"), ("Status", "status"), ("Priority", "priority"),
+    ("Assignee", "assignee"), ("Reporter", "reporter"), ("Epic / Parent", "parent"),
+    ("Due date", "due"), ("Start date", "start"), ("Labels", "labels"),
+    ("Team", "team"), ("Created", "created"), ("Updated", "updated"),
+]
+
+
+def issue_card(issue: dict, header: str = "Jira task") -> bool:
+    """Post a card with ALL of an issue's fields. Empty fields show as 'None'
+    (never hidden), so the card always reflects the full Jira panel."""
+    facts = []
+    for label, k in ISSUE_FIELD_ORDER:
+        v = issue.get(k)
+        if isinstance(v, list):
+            v = ", ".join(v) if v else None
+        facts.append((label, str(v) if v not in (None, "") else "None"))
+    body = [text_block(issue.get("summary") or "(no summary)", bold=True),
+            fact_set(facts)]
+    desc = issue.get("description")
+    body.append(text_block("Description: " + (desc[:500] if desc else "None")))
+    return send_card(header, body, url=issue.get("url"))
+
+
+def send_card(title: str, body_elements: list[dict], url: str | None = None) -> bool:
+    """Send an Adaptive Card. body_elements is a list of card elements
+    (use text_block / fact_set). url adds an 'Open in Jira' action button."""
+    if not configured():
+        return False
+    elements = [text_block(title, bold=True, size="Large")] + body_elements
+    card = {
+        "type": "AdaptiveCard",
+        "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+        "version": "1.4",
+        "body": elements,
+    }
+    if url:
+        card["actions"] = [{"type": "Action.OpenUrl", "title": "Open in Jira", "url": url}]
+    # The Power Automate flow's "Post card" action is bound to triggerBody(),
+    # so we POST the raw Adaptive Card object directly (no message wrapper).
+    try:
+        r = httpx.post(WEBHOOK_URL, json=card, timeout=TIMEOUT)
+        return r.status_code < 300
+    except Exception:  # noqa: BLE001 — never break the caller on a Teams error
+        return False
