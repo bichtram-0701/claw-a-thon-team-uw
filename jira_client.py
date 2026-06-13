@@ -113,6 +113,37 @@ def get_issue_full(key: str) -> dict:
     }
 
 
+# changelog field name -> our card label
+_CHANGELOG_LABEL = {
+    "status": "Status", "assignee": "Assignee", "duedate": "Due date",
+    "priority": "Priority", "summary": "Summary", "labels": "Labels",
+    "reporter": "Reporter", "issuetype": "Type", "parent": "Epic / Parent",
+    "Parent": "Epic / Parent", "description": "Description",
+}
+
+
+def get_latest_changes(key: str) -> list[dict]:
+    """The most recent changelog entry for an issue, as [{field, old, new}].
+    Used by the real-time Teams diff card."""
+    with _client() as c:
+        r = c.get(f"{SITE}/rest/api/3/issue/{key}",
+                  params={"expand": "changelog", "fields": "summary"})
+        r.raise_for_status()
+        histories = (r.json().get("changelog") or {}).get("histories") or []
+    if not histories:
+        return []
+    latest = max(histories, key=lambda h: h.get("created", ""))
+    out = []
+    for it in latest.get("items", []):
+        field = it.get("field") or "Field"
+        out.append({
+            "field": _CHANGELOG_LABEL.get(field, field),
+            "old": it.get("fromString"),
+            "new": it.get("toString"),
+        })
+    return out
+
+
 def search(jql: str, limit: int = 50) -> list[dict]:
     """Run a JQL query, return brief issue dicts."""
     with _client() as c:
