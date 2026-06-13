@@ -166,11 +166,13 @@ jobs:
             --arg atltoken "${{ secrets.ATLASSIAN_TOKEN }}" \
             --arg allowwrites "${{ vars.ALLOW_WRITES || 'true' }}" \
             --arg teamshook "${{ secrets.TEAMS_WEBHOOK_URL }}" \
+            --arg jiraevttoken "${{ secrets.JIRA_EVENT_TOKEN }}" \
             '{name: $name, description: $desc, imageUrl: $image,
               command: [], args: [],
               environmentVariables: {LLM_API_KEY: $llmkey, LLM_BASE_URL: $llmurl, LLM_MODEL: $llmmodel,
                                      ATLASSIAN_SITE: $atlsite, ATLASSIAN_EMAIL: $atlemail, ATLASSIAN_TOKEN: $atltoken,
-                                     ALLOW_WRITES: $allowwrites, TEAMS_WEBHOOK_URL: $teamshook},
+                                     ALLOW_WRITES: $allowwrites, TEAMS_WEBHOOK_URL: $teamshook,
+                                     JIRA_EVENT_TOKEN: $jiraevttoken},
               flavorId: $flavor,
               imageAuth: {enabled: true, username: $user, password: $pass},
               autoscaling: {minReplicas: 1, maxReplicas: 1, cpuUtilization: 50, memoryUtilization: 50}}')

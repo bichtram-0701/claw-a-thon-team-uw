@@ -24,7 +24,7 @@ from greennode_agentbase import (
 )
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import FileResponse
+from starlette.responses import FileResponse, JSONResponse
 from starlette.routing import Route
 
 load_dotenv()
@@ -55,6 +55,33 @@ async def _serve_chat(request):
 
 
 app.router.routes.append(Route("/", _serve_chat, methods=["GET"]))
+
+
+# Real-time Jira -> Teams diff. A Jira Automation rule POSTs {"key": "KAN-123"}
+# here on issue update; we read the latest changelog (old->new) and post a card.
+JIRA_EVENT_TOKEN = os.environ.get("JIRA_EVENT_TOKEN", "")
+
+
+async def _jira_event(request):
+    if JIRA_EVENT_TOKEN and request.query_params.get("token") != JIRA_EVENT_TOKEN:
+        return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+    try:
+        payload = await request.json()
+    except Exception:  # noqa: BLE001
+        payload = {}
+    key = payload.get("key") or (payload.get("issue") or {}).get("key")
+    if not key:
+        return JSONResponse({"ok": False, "error": "no issue key in payload"}, status_code=400)
+    try:
+        full = jc.get_issue_full(key)
+        changes = jc.get_latest_changes(key)
+        sent = tc.change_card(full, changes, header="Task updated")
+        return JSONResponse({"ok": True, "key": key, "changes": changes, "sent": sent})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "key": key, "error": str(e)}, status_code=200)
+
+
+app.router.routes.append(Route("/jira-event", _jira_event, methods=["POST"]))
 
 # ------------------------------------------------------------- intent router
 # Keyword matching first (free); LLM classification when keywords miss.

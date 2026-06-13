@@ -86,6 +86,34 @@ def digest_card(title: str, issues: list[dict], *, empty_msg: str | None = None,
     return send_card(title, body)
 
 
+def change_card(issue: dict, changes: list[dict], header: str = "Task updated") -> bool:
+    """Post a card for an edited issue: a red 'What changed' section (field,
+    old -> new) followed by the FULL current field set. `changes` is a list of
+    {field, old, new}."""
+    changed = {ch["field"]: ch for ch in changes}  # by field label
+    body = [text_block(issue.get("summary") or "(no summary)", bold=True)]
+    for label, k in ISSUE_FIELD_ORDER:
+        if label in changed:
+            ch = changed[label]
+            old = ch.get("old") or "None"
+            new = ch.get("new") or "None"
+            # changed row in red, old -> new
+            body.append(text_block(f"{label}: {old}  →  {new}", bold=True, color="Attention"))
+        else:
+            v = issue.get(k)
+            if isinstance(v, list):
+                v = ", ".join(v) if v else None
+            body.append(text_block(f"{label}: {v if v not in (None, '') else 'None'}"))
+    # changed fields not in the standard list (e.g. Sprint, Story points)
+    shown = {label for label, _ in ISSUE_FIELD_ORDER}
+    for label, ch in changed.items():
+        if label not in shown:
+            old = ch.get("old") or "None"
+            new = ch.get("new") or "None"
+            body.append(text_block(f"{label}: {old}  →  {new}", bold=True, color="Attention"))
+    return send_card(f"{header} — {issue.get('key')}", body, url=issue.get("url"))
+
+
 def send_card(title: str, body_elements: list[dict], url: str | None = None) -> bool:
     """Send an Adaptive Card. body_elements is a list of card elements
     (use text_block / fact_set). url adds an 'Open in Jira' action button."""
