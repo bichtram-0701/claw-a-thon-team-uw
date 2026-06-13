@@ -70,6 +70,48 @@ def _brief(issue: dict) -> dict:
     }
 
 
+FULL_FIELDS = ("summary,status,assignee,reporter,duedate,labels,issuetype,"
+               "parent,priority,created,updated,description")
+
+
+def _adf_text(node) -> str:
+    """Flatten an ADF description object to plain text."""
+    if not isinstance(node, dict):
+        return ""
+    out = node.get("text", "")
+    for child in node.get("content", []) or []:
+        out += _adf_text(child)
+        if child.get("type") in ("paragraph", "heading"):
+            out += "\n"
+    return out
+
+
+def get_issue_full(key: str) -> dict:
+    """All panel fields of one issue, normalized for a Teams card."""
+    with _client() as c:
+        r = c.get(f"{SITE}/rest/api/3/issue/{key}", params={"fields": FULL_FIELDS})
+        r.raise_for_status()
+        f = r.json().get("fields", {})
+    parent = f.get("parent") or {}
+    pf = parent.get("fields") or {}
+    return {
+        "key": key,
+        "url": f"{SITE}/browse/{key}",
+        "summary": f.get("summary"),
+        "type": (f.get("issuetype") or {}).get("name"),
+        "status": (f.get("status") or {}).get("name"),
+        "priority": (f.get("priority") or {}).get("name"),
+        "assignee": (f.get("assignee") or {}).get("displayName"),
+        "reporter": (f.get("reporter") or {}).get("displayName"),
+        "parent": (f"{parent.get('key')} ({pf.get('summary')})" if parent.get("key") else None),
+        "due": f.get("duedate"),
+        "labels": f.get("labels") or [],
+        "created": (f.get("created") or "")[:10] or None,
+        "updated": (f.get("updated") or "")[:10] or None,
+        "description": _adf_text(f.get("description")).strip() or None,
+    }
+
+
 def search(jql: str, limit: int = 50) -> list[dict]:
     """Run a JQL query, return brief issue dicts."""
     with _client() as c:

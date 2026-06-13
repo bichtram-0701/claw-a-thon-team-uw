@@ -20,6 +20,7 @@ on:
       - "report.py"
       - "jira_client.py"
       - "confluence_client.py"
+      - "teams_client.py"
       - "briefing.py"
       - "funnel_metrics.py"
       - "chat.html"
@@ -164,11 +165,12 @@ jobs:
             --arg atlemail "${{ secrets.ATLASSIAN_EMAIL }}" \
             --arg atltoken "${{ secrets.ATLASSIAN_TOKEN }}" \
             --arg allowwrites "${{ vars.ALLOW_WRITES || 'true' }}" \
+            --arg teamshook "${{ secrets.TEAMS_WEBHOOK_URL }}" \
             '{name: $name, description: $desc, imageUrl: $image,
               command: [], args: [],
               environmentVariables: {LLM_API_KEY: $llmkey, LLM_BASE_URL: $llmurl, LLM_MODEL: $llmmodel,
                                      ATLASSIAN_SITE: $atlsite, ATLASSIAN_EMAIL: $atlemail, ATLASSIAN_TOKEN: $atltoken,
-                                     ALLOW_WRITES: $allowwrites},
+                                     ALLOW_WRITES: $allowwrites, TEAMS_WEBHOOK_URL: $teamshook},
               flavorId: $flavor,
               imageAuth: {enabled: true, username: $user, password: $pass},
               autoscaling: {minReplicas: 1, maxReplicas: 1, cpuUtilization: 50, memoryUtilization: 50}}')

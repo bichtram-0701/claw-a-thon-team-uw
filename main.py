@@ -34,6 +34,7 @@ import confluence_client as cf   # noqa: E402
 import funnel_metrics as fm      # noqa: E402
 import jira_client as jc         # noqa: E402
 import report as rp              # noqa: E402
+import teams_client as tc        # noqa: E402
 
 # CORS: allow browsers (chat page) to call /invocations.
 _middleware = [Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])]
@@ -365,6 +366,7 @@ def _handle_write(intent: str, message: str) -> dict:
                               due=f.get("due"), assignee_id=assignee_id, epic_key=epic_key)
         if res.get("error"):
             return _respond("create", f"Couldn't create that initiative ({res['error']}).", res)
+        notified = _notify_teams("New task created", res.get("key"))
         bits = []
         if epic_name:
             bits.append(f"Epic: {epic_name}" + ("" if res.get("epic_key") else " (label only)"))
@@ -378,6 +380,8 @@ def _handle_write(intent: str, message: str) -> dict:
         if bits:
             answer += " (" + ", ".join(bits) + ")"
         answer += f". {res['url']}"
+        if notified:
+            answer += " · 📨 sent to Teams"
         return _respond("create", answer, {**res, "fields": f})
 
     # intent == "assign"
@@ -395,6 +399,18 @@ def _handle_write(intent: str, message: str) -> dict:
     else:
         answer = f"Couldn't assign {key} ({res.get('error', 'unknown error')})."
     return _respond("assign", answer, res)
+
+
+def _notify_teams(header: str, key: str | None) -> bool:
+    """Post the full Jira issue as an Adaptive Card to Teams. Best-effort:
+    a Teams/webhook failure must never break the Jira action."""
+    if not key or not tc.configured():
+        return False
+    try:
+        full = jc.get_issue_full(key)
+        return tc.issue_card(full, header=f"{header} — {key}")
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def _respond(intent: str, answer, result: dict) -> dict:
