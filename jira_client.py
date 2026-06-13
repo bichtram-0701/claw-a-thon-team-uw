@@ -15,7 +15,7 @@ EMAIL = os.environ.get("ATLASSIAN_EMAIL", "")
 TOKEN = os.environ.get("ATLASSIAN_TOKEN", "")
 TIMEOUT = 15.0
 
-FIELDS = "summary,status,assignee,duedate,labels,issuetype,updated,parent"
+FIELDS = "summary,status,assignee,duedate,labels,issuetype,updated,created,parent"
 
 
 def configured() -> bool:
@@ -66,6 +66,8 @@ def _brief(issue: dict) -> dict:
         "stage": stage,
         "epic": epic or (stage.title() if stage else None),  # Epic name, label fallback
         "due": f.get("duedate"),
+        "created": f.get("created"),
+        "updated": f.get("updated"),
         "labels": labels,
         "type": (f.get("issuetype") or {}).get("name"),
     }
@@ -118,7 +120,8 @@ _CHANGELOG_LABEL = {
     "status": "Status", "assignee": "Assignee", "duedate": "Due date",
     "priority": "Priority", "summary": "Summary", "labels": "Labels",
     "reporter": "Reporter", "issuetype": "Type", "parent": "Epic / Parent",
-    "Parent": "Epic / Parent", "description": "Description",
+    "Parent": "Epic / Parent", "IssueParentAssociation": "Epic / Parent",
+    "description": "Description",
 }
 
 
