@@ -45,11 +45,12 @@
 <div id="chat"></div>
 
 <div id="chips">
+  <span class="chip">show me the funnel metrics</span>
   <span class="chip">give me the funnel overview</span>
   <span class="chip">who is working on what?</span>
   <span class="chip">what's critical or off track?</span>
-  <span class="chip">what did we decide about docs-upload?</span>
-  <span class="chip">what's on my plate?</span>
+  <span class="chip">create a ticket to improve submission rate</span>
+  <span class="chip">what did we decide about submission?</span>
   <span class="chip">ai đang làm gì, có gì trễ không?</span>
 </div>
 
@@ -75,10 +76,11 @@ function add(cls, html) {
 }
 const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-add("bot", marked.parse("Hi! I'm **Funnel Watchtower** — I track every initiative on the loan " +
-  "application funnel from our Jira + Confluence, so the lead can see at a glance who owns what, " +
-  "what's critical, and what's slipping. Ask for the funnel overview, who's working on what, " +
-  "what's off track, a past decision, or your own plate — English or Tiếng Việt. Try one below 👇"));
+add("bot", marked.parse("Hi! I'm **Funnel Watchtower** — I track the loan funnel " +
+  "(Traffic → Submission → Approval → Disbursement) across Jira + Confluence. Ask for the " +
+  "**funnel metrics** (monthly conversion), the **overview** of who owns what / what's critical " +
+  "or off track, **create** or **assign** an initiative, a past **decision**, or your own " +
+  "**plate** — English or Tiếng Việt. Try one below 👇"));
 
 document.querySelectorAll(".chip").forEach(c =>
   c.addEventListener("click", () => { input.value = c.textContent; form.requestSubmit(); }));

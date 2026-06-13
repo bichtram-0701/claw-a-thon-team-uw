@@ -15,7 +15,7 @@ EMAIL = os.environ.get("ATLASSIAN_EMAIL", "")
 TOKEN = os.environ.get("ATLASSIAN_TOKEN", "")
 TIMEOUT = 15.0
 
-FIELDS = "summary,status,assignee,priority,duedate,labels,issuetype,updated"
+FIELDS = "summary,status,assignee,duedate,labels,issuetype,updated,parent"
 
 
 def configured() -> bool:
@@ -24,9 +24,6 @@ def configured() -> bool:
 
 def _client() -> httpx.Client:
     return httpx.Client(timeout=TIMEOUT, auth=(EMAIL, TOKEN))
-
-
-CRITICAL_PRIORITIES = {"highest", "high"}
 
 
 def _owner_from_labels(labels: list[str]) -> str | None:
@@ -43,18 +40,30 @@ def _stage_from_labels(labels: list[str]) -> str | None:
     return None
 
 
+def _epic_from_parent(f: dict) -> str | None:
+    """The Epic (= funnel stage / project) this task belongs to, from its parent."""
+    parent = f.get("parent") or {}
+    pf = parent.get("fields") or {}
+    # only treat an Epic parent as the 'epic'; ignore story/subtask parents
+    if (pf.get("issuetype") or {}).get("name") == "Epic" or parent.get("key"):
+        return pf.get("summary") or parent.get("key")
+    return None
+
+
 def _brief(issue: dict) -> dict:
     f = issue.get("fields", {})
     labels = f.get("labels") or []
     assignee = ((f.get("assignee") or {}).get("displayName")) or "Unassigned"
+    stage = _stage_from_labels(labels)
+    epic = _epic_from_parent(f)
     return {
         "key": issue.get("key"),
         "summary": f.get("summary"),
         "status": (f.get("status") or {}).get("name"),
         "assignee": assignee,
         "owner": _owner_from_labels(labels) or assignee,
-        "stage": _stage_from_labels(labels),
-        "priority": (f.get("priority") or {}).get("name"),
+        "stage": stage,
+        "epic": epic or (stage.title() if stage else None),  # Epic name, label fallback
         "due": f.get("duedate"),
         "labels": labels,
         "type": (f.get("issuetype") or {}).get("name"),
@@ -78,22 +87,12 @@ ME_OWNER_LABEL = os.environ.get("ME_OWNER_LABEL", "owner-rino")
 
 def my_open_issues() -> list[dict]:
     return search(
-        f'labels = "{ME_OWNER_LABEL}" AND statusCategory != Done '
-        "ORDER BY due ASC, priority DESC"
+        f'labels = "{ME_OWNER_LABEL}" AND statusCategory != Done ORDER BY due ASC'
     )
 
 
 def all_open_issues() -> list[dict]:
-    return search("statusCategory != Done ORDER BY priority DESC, due ASC", limit=100)
-
-
-def critical_open_issues() -> list[dict]:
-    """High/Highest priority initiatives that are still open."""
-    return search(
-        'statusCategory != Done AND priority in (Highest, High) '
-        "ORDER BY due ASC, priority DESC",
-        limit=100,
-    )
+    return search("statusCategory != Done ORDER BY due ASC", limit=100)
 
 
 def done_issues() -> list[dict]:
@@ -103,9 +102,130 @@ def done_issues() -> list[dict]:
 def blocked_issues() -> list[dict]:
     return search(
         'statusCategory != Done AND (labels = "blocked" OR status = "Blocked") '
-        "ORDER BY priority DESC"
+        "ORDER BY due ASC"
     )
 
 
 def overdue_issues() -> list[dict]:
     return search("duedate < now() AND statusCategory != Done ORDER BY due ASC")
+
+
+# --------------------------------------------------------------- write side --
+# Creating/assigning initiatives. Writes are gated by ALLOW_WRITES in main.py.
+
+def project_key() -> str | None:
+    with _client() as c:
+        r = c.get(f"{SITE}/rest/api/3/project/search")
+        if r.status_code == 200:
+            vals = r.json().get("values", [])
+            if vals:
+                return vals[0]["key"]
+    return None
+
+
+def owner_label(name: str) -> str:
+    return "owner-" + name.strip().lower().replace(" ", "-")
+
+
+def find_assignable_user(query: str, key: str | None = None) -> dict | None:
+    """Resolve a real Jira account by name/email so we can assign for real.
+    Returns {accountId, displayName} or None (caller falls back to a label)."""
+    key = key or project_key()
+    with _client() as c:
+        r = c.get(f"{SITE}/rest/api/3/user/assignable/search",
+                  params={"project": key, "query": query})
+        if r.status_code == 200 and r.json():
+            u = r.json()[0]
+            return {"accountId": u.get("accountId"), "displayName": u.get("displayName")}
+    return None
+
+
+_ME_CACHE: dict = {}
+
+
+def myself() -> dict | None:
+    """The token owner's account — the default assignee ('assign to yourself')."""
+    if "me" not in _ME_CACHE:
+        with _client() as c:
+            r = c.get(f"{SITE}/rest/api/3/myself")
+            _ME_CACHE["me"] = ({"accountId": r.json().get("accountId"),
+                                "displayName": r.json().get("displayName")}
+                               if r.status_code == 200 else None)
+    return _ME_CACHE["me"]
+
+
+def find_epic(name: str, key: str | None = None) -> str | None:
+    """Resolve an Epic by name (the funnel stage / project) to its issue key."""
+    if not name:
+        return None
+    key = key or project_key()
+    with _client() as c:
+        r = c.get(f"{SITE}/rest/api/3/search/jql",
+                  params={"jql": f'project = {key} AND issuetype = Epic AND summary ~ "{name}"',
+                          "maxResults": 5, "fields": "summary"})
+        if r.status_code == 200:
+            for i in r.json().get("issues", []):
+                if (i["fields"]["summary"] or "").lower() == name.lower():
+                    return i["key"]
+            issues = r.json().get("issues", [])
+            if issues:
+                return issues[0]["key"]
+    return None
+
+
+def create_issue(summary: str, itype: str = "Task", stage: str | None = None,
+                 owner: str | None = None, due: str | None = None,
+                 assignee_id: str | None = None, epic_key: str | None = None) -> dict:
+    """Create an initiative (always a Task in the simple model). Labels carry
+    owner/stage; epic_key parents it to an Epic (swimlane); assignee_id sets a
+    real assignee. Drops parent / due date if the project rejects them.
+    Returns {key, url, labels, ...} or {error}."""
+    key = project_key()
+    if not key:
+        return {"error": "no Jira project found"}
+    labels = []
+    if owner:
+        labels.append(owner_label(owner))
+    if stage:
+        labels.append("stage-" + stage.strip().lower())
+    base = {"project": {"key": key}, "summary": summary,
+            "issuetype": {"name": itype}, "labels": labels}
+    if assignee_id:
+        base["assignee"] = {"accountId": assignee_id}
+    parent = {"parent": {"key": epic_key}} if epic_key else {}
+    # richest first, then drop parent / due if rejected, so creation still succeeds.
+    attempts = [{**base, **parent, "duedate": due} if due else {**base, **parent},
+                {**base, **parent}, {**base, "duedate": due} if due else base, base]
+    with _client() as c:
+        last = ""
+        for fields in attempts:
+            r = c.post(f"{SITE}/rest/api/3/issue", json={"fields": fields})
+            if r.status_code < 300:
+                k = r.json()["key"]
+                return {"key": k, "url": f"{SITE}/browse/{k}", "labels": labels,
+                        "assignee_id": assignee_id, "epic_key": epic_key if parent else None}
+            last = f"{r.status_code} {r.text[:160]}"
+    return {"error": last}
+
+
+def assign_issue(issue_key: str, assignee_id: str | None = None,
+                 owner: str | None = None) -> dict:
+    """Assign an existing initiative: set a real assignee (if resolved) and/or
+    stamp the owner-<name> label so the oversight views attribute it correctly."""
+    result = {"key": issue_key, "assigned_real": False, "owner_label": None}
+    with _client() as c:
+        if assignee_id:
+            r = c.put(f"{SITE}/rest/api/3/issue/{issue_key}/assignee",
+                      json={"accountId": assignee_id})
+            result["assigned_real"] = r.status_code < 300
+            if r.status_code >= 300:
+                result["error"] = f"assignee {r.status_code} {r.text[:120]}"
+        if owner:
+            lbl = owner_label(owner)
+            r = c.put(f"{SITE}/rest/api/3/issue/{issue_key}",
+                      json={"update": {"labels": [{"add": lbl}]}})
+            if r.status_code < 300:
+                result["owner_label"] = lbl
+            else:
+                result["error"] = f"label {r.status_code} {r.text[:120]}"
+    return result

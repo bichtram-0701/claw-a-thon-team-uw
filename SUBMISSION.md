@@ -23,13 +23,14 @@ deterioration surface late, after a stage metric has already dropped.
 
 ## Solution
 A bilingual (VI/EN) AI agent on GreenNode AgentBase, connected to Jira +
-Confluence, built for line-manager oversight of the loan-application funnel. Ask
-"what's critical or off track?", "who is working on what?", "what did we decide
-about docs-upload?" and get analyst-grade answers with real issue keys and owners.
-It leads with what needs attention now (critical AND overdue/blocked), reads each
-funnel stage, and a scheduled job pushes the digest every morning. Deterministic
-clients compute every fact; the MaaS LLM (Qwen) only narrates — so it never
-invents an initiative or number, and every feature has an offline fallback.
+Confluence, built for line-manager oversight of the loan funnel
+(Traffic → Submission → Approval → Disbursement). Ask "show me the funnel metrics"
+for a monthly conversion table; "what's critical or off track?" / "who is working
+on what?" for the oversight read; "what did we decide about submission?" for a
+Confluence-sourced answer; and it can even "create a ticket to..." or "assign
+KAN-23 to Mai" — writing real initiatives back into Jira. Deterministic clients
+compute every fact; the MaaS LLM (Qwen) only narrates — so it never invents a
+number, ticket or owner, and every feature has an offline fallback.
 
 ## Value
 The lead's morning tab-hop becomes one question — or an automatic daily digest.
@@ -42,10 +43,10 @@ with zero setup.
 Open the link, no install needed:
 https://endpoint-02241868-df01-4fa2-9b36-45145561851c.agentbase-runtime.aiplatform.vngcloud.vn/
 Click a suggestion chip or ask your own question — English or Vietnamese:
-- "give me the funnel overview"
+- "show me the funnel metrics"
 - "what's critical or off track?"
 - "who is working on what?"
-- "what did we decide about docs-upload?"
+- "create a ticket to improve submission rate"
 - "ai dang lam gi, co gi tre khong?"
 All data is in a synthetic workspace — no company systems, no real personal data.
 

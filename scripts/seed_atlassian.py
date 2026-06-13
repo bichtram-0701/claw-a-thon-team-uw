@@ -20,80 +20,95 @@ def d(days: int) -> str:
 
 
 # ----------------------------------------------------- lending-funnel data
-# Initiatives to improve the loan application funnel
-# (applied -> docs -> approved -> disbursed), plus cross-cutting analytics work.
-# Each is tagged with: owner-<name> (who's accountable), stage-<funnel stage>,
-# and optional blocked. Priority encodes CRITICALITY. Due date encodes the
-# on-track signal (a past due date on an open item = off track).
-#   (summary, type, priority, due_in_days, labels, target_status)
+# Initiatives to improve the loan funnel
+# (traffic -> submission -> approval -> disbursement), plus cross-cutting work.
+# Simple model: every initiative is a Task. Each is tagged with owner-<name>
+# (who's accountable), stage-<funnel stage>, and optional blocked. There is no
+# priority field — URGENCY comes from the due date (overdue or due-soon) and the
+# blocked flag. Status is one of: To Do / In Progress / In Review / Done.
+#   (summary, due_in_days, labels, target_status)
 ISSUES = [
-    # --- applied stage (top of funnel: getting people to start & submit) ---
-    ("A/B test: simplified loan application form", "Story", "High", 6,
-     ["owner-mai", "stage-applied"], "To Do"),
-    ("Fix Vietnamese-character bug in application export", "Bug", "Medium", 4,
-     ["owner-nam", "stage-applied"], "To Do"),
-    ("Re-engagement flow for abandoned applications", "Story", "Medium", 10,
-     ["owner-mai", "stage-applied"], "To Do"),
-    ("Reduce duplicate OTP sends blocking application start", "Task", "Medium", 7,
-     ["owner-linh", "stage-applied"], "To Do"),
-    # --- docs stage (the known leak: document upload drop-off) ---
-    ("Reduce web docs-upload abandonment", "Story", "Highest", 2,
-     ["owner-linh", "stage-docs"], "In Progress"),
-    ("Pre-fill KYC from existing customer data", "Story", "High", 8,
-     ["owner-linh", "stage-docs"], "To Do"),
-    ("Document upload: support HEIC/PDF on mobile", "Story", "High", 3,
-     ["owner-mai", "stage-docs"], "In Progress"),
-    ("Update KYC document checklist for new circular", "Task", "High", 1,
-     ["owner-linh", "stage-docs", "compliance"], "To Do"),
-    # --- approved stage (underwriting / approval rate) ---
-    ("Lift motorbike-segment approval rate", "Story", "Highest", 3,
-     ["owner-hathy", "stage-approved"], "In Progress"),
-    ("Approval SLA dashboard for underwriting", "Story", "Medium", 9,
-     ["owner-hathy", "stage-approved"], "To Do"),
-    ("Underwriting auto-decline rules review", "Task", "High", 6,
-     ["owner-hathy", "stage-approved"], "To Do"),
-    # --- disbursed stage (bottom: getting approved loans paid out) ---
-    ("Cut disbursement drop-off at e-sign step", "Task", "High", 4,
-     ["owner-nam", "stage-disbursed"], "To Do"),
-    ("Disbursement webhook idempotency keys", "Task", "High", 0,
-     ["owner-nam", "stage-disbursed"], "In Progress"),
-    ("Renew TLS certs for partner disbursement API", "Task", "Highest", -2,
-     ["owner-nam", "stage-disbursed", "blocked", "infra"], "To Do"),
+    # --- traffic stage (eligible users entering the lending flow) ---
+    ("Re-engagement flow for abandoned applications", 10,
+     ["owner-mai", "stage-traffic"], "To Do"),
+    ("Reduce duplicate OTP sends blocking application start", 7,
+     ["owner-linh", "stage-traffic"], "To Do"),
+    # --- submission stage (successfully submitted & received by partner) ---
+    ("Reduce web docs-upload abandonment", 2,
+     ["owner-linh", "stage-submission"], "In Progress"),
+    ("A/B test: simplified loan application form", 6,
+     ["owner-mai", "stage-submission"], "To Do"),
+    ("Pre-fill KYC from existing customer data", 8,
+     ["owner-linh", "stage-submission"], "To Do"),
+    ("Document upload: support HEIC/PDF on mobile", 3,
+     ["owner-mai", "stage-submission"], "In Review"),
+    ("Fix Vietnamese-character bug in application export", 4,
+     ["owner-nam", "stage-submission"], "To Do"),
+    ("Update KYC document checklist for new circular", 1,
+     ["owner-linh", "stage-submission", "compliance"], "To Do"),
+    # --- approval stage (partner underwriting / approval rate) ---
+    ("Lift motorbike-segment approval rate", 3,
+     ["owner-hathy", "stage-approval"], "In Progress"),
+    ("Approval SLA dashboard for underwriting", 9,
+     ["owner-hathy", "stage-approval"], "To Do"),
+    ("Underwriting auto-decline rules review", 6,
+     ["owner-hathy", "stage-approval"], "In Review"),
+    # --- disbursement stage (approved loans actually paid out) ---
+    ("Cut disbursement drop-off at e-sign step", 4,
+     ["owner-nam", "stage-disbursement"], "To Do"),
+    ("Disbursement webhook idempotency keys", 0,
+     ["owner-nam", "stage-disbursement"], "In Progress"),
+    ("Renew TLS certs for partner disbursement API", -2,
+     ["owner-nam", "stage-disbursement", "blocked", "infra"], "To Do"),
     # --- cross-cutting (instrumentation, reporting, infra) ---
-    ("Instrument funnel events end-to-end", "Task", "High", 1,
+    ("Instrument funnel events end-to-end", 1,
      ["owner-rino", "stage-crosscut"], "In Progress"),
-    ("Migrate risk-score batch job off legacy cron", "Task", "High", 2,
+    ("Migrate risk-score batch job off legacy cron", 2,
      ["owner-rino", "stage-crosscut", "blocked", "infra"], "To Do"),
-    ("Funnel weekly metrics auto-report", "Story", "Medium", 12,
+    ("Funnel weekly metrics auto-report", 12,
      ["owner-rino", "stage-crosscut"], "To Do"),
     # --- done pile (recent wins, for momentum / 'what changed') ---
-    ("Launch docs-upload progress indicator", "Story", "High", -3,
-     ["owner-linh", "stage-docs"], "Done"),
-    ("Add motorbike-loan approval monitor", "Task", "High", -4,
-     ["owner-hathy", "stage-approved"], "Done"),
-    ("Baseline funnel conversion report", "Task", "Medium", -6,
+    ("Launch docs-upload progress indicator", -3,
+     ["owner-linh", "stage-submission"], "Done"),
+    ("Add motorbike-loan approval monitor", -4,
+     ["owner-hathy", "stage-approval"], "Done"),
+    ("Baseline funnel conversion report", -6,
      ["owner-rino", "stage-crosscut"], "Done"),
-    ("Fix approval-rate calculation rounding", "Bug", "Medium", -5,
-     ["owner-hathy", "stage-approved"], "Done"),
+    ("Fix approval-rate calculation rounding", -5,
+     ["owner-hathy", "stage-approval"], "Done"),
 ]
 
 PAGES = [
+    ("Funnel stage definitions", """
+<p>The loan funnel has four stages. Conversion is measured between consecutive stages.</p>
+<table data-layout="default"><tbody>
+<tr><th>Stage</th><th>Definition</th></tr>
+<tr><td><strong>Traffic</strong></td><td>Users who are eligible and enter the lending flow (eligible traffic only).</td></tr>
+<tr><td><strong>Submission</strong></td><td>Users whose application is successfully submitted and received by the partner.</td></tr>
+<tr><td><strong>Approval</strong></td><td>Users who are approved by the partner.</td></tr>
+<tr><td><strong>Disbursement</strong></td><td>Users who receive any disbursed amount from the partner.</td></tr>
+</tbody></table>
+<p><strong>Rates:</strong> Submission = Submission/Traffic · Approval = Approval/Submission ·
+Disbursement = Disbursement/Approval · End-to-end (E2E) = Disbursement/Traffic.</p>
+"""),
     ("Funnel initiative charter", """
 <h2>Why this program exists</h2>
-<p>End-to-end application conversion is <strong>47.6%</strong> (applied → disbursed).
-The biggest single leak is <strong>document upload on web</strong>. This program
-groups every initiative that moves a funnel-stage metric, with one accountable
+<p>End-to-end (Traffic → Disbursement) conversion sits around <strong>3.8–4.4%</strong>,
+and the steepest drop is at <strong>Submission</strong> (document upload on web). This
+program groups every initiative that moves a funnel-stage metric, with one accountable
 owner each, so the lending lead can see at a glance what's in flight and what's at risk.</p>
 <h2>Stages &amp; current owners</h2>
 <ul>
-<li><strong>Applied</strong> (start &amp; submit) — Mai, Nam, Linh</li>
-<li><strong>Docs</strong> (KYC / upload) — Linh, Mai</li>
-<li><strong>Approved</strong> (underwriting) — Hathy</li>
-<li><strong>Disbursed</strong> (payout) — Nam</li>
+<li><strong>Traffic</strong> (eligible users entering the flow) — Mai, Linh</li>
+<li><strong>Submission</strong> (submit &amp; documents) — Linh, Mai, Nam</li>
+<li><strong>Approval</strong> (partner underwriting) — Hathy</li>
+<li><strong>Disbursement</strong> (payout) — Nam</li>
 <li><strong>Cross-cutting</strong> (instrumentation, reporting) — Rino</li>
 </ul>
-<p>Criticality = Jira priority. Anything <em>Highest/High</em> and past its due date
-or <em>blocked</em> is escalated in the daily LM digest.</p>
+<p>Urgency = the due date. Anything <em>overdue</em> or <em>blocked</em> is escalated
+in the daily LM digest; items due within 3 days are flagged as due-soon. Every
+initiative is a single Jira <em>Task</em> (no priority field) and moves through
+To&nbsp;Do → In&nbsp;Progress → In&nbsp;Review → Done.</p>
 """),
     ("Decision log — Funnel", """
 <h2>Decision: docs-upload is the #1 conversion priority this quarter</h2>
@@ -125,11 +140,12 @@ disbursed stage (no duplicate payouts — reconciliation caught them).</p>
 """),
     ("Funnel metric definitions", """
 <ul>
-<li><strong>Stage conversion</strong> = entered next stage ÷ entered this stage.</li>
-<li><strong>Docs drop-off</strong> = applications that reach upload but never submit docs.</li>
-<li><strong>Approval rate</strong> = approved ÷ fully-documented, by product &amp; vintage.</li>
-<li><strong>Disbursement drop-off</strong> = approved loans not paid out within 7 days.</li>
-<li>Owner of a metric = owner of the initiative tagged to that stage.</li>
+<li><strong>Submission rate</strong> = Submission ÷ Traffic.</li>
+<li><strong>Approval rate</strong> = Approval ÷ Submission (by product &amp; vintage).</li>
+<li><strong>Disbursement rate</strong> = Disbursement ÷ Approval.</li>
+<li><strong>End-to-end (E2E) rate</strong> = Disbursement ÷ Traffic.</li>
+<li><strong>Avg ticket size</strong> = Disbursement amount ÷ Disbursement count.</li>
+<li>Owner of a stage metric = owner of the initiative tagged to that stage.</li>
 </ul>
 """),
     ("Team working agreements", """
@@ -167,29 +183,118 @@ def transition_to(c: httpx.Client, issue_key: str, target: str):
     print(f"  (no transition to {target} found for {issue_key})")
 
 
+def valid_issue_types(c: httpx.Client, key: str) -> set:
+    """Issue-type names the project actually accepts. Team-managed projects often
+    lack 'Story', which silently fails creation — so we map to what's available."""
+    r = c.get(f"{SITE}/rest/api/3/issue/createmeta",
+              params={"projectKeys": key, "expand": "projects.issuetypes"})
+    if r.status_code == 200:
+        projs = r.json().get("projects", [])
+        if projs:
+            names = {t["name"] for t in projs[0].get("issuetypes", [])}
+            if names:
+                return names
+    # newer endpoint fallback
+    r = c.get(f"{SITE}/rest/api/3/issue/createmeta/{key}/issuetypes")
+    if r.status_code == 200:
+        return {t["name"] for t in r.json().get("values", [])}
+    return set()
+
+
+def _map_type(itype: str, valid: set) -> str:
+    if not valid or itype in valid:
+        return itype
+    lower = {v.lower(): v for v in valid}
+    if itype.lower() in lower:
+        return lower[itype.lower()]
+    for pref in ("Task", "Story", "Bug"):       # Story->Task etc.
+        if pref in valid:
+            return pref
+    return sorted(valid)[0]
+
+
+# Each funnel stage is an Epic (swimlane); cross-cutting work lives in its own Epic.
+STAGE_TO_EPIC = {
+    "traffic": "Traffic",
+    "submission": "Submission",
+    "approval": "Approval",
+    "disbursement": "Disbursement",
+    "crosscut": "Data & Platform",
+}
+
+
+def _stage_label(labels: list[str]) -> str | None:
+    for l in labels:
+        if l.lower().startswith("stage-"):
+            return l.split("-", 1)[1].lower()
+    return None
+
+
+def ensure_epics(c: httpx.Client, key: str, valid: set) -> dict:
+    """Create one Epic per stage (idempotent). Returns {epic_name: epic_key}.
+    If the project has no Epic issue type, returns {} and tasks fall back to
+    stage labels only."""
+    if "Epic" not in valid:
+        print("(project has no Epic issue type — tasks will use stage labels only)")
+        return {}
+    r = c.get(f"{SITE}/rest/api/3/search/jql",
+              params={"jql": f"project = {key} AND issuetype = Epic", "maxResults": 50, "fields": "summary"})
+    existing = ({i["fields"]["summary"]: i["key"] for i in r.json().get("issues", [])}
+                if r.status_code == 200 else {})
+    out = {}
+    for name in dict.fromkeys(STAGE_TO_EPIC.values()):   # preserve order, dedupe
+        if name in existing:
+            out[name] = existing[name]; print("epic exists:", existing[name], name); continue
+        rr = c.post(f"{SITE}/rest/api/3/issue", json={"fields": {
+            "project": {"key": key}, "summary": name, "issuetype": {"name": "Epic"}}})
+        if rr.status_code < 300:
+            out[name] = rr.json()["key"]; print("epic created:", out[name], name)
+        else:
+            print("epic FAILED:", name, rr.status_code, rr.text[:140])
+    return out
+
+
 def seed_jira(c: httpx.Client):
     key = jira_project_key(c)
     have = existing_summaries(c, key)
     me = c.get(f"{SITE}/rest/api/3/myself").json()["accountId"]
-    for summary, itype, prio, due_in, labels, status in ISSUES:
+    valid = valid_issue_types(c, key)
+    print("valid issue types:", ", ".join(sorted(valid)) or "(none discovered)")
+    epics = ensure_epics(c, key, valid)
+    mapped = _map_type("Task", valid)   # simple model: every initiative is a Task
+    created = failed = skipped = 0
+    for summary, due_in, labels, status in ISSUES:
         if summary in have:
-            print("skip (exists):", summary); continue
-        fields = {
-            "project": {"key": key},
-            "summary": summary,
-            "issuetype": {"name": itype},
-            "priority": {"name": prio},
-            "labels": labels,
-            "duedate": d(due_in),
-            "assignee": {"accountId": me},
-        }
-        r = c.post(f"{SITE}/rest/api/3/issue", json={"fields": fields})
-        if r.status_code >= 300:
-            print("FAILED:", summary, r.status_code, r.text[:200]); continue
-        ikey = r.json()["key"]
-        print("created:", ikey, summary)
+            print("skip (exists):", summary); skipped += 1; continue
+        base = {"project": {"key": key}, "summary": summary,
+                "issuetype": {"name": mapped}, "labels": labels,
+                "assignee": {"accountId": me}}
+        epic_name = STAGE_TO_EPIC.get(_stage_label(labels) or "")
+        epic_key = epics.get(epic_name) if epic_name else None
+        parent = {"parent": {"key": epic_key}} if epic_key else {}
+        # richest first; drop parent / duedate if the project rejects them, so a
+        # task always gets created (its stage label still drives grouping).
+        attempts = [
+            {**base, **parent, "duedate": d(due_in)},
+            {**base, **parent},
+            {**base, "duedate": d(due_in)},
+            base,
+        ]
+        ikey = None
+        last = ""
+        for fields in attempts:
+            r = c.post(f"{SITE}/rest/api/3/issue", json={"fields": fields})
+            if r.status_code < 300:
+                ikey = r.json()["key"]; break
+            last = f"{r.status_code} {r.text[:160]}"
+        if not ikey:
+            print("FAILED:", summary, "|", last); failed += 1; continue
+        epic_note = f" [{epic_name}]" if epic_key else (f" (label {epic_name}, no parent)" if epic_name else "")
+        print("created:", ikey, summary, epic_note); created += 1
         if status != "To Do":
             transition_to(c, ikey, status)
+    print(f"Jira seed summary: {created} created, {skipped} skipped, {failed} failed; "
+          f"{len(epics)} epics")
 
 
 def confluence_space_id(c: httpx.Client) -> str:
@@ -216,12 +321,15 @@ def seed_confluence(c: httpx.Client):
 
 
 def reset_jira(c: httpx.Client, key: str):
-    """Delete every issue in the project (synthetic workspace — safe to wipe)."""
+    """Delete every issue in the project (synthetic workspace — safe to wipe).
+    Delete non-Epics first, then Epics, so a parent is never removed before its
+    children (which would error or orphan them)."""
     r = c.get(f"{SITE}/rest/api/3/search/jql",
-              params={"jql": f"project = {key}", "maxResults": 200, "fields": "summary"})
+              params={"jql": f"project = {key}", "maxResults": 200, "fields": "summary,issuetype"})
     issues = r.json().get("issues", []) if r.status_code == 200 else []
+    issues.sort(key=lambda i: (i.get("fields", {}).get("issuetype", {}) or {}).get("name") == "Epic")
     for i in issues:
-        dr = c.delete(f"{SITE}/rest/api/3/issue/{i['key']}")
+        dr = c.delete(f"{SITE}/rest/api/3/issue/{i['key']}", params={"deleteSubtasks": "true"})
         print(("deleted: " if dr.status_code < 300 else f"FAILED del ({dr.status_code}): ") + i["key"])
     print(f"reset: removed {len(issues)} Jira issue(s)")
 

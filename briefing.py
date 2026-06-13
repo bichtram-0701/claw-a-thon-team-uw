@@ -21,48 +21,51 @@ def _is_overdue(i: dict) -> bool:
     return bool(i["due"]) and i["due"] < jc_today()
 
 
-def _is_critical(i: dict) -> bool:
-    return (i["priority"] or "").lower() in jc.CRITICAL_PRIORITIES
+def _is_due_soon(i: dict, days: int = 3) -> bool:
+    """Open item due within `days` (and not already overdue). No priority field —
+    the due date is the urgency signal."""
+    if not i["due"] or _is_overdue(i):
+        return False
+    from datetime import date, timedelta
+    return i["due"] <= (date.today() + timedelta(days=days)).isoformat()
 
 
 def manager_digest() -> dict:
-    """Lending lead's oversight view: who owns what, on/off track, what's critical,
-    broken down by funnel stage. This is the line-manager centerpiece."""
+    """Lending lead's oversight view: who owns what, what's off track or due soon,
+    broken down by funnel stage. Urgency = due date + blocked (no priority field)."""
     open_issues = jc.all_open_issues()
     done = jc.done_issues()
 
     by_owner: dict = {}
-    by_stage: dict = {}
+    by_epic: dict = {}
     for i in open_issues:
         owner = i["owner"]
-        stage = i["stage"] or "unassigned-stage"
-        by_owner.setdefault(owner, {"count": 0, "critical": 0, "off_track": 0})
+        epic = i.get("epic") or "Unsorted"   # Epic = funnel stage / project
+        by_owner.setdefault(owner, {"count": 0, "off_track": 0})
         by_owner[owner]["count"] += 1
-        if _is_critical(i):
-            by_owner[owner]["critical"] += 1
         if _is_overdue(i) or _is_blocked(i):
             by_owner[owner]["off_track"] += 1
-        by_stage.setdefault(stage, {"open": 0, "in_progress": 0})
-        by_stage[stage]["open"] += 1
+        by_epic.setdefault(epic, {"open": 0, "in_progress": 0})
+        by_epic[epic]["open"] += 1
         if (i["status"] or "").lower() == "in progress":
-            by_stage[stage]["in_progress"] += 1
+            by_epic[epic]["in_progress"] += 1
 
     off_track = [i for i in open_issues if _is_overdue(i) or _is_blocked(i)]
-    critical = [i for i in open_issues if _is_critical(i)]
-    # the items a lead must look at first: critical AND off track
-    needs_attention = [i for i in open_issues if _is_critical(i) and (_is_overdue(i) or _is_blocked(i))]
+    due_soon = [i for i in open_issues if _is_due_soon(i)]
 
     return {
         "as_of": jc_today(),
         "totals": {"open": len(open_issues), "done": len(done),
-                   "critical_open": len(critical), "off_track": len(off_track)},
-        "needs_attention_now": needs_attention,
-        "off_track": off_track,
-        "critical_open": critical,
+                   "off_track": len(off_track), "due_soon": len(due_soon)},
+        # what a lead must look at first: anything overdue or blocked
+        "needs_attention_now": off_track,
+        "due_soon": due_soon,
         "by_owner": by_owner,
-        "by_stage": by_stage,
+        "by_epic": by_epic,
         "recently_completed": done[:5],
-        "note": "needs_attention_now = critical AND (overdue or blocked); escalate these first.",
+        "note": "needs_attention_now = overdue OR blocked. due_soon = due within 3 days. "
+                "by_epic groups initiatives by their Epic (funnel stage / project). "
+                "Urgency is the due date; there is no priority field.",
     }
 
 

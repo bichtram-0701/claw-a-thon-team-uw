@@ -21,7 +21,9 @@ on:
       - "jira_client.py"
       - "confluence_client.py"
       - "briefing.py"
+      - "funnel_metrics.py"
       - "chat.html"
+      - "data/**"
       - "requirements.txt"
       - "Dockerfile"
       - ".github/workflows/deploy.yml"
@@ -150,7 +152,7 @@ jobs:
           AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
           BODY=$(jq -n \
             --arg name  "$RUNTIME_NAME" \
-            --arg desc  "Lending Portfolio Watchdog - Claw-a-thon 2026 Team UW (synthetic data only)" \
+            --arg desc  "Funnel Watchtower - Claw-a-thon 2026 Team UW (synthetic data only)" \
             --arg image "${{ steps.cr.outputs.image }}" \
             --arg flavor "${{ steps.flavor.outputs.id }}" \
             --arg user  "${{ steps.cr.outputs.user }}" \
@@ -161,10 +163,12 @@ jobs:
             --arg atlsite "${{ secrets.ATLASSIAN_SITE }}" \
             --arg atlemail "${{ secrets.ATLASSIAN_EMAIL }}" \
             --arg atltoken "${{ secrets.ATLASSIAN_TOKEN }}" \
+            --arg allowwrites "${{ vars.ALLOW_WRITES || 'true' }}" \
             '{name: $name, description: $desc, imageUrl: $image,
               command: [], args: [],
               environmentVariables: {LLM_API_KEY: $llmkey, LLM_BASE_URL: $llmurl, LLM_MODEL: $llmmodel,
-                                     ATLASSIAN_SITE: $atlsite, ATLASSIAN_EMAIL: $atlemail, ATLASSIAN_TOKEN: $atltoken},
+                                     ATLASSIAN_SITE: $atlsite, ATLASSIAN_EMAIL: $atlemail, ATLASSIAN_TOKEN: $atltoken,
+                                     ALLOW_WRITES: $allowwrites},
               flavorId: $flavor,
               imageAuth: {enabled: true, username: $user, password: $pass},
               autoscaling: {minReplicas: 1, maxReplicas: 1, cpuUtilization: 50, memoryUtilization: 50}}')

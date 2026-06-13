@@ -1,0 +1,20 @@
+{
+  "_comment": "100% synthetic funnel performance data for Funnel Watchtower (Claw-a-thon 2026, Team UW). No real customers or partner data. Small sample: one partner, 6 months. Stages: Traffic -> Submission -> Approval -> Disbursement.",
+  "partner": "Demo Partner (synthetic)",
+  "currency": "VND",
+  "stages": ["traffic", "submission", "approval", "disbursement"],
+  "stage_definitions": {
+    "traffic": "Users who are eligible and enter the lending flow (eligible traffic only).",
+    "submission": "Users whose application is successfully submitted and received by the partner.",
+    "approval": "Users who are approved by the partner.",
+    "disbursement": "Users who receive any disbursed amount from the partner."
+  },
+  "months": [
+    {"month": "2025-12", "traffic": 8000, "submission": 2560, "approval": 358, "disbursement": 347, "disbursement_amount_vnd": 4337500000},
+    {"month": "2026-01", "traffic": 8300, "submission": 2905, "approval": 436, "disbursement": 419, "disbursement_amount_vnd": 4944200000},
+    {"month": "2026-02", "traffic": 6400, "submission": 1536, "approval": 276, "disbursement": 268, "disbursement_amount_vnd": 3082000000},
+    {"month": "2026-03", "traffic": 9800, "submission": 2940, "approval": 382, "disbursement": 371, "disbursement_amount_vnd": 4229400000},
+    {"month": "2026-04", "traffic": 10200, "submission": 2856, "approval": 428, "disbursement": 411, "disbursement_amount_vnd": 5055300000},
+    {"month": "2026-05", "traffic": 10500, "submission": 2835, "approval": 425, "disbursement": 408, "disbursement_amount_vnd": 5467200000}
+  ]
+}
