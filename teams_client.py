@@ -43,18 +43,22 @@ ISSUE_FIELD_ORDER = [
 
 
 def issue_card(issue: dict, header: str = "Jira task") -> bool:
-    """Post a card with ALL of an issue's fields. Empty fields show as 'None'
-    (never hidden), so the card always reflects the full Jira panel."""
-    facts = []
+    """Post a card with ALL of an issue's fields (never hidden). EMPTY fields are
+    shown in red as a 'missing info' nudge; filled fields render normally."""
+    body = [text_block(issue.get("summary") or "(no summary)", bold=True)]
     for label, k in ISSUE_FIELD_ORDER:
         v = issue.get(k)
         if isinstance(v, list):
             v = ", ".join(v) if v else None
-        facts.append((label, str(v) if v not in (None, "") else "None"))
-    body = [text_block(issue.get("summary") or "(no summary)", bold=True),
-            fact_set(facts)]
+        if v in (None, ""):
+            body.append(text_block(f"{label}: None", bold=True, color="Attention"))
+        else:
+            body.append(text_block(f"{label}: {v}"))
     desc = issue.get("description")
-    body.append(text_block("Description: " + (desc[:500] if desc else "None")))
+    if desc:
+        body.append(text_block(f"Description: {desc[:500]}"))
+    else:
+        body.append(text_block("Description: None", bold=True, color="Attention"))
     return send_card(header, body, url=issue.get("url"))
 
 
