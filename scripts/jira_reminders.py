@@ -30,7 +30,7 @@ def run(mode: str) -> int:
         tc.digest_card("⏰ Tasks due tomorrow", issues,
                        empty_msg="Nothing due tomorrow.", accent="Warning")
     elif mode == "stale":
-        days = int(os.environ.get("STALE_DAYS", "3"))
+        days = int(os.environ.get("STALE_DAYS", "7"))
         issues = jc.stale_issues(days)
         tc.digest_card(f"💤 Stale tasks (no update in {days}+ days) — please update",
                        issues, empty_msg=None, accent="Warning")

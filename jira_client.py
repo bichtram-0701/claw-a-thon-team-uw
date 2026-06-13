@@ -58,6 +58,7 @@ def _brief(issue: dict) -> dict:
     epic = _epic_from_parent(f)
     return {
         "key": issue.get("key"),
+        "url": f"{SITE}/browse/{issue.get('key')}",
         "summary": f.get("summary"),
         "status": (f.get("status") or {}).get("name"),
         "assignee": assignee,
@@ -160,7 +161,7 @@ def due_tomorrow_issues() -> list[dict]:
     )
 
 
-def stale_issues(days: int = 3) -> list[dict]:
+def stale_issues(days: int = 7) -> list[dict]:
     """Open issues not updated in the last `days` days — nudge the owner."""
     return search(
         f"statusCategory != Done AND updated <= -{days}d ORDER BY updated ASC",

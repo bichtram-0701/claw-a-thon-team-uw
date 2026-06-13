@@ -78,8 +78,11 @@ def digest_card(title: str, issues: list[dict], *, empty_msg: str | None = None,
         body.append(text_block(f"👤 {who} ({len(items)})", bold=True))
         for it in items:
             due = it.get("due") or "no due date"
+            key, url = it.get("key"), it.get("url")
+            # Adaptive Card TextBlocks render markdown links -> clickable Jira key
+            key_md = f"[{key}]({url})" if url else f"[{key}]"
             body.append(text_block(
-                f"• [{it.get('key')}] {it.get('summary')} — {it.get('status')} · due {due}"))
+                f"• {key_md} {it.get('summary')} — {it.get('status')} · due {due}"))
     return send_card(title, body)
 
 
