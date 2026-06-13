@@ -19,74 +19,123 @@ def d(days: int) -> str:
     return (TODAY + timedelta(days=days)).isoformat()
 
 
-# --------------------------------------------------------------- sprint data
-# (key, summary, type, priority, due_in_days, labels, target_status)
+# ----------------------------------------------------- lending-funnel data
+# Initiatives to improve the loan application funnel
+# (applied -> docs -> approved -> disbursed), plus cross-cutting analytics work.
+# Each is tagged with: owner-<name> (who's accountable), stage-<funnel stage>,
+# and optional blocked. Priority encodes CRITICALITY. Due date encodes the
+# on-track signal (a past due date on an open item = off track).
+#   (summary, type, priority, due_in_days, labels, target_status)
 ISSUES = [
-    ("Implement OTP rate-limiting on login", "Task", "Highest", -1, ["security"], "In Progress"),
-    ("Fix duplicate webhook events from payment gateway", "Bug", "Highest", 0, [], "In Progress"),
-    ("Migrate risk-score batch job off legacy cron", "Task", "High", 2, ["blocked", "infra"], "To Do"),
-    ("Q3 lending dashboard: add vintage view", "Story", "High", 3, [], "In Progress"),
-    ("Update KYC document checklist for new circular", "Task", "High", 1, ["compliance"], "To Do"),
-    ("Refactor repayment schedule calculator", "Task", "Medium", 5, [], "To Do"),
-    ("A/B test: simplified loan application form", "Story", "Medium", 6, [], "To Do"),
-    ("Add Confluence runbook links to PagerDuty alerts", "Task", "Low", 8, ["infra"], "To Do"),
-    ("Investigate spike in docs-upload abandonment (web)", "Task", "High", 2, [], "In Progress"),
-    ("Patch CSV export encoding bug (Vietnamese chars)", "Bug", "Medium", 4, [], "To Do"),
-    ("Renew TLS certs for partner API", "Task", "Highest", -2, ["blocked", "infra", "security"], "To Do"),
-    ("Write integration tests for disbursement service", "Task", "Medium", 7, [], "To Do"),
-    ("Design review: collections reminder flow v2", "Story", "Medium", 9, [], "To Do"),
-    ("Archive 2024 loan tapes to cold storage", "Task", "Low", 12, [], "To Do"),
-    ("Spike: evaluate vector search for support macros", "Story", "Low", 10, [], "To Do"),
-    # done pile
-    ("Fix NPL ratio rounding in weekly report", "Bug", "High", -3, [], "Done"),
-    ("Add motorbike-loan approval monitor", "Task", "High", -4, [], "Done"),
-    ("Set up staging environment for risk API", "Task", "Medium", -5, ["infra"], "Done"),
-    ("Document incident postmortem 2026-06-03", "Task", "High", -6, [], "Done"),
-    ("Upgrade pandas in analytics image", "Task", "Low", -7, [], "Done"),
+    # --- applied stage (top of funnel: getting people to start & submit) ---
+    ("A/B test: simplified loan application form", "Story", "High", 6,
+     ["owner-mai", "stage-applied"], "To Do"),
+    ("Fix Vietnamese-character bug in application export", "Bug", "Medium", 4,
+     ["owner-nam", "stage-applied"], "To Do"),
+    ("Re-engagement flow for abandoned applications", "Story", "Medium", 10,
+     ["owner-mai", "stage-applied"], "To Do"),
+    ("Reduce duplicate OTP sends blocking application start", "Task", "Medium", 7,
+     ["owner-linh", "stage-applied"], "To Do"),
+    # --- docs stage (the known leak: document upload drop-off) ---
+    ("Reduce web docs-upload abandonment", "Story", "Highest", 2,
+     ["owner-linh", "stage-docs"], "In Progress"),
+    ("Pre-fill KYC from existing customer data", "Story", "High", 8,
+     ["owner-linh", "stage-docs"], "To Do"),
+    ("Document upload: support HEIC/PDF on mobile", "Story", "High", 3,
+     ["owner-mai", "stage-docs"], "In Progress"),
+    ("Update KYC document checklist for new circular", "Task", "High", 1,
+     ["owner-linh", "stage-docs", "compliance"], "To Do"),
+    # --- approved stage (underwriting / approval rate) ---
+    ("Lift motorbike-segment approval rate", "Story", "Highest", 3,
+     ["owner-hathy", "stage-approved"], "In Progress"),
+    ("Approval SLA dashboard for underwriting", "Story", "Medium", 9,
+     ["owner-hathy", "stage-approved"], "To Do"),
+    ("Underwriting auto-decline rules review", "Task", "High", 6,
+     ["owner-hathy", "stage-approved"], "To Do"),
+    # --- disbursed stage (bottom: getting approved loans paid out) ---
+    ("Cut disbursement drop-off at e-sign step", "Task", "High", 4,
+     ["owner-nam", "stage-disbursed"], "To Do"),
+    ("Disbursement webhook idempotency keys", "Task", "High", 0,
+     ["owner-nam", "stage-disbursed"], "In Progress"),
+    ("Renew TLS certs for partner disbursement API", "Task", "Highest", -2,
+     ["owner-nam", "stage-disbursed", "blocked", "infra"], "To Do"),
+    # --- cross-cutting (instrumentation, reporting, infra) ---
+    ("Instrument funnel events end-to-end", "Task", "High", 1,
+     ["owner-rino", "stage-crosscut"], "In Progress"),
+    ("Migrate risk-score batch job off legacy cron", "Task", "High", 2,
+     ["owner-rino", "stage-crosscut", "blocked", "infra"], "To Do"),
+    ("Funnel weekly metrics auto-report", "Story", "Medium", 12,
+     ["owner-rino", "stage-crosscut"], "To Do"),
+    # --- done pile (recent wins, for momentum / 'what changed') ---
+    ("Launch docs-upload progress indicator", "Story", "High", -3,
+     ["owner-linh", "stage-docs"], "Done"),
+    ("Add motorbike-loan approval monitor", "Task", "High", -4,
+     ["owner-hathy", "stage-approved"], "Done"),
+    ("Baseline funnel conversion report", "Task", "Medium", -6,
+     ["owner-rino", "stage-crosscut"], "Done"),
+    ("Fix approval-rate calculation rounding", "Bug", "Medium", -5,
+     ["owner-hathy", "stage-approved"], "Done"),
 ]
 
 PAGES = [
-    ("Decision log — Risk model", """
-<h2>Decision: switch NPL early-warning to vintage-based model</h2>
-<p><strong>Date:</strong> {d1} · <strong>Status:</strong> APPROVED</p>
-<p>We compared the flat 90-DPD threshold model against a vintage-based approach.
-Decision: adopt the <strong>vintage-based model</strong> for early warning, because recent
-originations showed deterioration invisible to the flat model (motorbike segment:
-51% vs 70% approval-cohort performance). Owner: Hathy. Revisit after Q3.</p>
-<h2>Decision: keep risk thresholds out of the public repo</h2>
-<p><strong>Date:</strong> {d2} · <strong>Status:</strong> APPROVED</p>
-<p>Production thresholds live in the internal config service only. Public/demo
-repos use placeholder values.</p>
+    ("Funnel initiative charter", """
+<h2>Why this program exists</h2>
+<p>End-to-end application conversion is <strong>47.6%</strong> (applied → disbursed).
+The biggest single leak is <strong>document upload on web</strong>. This program
+groups every initiative that moves a funnel-stage metric, with one accountable
+owner each, so the lending lead can see at a glance what's in flight and what's at risk.</p>
+<h2>Stages &amp; current owners</h2>
+<ul>
+<li><strong>Applied</strong> (start &amp; submit) — Mai, Nam, Linh</li>
+<li><strong>Docs</strong> (KYC / upload) — Linh, Mai</li>
+<li><strong>Approved</strong> (underwriting) — Hathy</li>
+<li><strong>Disbursed</strong> (payout) — Nam</li>
+<li><strong>Cross-cutting</strong> (instrumentation, reporting) — Rino</li>
+</ul>
+<p>Criticality = Jira priority. Anything <em>Highest/High</em> and past its due date
+or <em>blocked</em> is escalated in the daily LM digest.</p>
 """),
-    ("Sprint 12 planning notes", """
-<p><strong>Sprint goal:</strong> close the security backlog (OTP rate-limiting, TLS renewal)
-and ship the vintage view on the lending dashboard.</p>
-<ul><li>Capacity: 3 engineers, no holidays</li>
-<li>Carry-over: webhook duplicate bug (gateway vendor slow to respond)</li>
-<li>Risk: TLS renewal blocked on infra ticket with vendor — escalate if no reply by {d3}</li></ul>
+    ("Decision log — Funnel", """
+<h2>Decision: docs-upload is the #1 conversion priority this quarter</h2>
+<p><strong>Date:</strong> {d1} · <strong>Status:</strong> APPROVED</p>
+<p>Web document upload shows the steepest drop-off in the funnel. Decision: treat
+<strong>"Reduce web docs-upload abandonment"</strong> as the top initiative; pre-fill
+KYC and mobile file-type support follow. Owner: Linh.</p>
+<h2>Decision: switch approval early-warning to a vintage-based view</h2>
+<p><strong>Date:</strong> {d2} · <strong>Status:</strong> APPROVED</p>
+<p>Recent motorbike originations approve far below older cohorts (51% vs 70%).
+Decision: track approval rate by vintage so deterioration is caught early.
+Owner: Hathy. Revisit after Q3.</p>
+"""),
+    ("Sprint planning — funnel initiatives", """
+<p><strong>Goal:</strong> ship the docs-upload fixes (progress indicator already live)
+and unblock the partner disbursement TLS renewal.</p>
+<ul><li>Capacity: 5 contributors across the funnel stages</li>
+<li>Carry-over: risk-score batch migration (blocked on infra)</li>
+<li><strong>Top risk:</strong> TLS cert renewal for the partner disbursement API is
+blocked AND overdue — escalate if vendor doesn't reply by {d3}.</li></ul>
 """),
     ("Incident postmortem — duplicate disbursement alerts (2026-06-03)", """
-<h2>Summary</h2><p>Payment gateway retried webhooks during their maintenance window;
-our consumer lacked idempotency keys, causing duplicate alert storms (no duplicate
-payouts — reconciliation caught them).</p>
+<h2>Summary</h2><p>The payment gateway retried webhooks during a maintenance window;
+our consumer lacked idempotency keys, causing duplicate alert storms at the
+disbursed stage (no duplicate payouts — reconciliation caught them).</p>
 <h2>Action items</h2>
-<ul><li>Add idempotency keys to webhook consumer (ticket filed)</li>
-<li>Silence alert storms via 5-minute dedup window</li></ul>
+<ul><li>Add idempotency keys to the disbursement webhook consumer (in progress)</li>
+<li>Silence alert storms via a 5-minute dedup window</li></ul>
 """),
-    ("API design decision — partner disbursement API v2", """
-<p><strong>Decision ({d4}):</strong> v2 uses async job + callback instead of synchronous
-disbursement. Rationale: partner timeouts caused phantom retries in v1. Breaking
-change announced for Q4; v1 sunset after two quarters of dual-running.</p>
+    ("Funnel metric definitions", """
+<ul>
+<li><strong>Stage conversion</strong> = entered next stage ÷ entered this stage.</li>
+<li><strong>Docs drop-off</strong> = applications that reach upload but never submit docs.</li>
+<li><strong>Approval rate</strong> = approved ÷ fully-documented, by product &amp; vintage.</li>
+<li><strong>Disbursement drop-off</strong> = approved loans not paid out within 7 days.</li>
+<li>Owner of a metric = owner of the initiative tagged to that stage.</li>
+</ul>
 """),
     ("Team working agreements", """
-<ul><li>Standup async in channel by 09:30, blockers flagged with the <em>blocked</em> label in Jira</li>
-<li>Tickets must have due dates before sprint start</li>
-<li>Decisions go in the Decision log within 24h — if it's not written down, it didn't happen</li></ul>
-"""),
-    ("Retro — Sprint 11", """
-<p><strong>Went well:</strong> deploy pipeline now fully automated; zero failed releases.</p>
-<p><strong>Needs work:</strong> too much WIP — agreed WIP limit of 2 per person.</p>
-<p><strong>Experiment for Sprint 12:</strong> agent-generated standup drafts (this project!).</p>
+<ul><li>Every initiative has exactly one <em>owner-</em> label and a due date before work starts.</li>
+<li>Blockers flagged with the <em>blocked</em> label the same day they appear.</li>
+<li>Decisions go in the Decision log within 24h — if it's not written down, it didn't happen.</li></ul>
 """),
 ]
 
@@ -166,8 +215,34 @@ def seed_confluence(c: httpx.Client):
         print(("created: " if r.status_code < 300 else f"FAILED ({r.status_code}): ") + title)
 
 
+def reset_jira(c: httpx.Client, key: str):
+    """Delete every issue in the project (synthetic workspace — safe to wipe)."""
+    r = c.get(f"{SITE}/rest/api/3/search/jql",
+              params={"jql": f"project = {key}", "maxResults": 200, "fields": "summary"})
+    issues = r.json().get("issues", []) if r.status_code == 200 else []
+    for i in issues:
+        dr = c.delete(f"{SITE}/rest/api/3/issue/{i['key']}")
+        print(("deleted: " if dr.status_code < 300 else f"FAILED del ({dr.status_code}): ") + i["key"])
+    print(f"reset: removed {len(issues)} Jira issue(s)")
+
+
+def reset_confluence(c: httpx.Client, sid: str):
+    """Delete every page in the space (synthetic workspace — safe to wipe)."""
+    r = c.get(f"{SITE}/wiki/api/v2/spaces/{sid}/pages", params={"limit": 100})
+    pages = r.json().get("results", []) if r.status_code == 200 else []
+    for p in pages:
+        dr = c.delete(f"{SITE}/wiki/api/v2/pages/{p['id']}")
+        print(("deleted page: " if dr.status_code < 300 else f"FAILED del ({dr.status_code}): ") + p["title"])
+    print(f"reset: removed {len(pages)} Confluence page(s)")
+
+
 if __name__ == "__main__":
+    do_reset = os.environ.get("SEED_RESET", "").lower() in ("1", "true", "yes")
     with httpx.Client(timeout=30, auth=AUTH) as c:
+        if do_reset:
+            print("== Reset (SEED_RESET set) ==")
+            reset_jira(c, jira_project_key(c))
+            reset_confluence(c, confluence_space_id(c))
         print("== Jira =="); seed_jira(c)
         print("== Confluence =="); seed_confluence(c)
         print("Seeding complete.")

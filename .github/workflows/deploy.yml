@@ -1,4 +1,4 @@
-# Deploy the Lending Portfolio Watchdog to GreenNode AgentBase.
+# Deploy Sprint Sidekick to GreenNode AgentBase.
 #
 # Why this exists: our vibe-code environment has no Docker and no network
 # route to vngcloud.vn, so GitHub's servers do the build + deploy instead.
@@ -17,11 +17,13 @@ on:
     branches: [main]
     paths:
       - "main.py"
-      - "metrics.py"
       - "report.py"
+      - "jira_client.py"
+      - "confluence_client.py"
+      - "briefing.py"
+      - "chat.html"
       - "requirements.txt"
       - "Dockerfile"
-      - "data/**"
       - ".github/workflows/deploy.yml"
   workflow_dispatch: {}
 

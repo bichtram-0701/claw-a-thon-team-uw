@@ -1,11 +1,17 @@
-# Populate the free Atlassian workspace with the synthetic sprint.
+# Populate the free Atlassian workspace with the synthetic funnel initiatives.
 # Run manually: Actions > "Seed Atlassian workspace" > Run workflow.
-# Safe to re-run: existing issues/pages are skipped.
+#   reset = true  (default): wipe existing issues/pages first, then seed fresh.
+#   reset = false: additive — existing issues/pages with the same title are skipped.
 
 name: Seed Atlassian workspace
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      reset:
+        description: "Wipe the workspace before seeding (replace, not append)"
+        type: boolean
+        default: true
 
 jobs:
   seed:
@@ -21,4 +27,5 @@ jobs:
           ATLASSIAN_SITE: ${{ secrets.ATLASSIAN_SITE }}
           ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
           ATLASSIAN_TOKEN: ${{ secrets.ATLASSIAN_TOKEN }}
+          SEED_RESET: ${{ inputs.reset && '1' || '0' }}
         run: python scripts/seed_atlassian.py

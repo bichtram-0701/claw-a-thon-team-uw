@@ -1,13 +1,15 @@
-"""Sprint Sidekick — Jira + Confluence briefing agent. Team UW, Claw-a-thon 2026.
+"""Funnel Watchtower — lending-funnel initiative tracker. Team UW, Claw-a-thon 2026.
 
-Ask in plain language (VI/EN): what's on my plate, how's the sprint, what did
-we decide about X, draft my standup. Deterministic clients fetch the facts;
-the MaaS LLM narrates — it never invents data, and every feature degrades
-gracefully when Jira/Confluence/LLM are unreachable.
+A line-manager oversight agent over the loan-application funnel. Ask in plain
+language (VI/EN): give me the funnel overview, who is working on what, what's
+critical / off track, what did we decide about X, what's on my plate, draft my
+standup. Deterministic clients fetch the facts from Jira + Confluence; the MaaS
+LLM narrates — it never invents data, and every feature degrades gracefully when
+Jira/Confluence/LLM are unreachable.
 
-Connected to a FREE Atlassian Cloud workspace seeded with synthetic project
-data. No company systems, no real personal data.
-(The team's previous lending-analytics agent lives on in git history.)
+Connected to a FREE Atlassian Cloud workspace seeded with synthetic funnel
+initiatives. No company systems, no real personal data.
+(The team's earlier lending-analytics agent lives on in git history.)
 """
 
 import json
@@ -55,17 +57,23 @@ app.router.routes.append(Route("/", _serve_chat, methods=["GET"]))
 # ------------------------------------------------------------- intent router
 # Keyword matching first (free); LLM classification when keywords miss.
 
+# Order matters: more specific intents first. "standup" before the manager
+# keywords (a standup is about the user's own items), then the LM oversight view.
 ROUTES = [
     ({"standup", "stand-up", "stand up", "daily"}, "standup"),
     ({"decide", "decision", "decided", "document", "wiki", "confluence", "wrote",
       "quyết định", "quyet dinh", "tài liệu", "tai lieu", "biên bản", "bien ban"}, "knowledge"),
+    ({"plate", "my task", "my issue", "my initiative", "assigned to me", "what should i",
+      "việc của tôi", "viec cua toi"}, "briefing"),
+    ({"oversight", "overview", "funnel", "digest", "who is working", "who's working",
+      "who owns", "ownership", "on track", "off track", "off-track", "critical",
+      "at risk", "behind", "slipping", "manager", "lead", "report", "status of",
+      "ai đang làm", "tổng quan", "quan trọng", "trễ", "rủi ro"}, "oversight"),
     ({"sprint", "team", "pulse", "progress", "stuck", "blocked", "workload", "overdue",
       "tiến độ", "tien do", "nhóm", "nhom"}, "sprint"),
-    ({"plate", "briefing", "brief", "today", "focus", "my task", "my issue", "assigned",
-      "việc của tôi", "viec cua toi", "hôm nay", "hom nay"}, "briefing"),
 ]
 
-VALID = {"briefing", "sprint", "knowledge", "standup", "help"}
+VALID = {"oversight", "briefing", "sprint", "knowledge", "standup", "help"}
 
 
 def route(message: str) -> str:
@@ -78,11 +86,13 @@ def route(message: str) -> str:
 
 def rp_classify(message: str) -> str | None:
     out = rp.llm_chat(
-        "Classify the user's question about team work management into exactly one word from: "
-        "briefing, sprint, knowledge, standup, help. "
-        "briefing = the user's own tasks/priorities today; sprint = whole-team progress, "
-        "blockers, workload; knowledge = past decisions, documentation, meeting notes; "
-        "standup = draft a standup update; help = anything else. Reply with the single word only.",
+        "Classify the user's question about a lending-funnel initiative tracker into exactly "
+        "one word from: oversight, briefing, sprint, knowledge, standup, help. "
+        "oversight = the lead's view of all initiatives: who owns what, what's critical, what's "
+        "on/off track, funnel overview; briefing = the user's OWN tasks/priorities; "
+        "sprint = simple status mix / workload of the whole team; knowledge = past decisions, "
+        "documentation, meeting notes; standup = draft a standup update; help = anything else. "
+        "Reply with the single word only.",
         message, max_tokens=64)
     if out:
         word = out.strip().lower().split()[0].strip(".,!")
@@ -94,6 +104,11 @@ def rp_classify(message: str) -> str | None:
 # ---------------------------------------------------------------- entrypoint
 
 NARRATE_SYS = {
+    "oversight": "You are briefing the lending lead on the funnel initiatives. Lead with "
+                 "'needs_attention_now' (critical AND off track) — name the item, owner and why. "
+                 "Then give a short read on each funnel stage and flag any owner who is overloaded "
+                 "or carrying off-track work. Quote issue keys and owners. Be decisive and brief; "
+                 "if the user asks for a breakdown, use a markdown table.",
     "briefing": "Summarize what's on the user's plate: lead with the most urgent item "
                 "(overdue/blocked first), then the rest in priority order. Quote issue keys.",
     "sprint":   "Give a team health summary: open vs done, where work is piling up, "
@@ -133,7 +148,9 @@ def _handle(payload: dict) -> dict:
                         {"error": "Atlassian credentials not configured on the runtime"})
 
     answer = None
-    if intent == "briefing":
+    if intent == "oversight":
+        result = bf.manager_digest()
+    elif intent == "briefing":
         result = bf.my_briefing()
     elif intent == "sprint":
         result = bf.sprint_pulse()
@@ -142,12 +159,14 @@ def _handle(payload: dict) -> dict:
     elif intent == "standup":
         result = bf.standup_draft()
     else:
-        result = {"hint": "Try: what's on my plate today? · how is the sprint going? · "
-                          "what did we decide about <topic>? · draft my standup"}
+        result = {"hint": "Try: give me the funnel overview · who is working on what? · "
+                          "what's critical or off track? · what did we decide about <topic>? · "
+                          "what's on my plate? · draft my standup"}
         answer = (
-            "Hi! I'm Sprint Sidekick (Team UW). I read our Jira board and Confluence "
-            "space and answer things like: 'what's on my plate today?', 'how is the "
-            "sprint going?', 'what did we decide about the rate model?', or 'draft my "
+            "Hi! I'm Funnel Watchtower (Team UW). I track every initiative on the loan "
+            "application funnel from our Jira + Confluence. Ask me things like: 'give me the "
+            "funnel overview', 'who is working on what?', 'what's critical or off track?', "
+            "'what did we decide about docs-upload?', 'what's on my plate?', or 'draft my "
             "standup'. Tiếng Việt cũng được nhé!"
         )
 
@@ -156,9 +175,9 @@ def _handle(payload: dict) -> dict:
         sys_extra = NARRATE_SYS.get(intent, "")
         lang_line = "Answer in Vietnamese." if lang == "vi" else "Answer in the user's language (default English)."
         out = rp.llm_chat(
-            "You are Sprint Sidekick, a team work assistant. Use ONLY the JSON data provided — "
-            "never invent issues, names or numbers. " + sys_extra + " If the user asks for a table, "
-            "use a markdown table. " + lang_line,
+            "You are Funnel Watchtower, a lending-funnel initiative tracker for the team lead. "
+            "Use ONLY the JSON data provided — never invent issues, owners or numbers. " + sys_extra +
+            " If the user asks for a table, use a markdown table. " + lang_line,
             "Question: " + message + "\nData JSON:\n" + json.dumps(result, ensure_ascii=False),
             max_tokens=900,
         )

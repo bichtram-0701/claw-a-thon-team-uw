@@ -1,9 +1,10 @@
-"""Jira Cloud REST client — Sprint Sidekick, Team UW.
+"""Jira Cloud REST client — Funnel Watchtower, Team UW.
 
-Reads the team's (synthetic) project via the v3 API with a personal API token.
-Uses /rest/api/3/search/jql (the old /search endpoint was retired).
-Note: Jira timestamps can't be backdated, so "stuck" detection uses labels,
-status and due dates rather than updated-age.
+Reads the team's (synthetic) lending-funnel project via the v3 API with a
+personal API token. Uses /rest/api/3/search/jql (the old /search was retired).
+Each initiative carries an `owner-<name>` label (the free workspace has one
+real user, so ownership is encoded in labels) and a `stage-<funnel stage>`
+label. Priority encodes criticality; a past due date on an open item = off track.
 """
 import os
 
@@ -25,16 +26,37 @@ def _client() -> httpx.Client:
     return httpx.Client(timeout=TIMEOUT, auth=(EMAIL, TOKEN))
 
 
+CRITICAL_PRIORITIES = {"highest", "high"}
+
+
+def _owner_from_labels(labels: list[str]) -> str | None:
+    for l in labels:
+        if l.lower().startswith("owner-"):
+            return l.split("-", 1)[1].replace("_", " ").title()
+    return None
+
+
+def _stage_from_labels(labels: list[str]) -> str | None:
+    for l in labels:
+        if l.lower().startswith("stage-"):
+            return l.split("-", 1)[1].lower()
+    return None
+
+
 def _brief(issue: dict) -> dict:
     f = issue.get("fields", {})
+    labels = f.get("labels") or []
+    assignee = ((f.get("assignee") or {}).get("displayName")) or "Unassigned"
     return {
         "key": issue.get("key"),
         "summary": f.get("summary"),
         "status": (f.get("status") or {}).get("name"),
-        "assignee": ((f.get("assignee") or {}).get("displayName")) or "Unassigned",
+        "assignee": assignee,
+        "owner": _owner_from_labels(labels) or assignee,
+        "stage": _stage_from_labels(labels),
         "priority": (f.get("priority") or {}).get("name"),
         "due": f.get("duedate"),
-        "labels": f.get("labels") or [],
+        "labels": labels,
         "type": (f.get("issuetype") or {}).get("name"),
     }
 
@@ -50,15 +72,28 @@ def search(jql: str, limit: int = 50) -> list[dict]:
         return [_brief(i) for i in r.json().get("issues", [])]
 
 
+# The demo "me" is the lead contributor Rino; their initiatives carry owner-rino.
+ME_OWNER_LABEL = os.environ.get("ME_OWNER_LABEL", "owner-rino")
+
+
 def my_open_issues() -> list[dict]:
     return search(
-        "assignee = currentUser() AND statusCategory != Done "
+        f'labels = "{ME_OWNER_LABEL}" AND statusCategory != Done '
         "ORDER BY due ASC, priority DESC"
     )
 
 
 def all_open_issues() -> list[dict]:
-    return search("statusCategory != Done ORDER BY status, priority DESC", limit=100)
+    return search("statusCategory != Done ORDER BY priority DESC, due ASC", limit=100)
+
+
+def critical_open_issues() -> list[dict]:
+    """High/Highest priority initiatives that are still open."""
+    return search(
+        'statusCategory != Done AND priority in (Highest, High) '
+        "ORDER BY due ASC, priority DESC",
+        limit=100,
+    )
 
 
 def done_issues() -> list[dict]:
