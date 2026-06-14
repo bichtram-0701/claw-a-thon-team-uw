@@ -3,6 +3,12 @@
   "partner": "Demo Partner (synthetic)",
   "currency": "VND",
   "stages": ["traffic", "submission", "approval", "disbursement"],
+  "targets": {
+    "submission_rate_pct": 30.0,
+    "approval_rate_pct": 15.0,
+    "disbursement_rate_pct": 96.0,
+    "e2e_rate_pct": 4.5
+  },
   "stage_definitions": {
     "traffic": "Users who are eligible and enter the lending flow (eligible traffic only).",
     "submission": "Users whose application is successfully submitted and received by the partner.",

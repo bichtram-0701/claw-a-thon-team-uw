@@ -23,6 +23,7 @@ on:
       - "teams_client.py"
       - "briefing.py"
       - "funnel_metrics.py"
+      - "sql_analyst.py"
       - "chat.html"
       - "data/**"
       - "requirements.txt"

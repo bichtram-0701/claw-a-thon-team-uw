@@ -63,6 +63,8 @@ def summary() -> dict:
             "e2e_rate": delta("e2e_rate_pct"),
         },
         "months": r,
+        "targets": targets(),
+        "target_misses": target_misses(),   # latest-month rates below OKR target
         "anomalies": anomalies(),   # significant MoM rate drops to flag
         "note": "Rates are computed from counts; do not invent figures. "
                 "submission=submission/traffic, approval=approval/submission, "
@@ -100,6 +102,29 @@ def anomalies(pp: float = DROP_PP, rel: float = DROP_REL) -> list[dict]:
                         "prev_month": prev["month"], "prev_pct": a,
                         "latest_month": latest["month"], "latest_pct": b,
                         "delta_pp": d_pp, "delta_pct": d_rel})
+    return out
+
+
+def targets() -> dict:
+    return _load().get("targets", {})
+
+
+def target_misses(margin_pp: float = 1.0) -> list[dict]:
+    """Stage rates that are below their OKR target in the latest month (the second
+    flag trigger, alongside MoM drops). Tagged with stage for owner routing."""
+    t = targets()
+    if not t:
+        return []
+    latest = rows()[-1]
+    out = []
+    for key, stage, label in _RATE_STAGES:
+        tgt, act = t.get(key), latest.get(key)
+        if tgt is None or act is None:
+            continue
+        gap = round(act - tgt, 1)
+        if gap <= -margin_pp:
+            out.append({"stage": stage, "metric": label, "actual_pct": act,
+                        "target_pct": tgt, "gap_pp": gap, "month": latest["month"]})
     return out
 
 

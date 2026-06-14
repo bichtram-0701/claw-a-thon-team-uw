@@ -2,3 +2,4 @@ greennode-agentbase
 python-dotenv
 openai
 httpx
+duckdb

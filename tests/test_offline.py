@@ -187,23 +187,35 @@ ra = m.handler({"message": "assign KAN-23 to Mai"}, None)
 check("assign intent", ra.get("intent") == "assign")
 check("real assignee", _cap["assign"]["assignee_id"] == "acc-1")
 
-print("flag (MoM drop -> investigation for stage owner):")
+print("anomaly + OKR target detection (real data):")
 an = fm.anomalies()
-check("one anomaly detected", len(an) == 1)
-check("anomaly is approval stage", an[0]["stage"] == "approval")
-check("anomaly drop >= 3pp", an[0]["delta_pp"] <= -3)
-# make an approval-stage owner exist so the drop routes to a person
-jc.all_open_issues = lambda: [_mk("UW-7", "Approval analytics", "To Do", "Dat Nguyen", "approval", "2026-12-30")]
-check("stage_owners maps approval->Dat", bf.stage_owners().get("approval") == "Dat Nguyen")
-_capf = {}
-jc.create_issue = lambda **k: (_capf.update(flag=k) or {"key": "UW-100", "url": "u"})
-jc.find_assignable_user = lambda q, key=None: {"accountId": "acc-dat", "displayName": q}
+check("MoM anomaly = approval", [a["stage"] for a in an] == ["approval"])
+check("approval drop >= 3pp", an[0]["delta_pp"] <= -3)
+tm = {x["stage"] for x in fm.target_misses()}
+check("target_misses = submission + approval", tm == {"submission", "approval"})
+
+print("metrics surfaces drop + target gap:")
+rmet = m.handler({"message": "show me the funnel metrics"}, None)
+check("metrics intent", rmet.get("intent") == "metrics")
+check("metrics answer mentions target", "target" in rmet.get("answer", "").lower())
+
+print("analyst routing (SQL slices):")
+check("by drop reason -> analyst", m.route("break May down by drop reason") == "analyst")
+check("by product -> analyst", m.route("show May by product") == "analyst")
+check("plain metrics stays metrics", m.route("show me the funnel metrics") == "metrics")
+
+print("flag dedup (MoM drop + target miss -> one task per stage):")
+jc.all_open_issues = lambda: [_mk("UW-7", "Approval analytics", "To Do", "Dat Nguyen", "approval", "2026-12-30"),
+                              _mk("UW-8", "Submission lineage", "To Do", "Linh", "submission", "2026-12-30")]
+_capf = []
+jc.create_issue = lambda **k: (_capf.append(k) or {"key": "UW-%d" % (len(_capf) + 100), "url": "u"})
+jc.find_assignable_user = lambda q, key=None: {"accountId": "acc-" + q.split()[0].lower(), "displayName": q}
 jc.find_epic = lambda name, key=None: "KAN-EPIC"
-rf = m.handler({"message": "flag the drop and assign the owner to investigate"}, None)
+rf = m.handler({"message": "flag the drops and assign owners to investigate"}, None)
 check("flag intent", rf.get("intent") == "flag")
-check("investigation under approval Epic", _capf.get("flag", {}).get("stage") == "approval")
-check("investigation assigned to owner", _capf.get("flag", {}).get("assignee_id") == "acc-dat")
-check("title names Approval rate", "Approval rate" in _capf.get("flag", {}).get("summary", ""))
+check("flagged approval + submission (deduped)", set(rf["result"]["stages"]) == {"approval", "submission"})
+check("one task per stage (2 total)", len(_capf) == 2)
+check("approval task assigned to its owner", any(c.get("stage") == "approval" and c.get("assignee_id") == "acc-dat" for c in _capf))
 
 print(f"\n{PASS} passed, {FAIL} failed")
 sys.exit(1 if FAIL else 0)
