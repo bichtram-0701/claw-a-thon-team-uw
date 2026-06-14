@@ -9,11 +9,11 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Any
 
-ALLOWED_STAGES = {"traffic", "submission", "approval", "disbursement", "crosscut"}
+ALLOWED_STAGES = {"traffic", "submission", "approval", "completion", "crosscut"}
 STAGE_METRIC = {
     "submission": "submission_rate_pct",
     "approval": "approval_rate_pct",
-    "disbursement": "disbursement_rate_pct",
+    "completion": "completion_rate_pct",
     "traffic": "traffic_volume",
     "crosscut": "funnel_data_quality",
 }
@@ -122,8 +122,8 @@ def infer_stage(text: str | None) -> str | None:
         return "submission"
     if any(k in msg for k in ["approval", "approve", "review", "risk", "income"]):
         return "approval"
-    if any(k in msg for k in ["disbursement", "disburse", "payout", "e-sign", "esign"]):
-        return "disbursement"
+    if any(k in msg for k in ["completion", "complete", "completed", "payout", "e-sign", "esign", "final outcome"]):
+        return "completion"
     if any(k in msg for k in ["data", "platform", "schema", "logging", "monitor"]):
         return "crosscut"
     return None

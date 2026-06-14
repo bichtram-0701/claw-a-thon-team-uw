@@ -170,7 +170,7 @@ jobs:
             --arg atlsite "${{ secrets.ATLASSIAN_SITE }}" \
             --arg atlemail "${{ secrets.ATLASSIAN_EMAIL }}" \
             --arg atltoken "${{ secrets.ATLASSIAN_TOKEN }}" \
-            --arg allowwrites "${{ vars.ALLOW_WRITES || 'false' }}" \
+            --arg allowwrites "${{ vars.ALLOW_WRITES || 'true' }}" \
             --arg teamshook "${{ secrets.TEAMS_WEBHOOK_URL }}" \
             --arg jiraevttoken "${{ secrets.JIRA_EVENT_TOKEN }}" \
             '{name: $name, description: $desc, imageUrl: $image,

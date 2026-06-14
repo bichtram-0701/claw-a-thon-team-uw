@@ -51,19 +51,20 @@ import confluence_client as cf
 import main as m
 
 _EPIC = {"traffic": "Traffic", "submission": "Submission", "approval": "Approval",
-         "disbursement": "Disbursement", "crosscut": "Data & Platform"}
+         "completion": "Completion", "crosscut": "Data & Platform"}
 
 
-def _mk(key, summary, status, owner, stage, due, labels=None):
+def _mk(key, summary, status, owner, stage, due, labels=None, blocked_by=None, blocks=None):
     """Mirror jira_client._brief: simple model, epic = the stage's Epic name."""
     labels = (labels or []) + [f"owner-{owner.lower()}", f"stage-{stage}"]
     return {"key": key, "summary": summary, "status": status, "assignee": "Rino Tran",
             "owner": owner, "stage": stage, "epic": _EPIC.get(stage), "due": due,
-            "labels": labels, "type": "Task"}
+            "labels": labels, "type": "Task", "blocked_by": blocked_by, "blocks": blocks}
 
 
 _ISSUES = [
-    _mk("UW-1", "Renew TLS certs", "To Do", "Nam", "disbursement", "2026-01-10", ["blocked", "infra"]),
+    _mk("UW-1", "Renew TLS certs", "To Do", "Nam", "completion", "2026-01-10", ["blocked", "infra"],
+        blocked_by="certificate approval", blocks="secure completion webhook"),
     _mk("UW-2", "Reduce docs-upload abandonment", "In Progress", "Linh", "submission", "2026-12-15"),
     _mk("UW-3", "Migrate risk-score batch", "To Do", "Rino", "crosscut", "2026-12-15", ["blocked"]),
     _mk("UW-4", "Instrument funnel events", "In Progress", "Rino", "crosscut", "2026-12-16"),
@@ -83,6 +84,8 @@ jc.blocked_issues = lambda: [i for i in _ISSUES if "blocked" in i["labels"]]
 jc.overdue_issues = lambda: [i for i in _ISSUES if i["due"] < "2026-06-13"]
 cf.search_pages = lambda q, limit=3: [
     {"title": "Decision log - Funnel", "url": "https://x/wiki/1", "excerpt": "e", "body": "b"}]
+cf.recent_pages = lambda limit=8, with_body=False, include_body=False: [
+    {"title": "Weekly funnel review", "url": "https://x/wiki/2", "body": "Approval recovery actions"}]
 
 PASS, FAIL = 0, 0
 
@@ -107,13 +110,17 @@ check("plate->briefing", m.route("what's on my plate?") == "briefing")
 check("sprint", m.route("how is the sprint going?") == "sprint")
 check("decide->knowledge", m.route("what did we decide about submission?") == "knowledge")
 check("standup", m.route("draft my standup") == "standup")
+check("daily volume->analyst", m.route("show daily volume in May") == "analyst")
+check("day-over-day number->analyst", m.route("can you give me the number day over day in May") == "analyst")
+check("why approval drop->analyst", m.route("why did approval drop?") == "analyst")
+check("weekly summary->weekly", m.route("summarize everything for weekly meeting") == "weekly")
 check("VI->oversight", m.route("ai dang lam gi, co gi tre khong?") == "oversight")
 check("gibberish->help", m.route("zzz qwerty") == "help")
 
 print("handler:")
 for q, intent in [("funnel overview", "oversight"), ("what's on my plate?", "briefing"),
                   ("how is the sprint going?", "sprint"), ("what did we decide?", "knowledge"),
-                  ("draft my standup", "standup"), ("hello", "help")]:
+                  ("draft my standup", "standup"), ("summarize everything for weekly meeting", "weekly"), ("hello", "help")]:
     r = m.handler({"message": q}, None)
     check(intent + ":success", r.get("status") == "success")
     check(intent + ":intent", r.get("intent") == intent)
@@ -124,13 +131,14 @@ md = bf.manager_digest()
 check("open=5", md["totals"]["open"] == 5)
 check("no critical_open key", "critical_open" not in md["totals"])
 check("needs_attention UW-1&UW-3", {i["key"] for i in md["needs_attention_now"]} == {"UW-1", "UW-3"})
+check("blocked context retained", next(i for i in md["needs_attention_now"] if i["key"] == "UW-1")["blocked_by"] == "certificate approval")
 check("off_track=2", md["totals"]["off_track"] == 2)
 check("due_soon in totals", "due_soon" in md["totals"])
 check("Nam off_track=1", md["by_owner"]["Nam"]["off_track"] == 1)
 check("by_epic present (not by_stage)", "by_epic" in md and "by_stage" not in md)
 check("by_epic has Submission", "Submission" in md["by_epic"])
 check("by_epic has Data & Platform", "Data & Platform" in md["by_epic"])
-check("Disbursement in_progress=0", md["by_epic"]["Disbursement"]["in_progress"] == 0)
+check("Completion in_progress=0", md["by_epic"]["Completion"]["in_progress"] == 0)
 
 print("epic parsing (real jira_client only):")
 if hasattr(jc, "_epic_from_parent"):
@@ -154,10 +162,39 @@ check("In Review counted", sp["by_status"].get("In Review") == 1)
 check("workload Rino=2", sp["workload_by_owner"].get("Rino") == 2)
 
 print("metrics:")
+import csv
+from collections import defaultdict
 import funnel_metrics as fm
 check("6 months", len(fm.rows()) == 6)
-check("sub rate", fm.rows()[0]["submission_rate_pct"] == round(100 * 2560 / 8000, 1))
+check("sub rate", fm.rows()[0]["submission_rate_pct"] == round(100 * 240 / 750, 1))
 check("latest 2026-05", fm.summary()["latest_month"] == "2026-05")
+latest = fm.rows()[-1]
+check("latest traffic from CSV = 800", latest["traffic"] == 800)
+check("latest submission from CSV = 216", latest["submission"] == 216)
+check("latest approval from CSV = 24", latest["approval"] == 24)
+check("latest completion from CSV = 23", latest["completion"] == 23)
+rank = {"traffic": 1, "submitted": 2, "approved": 3, "completed": 4}
+by_day = defaultdict(lambda: [0, 0, 0, 0])
+approval_drop_reasons = defaultdict(int)
+with open(os.path.join(ROOT, "data", "funnel_synthetic.csv"), newline="", encoding="utf-8") as fcsv:
+    for row in csv.DictReader(fcsv):
+        if not row["entered_date"].startswith("2026-05"):
+            continue
+        sr = rank[row["final_stage"]]
+        day = row["entered_date"]
+        by_day[day][0] += 1
+        if sr >= 2:
+            by_day[day][1] += 1
+        if sr >= 3:
+            by_day[day][2] += 1
+        if sr == 4:
+            by_day[day][3] += 1
+        if sr == 2:
+            approval_drop_reasons[row["drop_reason"]] += 1
+daily_totals = [sum(vals[i] for vals in by_day.values()) for i in range(4)]
+check("daily sums reconcile to monthly", daily_totals == [800, 216, 24, 23])
+check("all May calendar days populated", len(by_day) == 31)
+check("approval drop reasons sum to submitted-approved", sum(approval_drop_reasons.values()) == 216 - 24)
 rm = m.handler({"message": "show me the funnel metrics"}, None)
 check("metrics intent", rm.get("intent") == "metrics")
 check("metrics table", "Traffic" in rm.get("answer", ""))
@@ -198,11 +235,20 @@ print("metrics surfaces drop + target gap:")
 rmet = m.handler({"message": "show me the funnel metrics"}, None)
 check("metrics intent", rmet.get("intent") == "metrics")
 check("metrics answer mentions target", "target" in rmet.get("answer", "").lower())
+check("impact ranking present", bool(rmet["result"].get("impact_ranking", {}).get("ranking")))
+check("approval value at risk", any(x.get("stage") == "approval" and x.get("estimated_value_at_risk_vnd") for x in rmet["result"].get("impact_ranking", {}).get("ranking", [])))
 
 print("analyst routing (SQL slices):")
 check("by drop reason -> analyst", m.route("break May down by drop reason") == "analyst")
 check("by product -> analyst", m.route("show May by product") == "analyst")
 check("plain metrics stays metrics", m.route("show me the funnel metrics") == "metrics")
+
+print("weekly meeting pack:")
+w = m.handler({"message": "summarize everything for weekly meeting"}, None)
+check("weekly intent", w.get("intent") == "weekly")
+check("weekly answer agenda", "agenda" in w.get("answer", "").lower())
+check("weekly confluence context", "recent_confluence_pages" in w.get("result", {}))
+check("weekly blocked context", "blocked by certificate approval" in w.get("answer", ""))
 
 print("flag dedup (MoM drop + target miss -> one task per stage):")
 jc.all_open_issues = lambda: [_mk("UW-7", "Approval analytics", "To Do", "Dat Nguyen", "approval", "2026-12-30"),
@@ -218,4 +264,11 @@ check("one task per stage (2 total)", len(_capf) == 2)
 check("approval task assigned to its owner", any(c.get("stage") == "approval" and c.get("assignee_id") == "acc-dat" for c in _capf))
 
 print(f"\n{PASS} passed, {FAIL} failed")
-sys.exit(1 if FAIL else 0)
+
+
+def test_offline_suite_passed():
+    assert FAIL == 0
+
+
+if __name__ == "__main__":
+    sys.exit(1 if FAIL else 0)

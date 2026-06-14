@@ -30,11 +30,12 @@ ROUTES: list[tuple[set[str], str]] = [
       "quyet dinh", "tai lieu", "bien ban"}, "knowledge"),
     ({"plate", "my task", "my issue", "my initiative", "assigned to me", "what should i",
       "viec cua toi"}, "briefing"),
-    ({"by day", "day by day", "per day", "daily", "by week", "per week", "by product",
+    ({"by day", "day by day", "per day", "daily", "day over day", "day-over-day", "by week", "per week", "by product",
       "per product", "by channel", "per channel", "by drop", "drop reason", "break down", "breakdown",
-      "group by", "by segment", "slice", "each day", "by month per", "daily volume", "volume by", "count by"},
+      "group by", "by segment", "slice", "each day", "by month per", "daily volume", "volume by", "count by",
+      "why did", "root cause", "diagnose", "diagnostic", "driver", "contribution", "what caused", "approval drop", "approval fell"},
      "analyst"),
-    ({"metric", "conversion", "submission rate", "approval rate", "disbursement rate", "traffic",
+    ({"metric", "conversion", "submission rate", "approval rate", "completion rate", "traffic",
       "ticket size", "funnel performance", "funnel numbers", "funnel table", "performance", "e2e",
       "throughput", "how is the funnel doing", "ty le", "chuyen doi", "compare", "what changed",
       "concerning", "drop", "dropped", "month over month", "mom", "vs last month", "anomal",
@@ -109,12 +110,15 @@ def _validate(intent: str, message: str, fallback: str) -> tuple[str, str]:
     msg = message.lower()
     has_issue_key = bool(re.search(r"\b[A-Z][A-Z0-9]+-\d+\b", message))
     standup_signal = any(k in msg for k in ["standup", "stand-up", "stand up", "yesterday", "blockers"])
-    analyst_signal = any(k in msg for k in ["daily", "volume", "by day", "by product", "by channel", "drop reason", "breakdown", "break down", "group by"])
+    analyst_signal = any(k in msg for k in ["daily", "volume", "day over day", "day-over-day", "by day", "by product", "by channel", "drop reason", "breakdown", "break down", "group by"])
+    diagnostic_signal = any(k in msg for k in ["why", "root cause", "diagnose", "diagnostic", "driver", "contribution", "what caused"]) and any(k in msg for k in ["drop", "dropped", "down", "fell", "below", "miss"]) and any(k in msg for k in ["submission", "approval", "completion", "traffic"])
     create_signal = any(k in msg for k in ["create", "add ticket", "new ticket", "open a ticket", "file a ticket", "log a ticket", "new initiative"])
     assign_signal = any(k in msg for k in ["assign ", "reassign", "re-assign", "giao", "gan"])
 
     if intent == "standup" and not standup_signal and analyst_signal:
         return "analyst", "corrected standup->analyst because the message asks for volume/breakdown"
+    if intent == "metrics" and diagnostic_signal:
+        return "analyst", "corrected metrics->analyst because the message asks for a stage-drop diagnostic"
     if intent == "create" and not create_signal:
         return fallback if fallback != "help" else "help", "blocked create without create/ticket signal"
     if intent == "assign" and not (assign_signal and has_issue_key):

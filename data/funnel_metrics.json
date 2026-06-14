@@ -1,26 +1,73 @@
 {
-  "_comment": "100% synthetic funnel performance data for Funnel Watchtower (Claw-a-thon 2026, Team UW). No real customers or partner data. Small sample: one partner, 6 months. Stages: Traffic -> Submission -> Approval -> Disbursement.",
+  "_comment": "100% synthetic funnel performance data for Funnel Watchtower. Targets and fallback monthly totals only; normal monthly metrics are aggregated from data/funnel_synthetic.csv so daily and monthly views reconcile. No real customers, real partners, or production data.",
   "partner": "Demo Partner (synthetic)",
   "currency": "VND",
-  "stages": ["traffic", "submission", "approval", "disbursement"],
+  "stages": [
+    "traffic",
+    "submission",
+    "approval",
+    "completion"
+  ],
   "targets": {
     "submission_rate_pct": 30.0,
     "approval_rate_pct": 15.0,
-    "disbursement_rate_pct": 96.0,
+    "completion_rate_pct": 96.0,
     "e2e_rate_pct": 4.5
   },
   "stage_definitions": {
-    "traffic": "Users who are eligible and enter the application flow (eligible traffic only).",
-    "submission": "Users whose application is successfully submitted and received by the partner.",
-    "approval": "Users who are approved by the partner.",
-    "disbursement": "Users whose approved application reaches the final outcome event in the demo."
+    "traffic": "Distinct synthetic users/entities that enter the funnel. Some stop here and never submit to the demo partner/system.",
+    "submission": "Users/entities that successfully submit the request/application to the demo partner/system.",
+    "approval": "Submitted users/entities approved by the demo partner/system.",
+    "completion": "Approved users/entities that reach the final outcome event in the demo."
   },
   "months": [
-    {"month": "2025-12", "traffic": 8000, "submission": 2560, "approval": 358, "disbursement": 347, "disbursement_amount_vnd": 4337500000},
-    {"month": "2026-01", "traffic": 8300, "submission": 2905, "approval": 436, "disbursement": 419, "disbursement_amount_vnd": 4944200000},
-    {"month": "2026-02", "traffic": 6400, "submission": 1536, "approval": 276, "disbursement": 268, "disbursement_amount_vnd": 3082000000},
-    {"month": "2026-03", "traffic": 9800, "submission": 2940, "approval": 382, "disbursement": 371, "disbursement_amount_vnd": 4229400000},
-    {"month": "2026-04", "traffic": 10200, "submission": 2856, "approval": 428, "disbursement": 411, "disbursement_amount_vnd": 5055300000},
-    {"month": "2026-05", "traffic": 10500, "submission": 2835, "approval": 312, "disbursement": 300, "disbursement_amount_vnd": 4020000000}
+    {
+      "month": "2025-12",
+      "traffic": 750,
+      "submission": 240,
+      "approval": 34,
+      "completion": 33,
+      "completion_amount_vnd": 412500000
+    },
+    {
+      "month": "2026-01",
+      "traffic": 780,
+      "submission": 273,
+      "approval": 41,
+      "completion": 39,
+      "completion_amount_vnd": 460200000
+    },
+    {
+      "month": "2026-02",
+      "traffic": 650,
+      "submission": 156,
+      "approval": 28,
+      "completion": 27,
+      "completion_amount_vnd": 310500000
+    },
+    {
+      "month": "2026-03",
+      "traffic": 820,
+      "submission": 246,
+      "approval": 32,
+      "completion": 31,
+      "completion_amount_vnd": 353400000
+    },
+    {
+      "month": "2026-04",
+      "traffic": 850,
+      "submission": 238,
+      "approval": 36,
+      "completion": 35,
+      "completion_amount_vnd": 430500000
+    },
+    {
+      "month": "2026-05",
+      "traffic": 800,
+      "submission": 216,
+      "approval": 24,
+      "completion": 23,
+      "completion_amount_vnd": 308200000
+    }
   ]
 }

@@ -10,7 +10,7 @@ from datetime import date, timedelta
 
 import httpx
 
-FUNNEL_EPICS = ["Traffic", "Submission", "Approval", "Disbursement"]   # one owner each
+FUNNEL_EPICS = ["Traffic", "Submission", "Approval", "Completion"]   # one owner each
 SHARED_EPICS = {"Data & Platform"}                                     # can have many owners
 
 SITE = os.environ["ATLASSIAN_SITE"].rstrip("/")
@@ -24,7 +24,7 @@ def d(days: int) -> str:
 
 # ----------------------------------------------------- business-funnel data
 # Initiatives to improve the demo funnel
-# (traffic -> submission -> approval -> disbursement), plus cross-cutting work.
+# (traffic -> submission -> approval -> completion), plus cross-cutting work.
 # Simple model: every initiative is a Task. Each is tagged with owner-<name>
 # (who's accountable), stage-<funnel stage>, and optional blocked. There is no
 # priority field — URGENCY comes from the due date (overdue or due-soon) and the
@@ -41,7 +41,7 @@ ISSUES = [
     # --- submission stage (submission log, score mapping, schema) ---
     ("Bug: score mapping from traffic step to pre-submission step", 2,
      ["stage-submission", "data"], "In Progress"),
-    ("Data lineage for submission log (applied -> submitted)", 6,
+    ("Data lineage for submission log (traffic -> submitted)", 6,
      ["stage-submission", "data"], "To Do"),
     ("Schema: standardize submission-stage event log", 3,
      ["stage-submission", "schema"], "In Review"),
@@ -50,7 +50,7 @@ ISSUES = [
     ("Monitor docs-upload drop-off in the submission log", 1,
      ["stage-submission", "monitoring"], "To Do"),
     # --- approval stage (approval analytics, rejection reasons, backtest) ---
-    ("Bug: approved-user count discrepancy vs partner report", 2,
+    ("Bug: approved-user count discrepancy vs CedarBridge report", 2,
      ["stage-approval", "data"], "In Progress"),
     ("Monitor approval rate by vintage (standard-application cohort)", 8,
      ["stage-approval", "monitoring"], "To Do"),
@@ -58,13 +58,13 @@ ISSUES = [
      ["stage-approval", "data"], "In Review"),
     ("Backtest approval-model output vs actuals", 10,
      ["stage-approval", "data"], "To Do"),
-    # --- disbursement stage (reconciliation against partner records) ---
-    ("Reconcile final outcome value vs partner statement", 4,
-     ["stage-disbursement", "data"], "To Do"),
-    ("Bug: NimbusPay disbursement records missing in funnel log", 0,
-     ["stage-disbursement", "data"], "In Progress"),
-    ("Bug: disbursement timestamp mismatch (verification status map)", -2,
-     ["stage-disbursement", "data", "blocked"], "To Do"),
+    # --- completion stage (reconciliation against partner records) ---
+    ("Reconcile final outcome value vs BlueRiver statement", 4,
+     ["stage-completion", "data"], "To Do"),
+    ("Bug: NimbusPay completion records missing in funnel log", 0,
+     ["stage-completion", "data"], "In Progress"),
+    ("Bug: completion timestamp mismatch (verification status map)", -2,
+     ["stage-completion", "data", "blocked"], "To Do"),
     # --- data & platform (build / monitor shared data assets) ---
     ("Centralize all model outputs from AsterScore into the Risk database", 1,
      ["stage-crosscut", "data"], "In Progress"),
@@ -79,11 +79,49 @@ ISSUES = [
      ["stage-crosscut", "data"], "Done"),
     ("Add standard-application approval-rate monitor", -4,
      ["stage-approval", "monitoring"], "Done"),
-    ("Data lineage map: traffic -> disbursement", -6,
+    ("Data lineage map: traffic -> completion", -6,
      ["stage-crosscut", "data"], "Done"),
     ("Fix approval-rate rounding in the weekly report", -5,
      ["stage-approval", "data"], "Done"),
 ]
+
+ISSUE_BLOCKERS = {
+    "Bug: completion timestamp mismatch (verification status map)": {
+        "blocked_by": "verification status-map alignment from the partner feed",
+        "blocks": "reliable Completion timestamp reconciliation and final-outcome reporting",
+    },
+    "Alert: missing records in the E2E funnel log": {
+        "blocked_by": "upstream event-feed/backfill from the data platform",
+        "blocks": "complete E2E funnel-log coverage and weekly metric confidence",
+    },
+}
+
+
+def issue_description(summary: str, labels: list[str]) -> str:
+    """Synthetic Jira description with explicit blocker semantics.
+
+    `blocked` is a label/flag, not a workflow status. If an issue is marked
+    blocked, the description says what dependency is blocking it and what work
+    it prevents from becoming reliable.
+    """
+    stage = next((l.split("-", 1)[1] for l in labels if l.startswith("stage-")), "crosscut")
+    lines = [
+        "# Funnel Watchtower seed issue",
+        f"Stage: {stage}",
+        "Source: synthetic demo data",
+    ]
+    ctx = ISSUE_BLOCKERS.get(summary)
+    if ctx:
+        lines += [
+            "",
+            "## Blocker context",
+            "Status note: this issue is labelled `blocked`; its Jira workflow status can still be To Do or In Progress.",
+            f"Blocked by: {ctx['blocked_by']}",
+            f"Blocks: {ctx['blocks']}",
+        ]
+    return "
+".join(lines)
+
 
 PAGES = [
     ("Funnel stage definitions", """
@@ -91,16 +129,16 @@ PAGES = [
 <table data-layout="default"><tbody>
 <tr><th>Stage</th><th>Definition</th></tr>
 <tr><td><strong>Traffic</strong></td><td>Users who are eligible and enter the application flow (eligible traffic only).</td></tr>
-<tr><td><strong>Submission</strong></td><td>Users whose application is successfully submitted and received by the partner.</td></tr>
-<tr><td><strong>Approval</strong></td><td>Users who are approved by the partner.</td></tr>
-<tr><td><strong>Disbursement</strong></td><td>Users whose approved application reaches the final outcome event in the demo.</td></tr>
+<tr><td><strong>Submission</strong></td><td>Users whose application is successfully submitted to the demo partner/system.</td></tr>
+<tr><td><strong>Approval</strong></td><td>Submitted users/applications approved by the demo partner/system.</td></tr>
+<tr><td><strong>Completion</strong></td><td>Users whose approved application reaches the final outcome event in the demo.</td></tr>
 </tbody></table>
 <p><strong>Rates:</strong> Submission = Submission/Traffic · Approval = Approval/Submission ·
-Disbursement = Disbursement/Approval · End-to-end (E2E) = Disbursement/Traffic.</p>
+Completion = Completion/Approval · End-to-end (E2E) = Completion/Traffic.</p>
 """),
     ("Funnel initiative charter", """
 <h2>Why this program exists</h2>
-<p>End-to-end (Traffic → Disbursement) conversion sits around <strong>3.8–4.4%</strong>,
+<p>End-to-end (Traffic → Completion) conversion sits around <strong>3.8–4.4%</strong>,
 and the steepest drop is at <strong>Submission</strong> (document upload on web). This
 program groups every initiative that moves a funnel-stage metric, with one accountable
 owner each, so the business lead can see at a glance what's in flight and what's at risk.</p>
@@ -109,7 +147,7 @@ owner each, so the business lead can see at a glance what's in flight and what's
 <li><strong>Traffic</strong> (eligible users entering the flow) — Mai, Linh</li>
 <li><strong>Submission</strong> (submit &amp; documents) — Linh, Mai, Nam</li>
 <li><strong>Approval</strong> (partner review) — Hathy</li>
-<li><strong>Disbursement</strong> (final outcome event) — Nam</li>
+<li><strong>Completion</strong> (final outcome event) — Nam</li>
 <li><strong>Cross-cutting</strong> (instrumentation, reporting) — Rino</li>
 </ul>
 <p>Urgency = the due date. Anything <em>overdue</em> or <em>blocked</em> is escalated
@@ -132,27 +170,27 @@ Owner: the Approval Epic owner. Revisit after Q3.</p>
 """),
     ("Sprint planning — funnel initiatives", """
 <p><strong>Goal:</strong> stand up the E2E funnel log (traffic -> submission ->
-approval -> disbursement) and standardise the submission-stage schema.</p>
+approval -> completion) and standardise the submission-stage schema.</p>
 <ul><li>Carry-over: centralising model outputs into the Risk database (in progress)</li>
-<li><strong>Top risk:</strong> the disbursement timestamp-mismatch bug (verification status map)
+<li><strong>Top risk:</strong> the completion timestamp-mismatch bug (verification status map)
 is blocked AND overdue — escalate by {d3}.</li>
 <li>Watch: the "missing records in the E2E funnel log" alert is blocked on upstream data.</li></ul>
 """),
-    ("Incident postmortem — duplicate disbursement alerts (2026-06-03)", """
+    ("Incident postmortem — duplicate completion alerts (2026-06-03)", """
 <h2>Summary</h2><p>The payment gateway retried webhooks during a maintenance window;
 our consumer lacked idempotency keys, causing duplicate alert storms at the
 final stage (no duplicate outcomes — reconciliation caught them).</p>
 <h2>Action items</h2>
-<ul><li>Add idempotency keys to the disbursement webhook consumer (in progress)</li>
+<ul><li>Add idempotency keys to the completion webhook consumer (in progress)</li>
 <li>Silence alert storms via a 5-minute dedup window</li></ul>
 """),
     ("Funnel metric definitions", """
 <ul>
 <li><strong>Submission rate</strong> = Submission ÷ Traffic.</li>
 <li><strong>Approval rate</strong> = Approval ÷ Submission (by product &amp; vintage).</li>
-<li><strong>Disbursement rate</strong> = Disbursement ÷ Approval.</li>
-<li><strong>End-to-end (E2E) rate</strong> = Disbursement ÷ Traffic.</li>
-<li><strong>Avg ticket size</strong> = Disbursement amount ÷ Disbursement count.</li>
+<li><strong>Completion rate</strong> = Completion ÷ Approval.</li>
+<li><strong>End-to-end (E2E) rate</strong> = Completion ÷ Traffic.</li>
+<li><strong>Avg ticket size</strong> = Completion amount ÷ Completion count.</li>
 <li>Owner of a stage metric = owner of the initiative tagged to that stage.</li>
 </ul>
 """),
@@ -162,6 +200,24 @@ final stage (no duplicate outcomes — reconciliation caught them).</p>
 <li>Decisions go in the Decision log within 24h — if it's not written down, it didn't happen.</li></ul>
 """),
 ]
+
+
+def _adf_doc(text: str) -> dict:
+    """Very small plain-text-to-ADF helper for Jira descriptions."""
+    content = []
+    for raw in str(text).splitlines():
+        line = raw.rstrip()
+        if not line:
+            content.append({"type": "paragraph", "content": []})
+        elif line.startswith("## "):
+            content.append({"type": "heading", "attrs": {"level": 2},
+                            "content": [{"type": "text", "text": line[3:]}]})
+        elif line.startswith("# "):
+            content.append({"type": "heading", "attrs": {"level": 1},
+                            "content": [{"type": "text", "text": line[2:]}]})
+        else:
+            content.append({"type": "paragraph", "content": [{"type": "text", "text": line}]})
+    return {"type": "doc", "version": 1, "content": content}
 
 
 def jira_project_key(c: httpx.Client) -> str:
@@ -226,7 +282,7 @@ STAGE_TO_EPIC = {
     "traffic": "Traffic",
     "submission": "Submission",
     "approval": "Approval",
-    "disbursement": "Disbursement",
+    "completion": "Completion",
     "crosscut": "Data & Platform",
 }
 
@@ -307,7 +363,8 @@ def seed_jira(c: httpx.Client):
         clean_labels = [l for l in labels if not l.lower().startswith("owner-")]
         base = {"project": {"key": key}, "summary": summary,
                 "issuetype": {"name": mapped}, "labels": clean_labels,
-                "assignee": {"accountId": pick_assignee(epic_name)}}
+                "assignee": {"accountId": pick_assignee(epic_name)},
+                "description": _adf_doc(issue_description(summary, clean_labels))}
         epic_key = epics.get(epic_name) if epic_name else None
         parent = {"parent": {"key": epic_key}} if epic_key else {}
         # richest first; drop parent / duedate if the project rejects them, so a

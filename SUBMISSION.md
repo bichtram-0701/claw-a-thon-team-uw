@@ -28,6 +28,7 @@ Try:
 ```text
 show me the funnel metrics
 rank the target misses by value at risk
+show daily volume in May
 break May down by drop reason
 flag the drops and assign owners to investigate
 what is critical or off track right now?
@@ -36,18 +37,18 @@ publish weekly meeting summary to Confluence
 ai dang lam gi, co gi tre khong?
 ```
 
-All demo data is synthetic.
+All demo data is synthetic. The row-level daily fixture is now the source of truth, so daily totals reconcile to the monthly funnel numbers.
 
 ## 100-200 word use case description
 Business teams do not only need to know that a funnel metric moved. They need to know which movement matters most, how much value is at risk, who owns recovery, whether work is blocked, and what should be discussed in the weekly meeting.
 
-Funnel Watchtower is an execution intelligence agent for owned funnels. The demo uses a simple four-stage funnel: Traffic -> Submission -> Approval -> Disbursement, but the pattern applies to marketing acquisition, product onboarding, sales pipeline, merchant activation, and operations workflows. It computes conversion, OKR target gaps, month-over-month drops, and estimated value at risk deterministically from synthetic data. It then links those signals to Jira initiatives, owners, blockers, Confluence decisions, Teams follow-up, and weekly meeting summaries. When a metric slips, Watchtower ranks the issue by business impact and execution risk, identifies the owner, and can open or update a Jira investigation with a structured initiative contract.
+Funnel Watchtower is an execution intelligence agent for owned funnels. The demo uses a simple four-stage funnel: Traffic -> Submission -> Approval -> Completion, but the pattern applies to marketing acquisition, product onboarding, sales pipeline, merchant activation, and operations workflows. It computes conversion, OKR target gaps, month-over-month drops, and estimated value at risk deterministically from synthetic data. It then links those signals to Jira initiatives, owners, blockers, Confluence decisions, Teams follow-up, and weekly meeting summaries. When a metric slips, Watchtower ranks the issue by business impact and execution risk, identifies the owner, and can open or update a Jira investigation with a structured initiative contract.
 
 The LLM only routes, extracts bounded fields, and narrates verified JSON. The math, issue keys, owners, SQL templates, and write decisions are validated by code.
 
 ## Links
 - Repo: https://github.com/bichtram-0701/claw-a-thon-team-uw
-- Live agent: https://endpoint-02241868-df01-4fa2-9b36-45145561851c.agentbase-runtime.aiplatform.vngcloud.vn/
+- Live agent: https://endpoint-2f37c067-4516-4483-ba07-2199f07abb90.agentbase-runtime.aiplatform.vngcloud.vn/
 - Demo video: _add after recording_
 
 ## Submission checklist
@@ -56,6 +57,7 @@ The LLM only routes, extracts bounded fields, and narrates verified JSON. The ma
 - [ ] Re-seed synthetic Atlassian workspace if needed.
 - [ ] Set `ALLOW_WRITES=true` only for the demo workspace.
 - [ ] Run `python tests/test_offline.py`.
-- [ ] Verify `daily volume` routes to analyst and `draft my standup` routes to standup.
+- [ ] Verify `daily volume` and `day over day in May` route to analyst, and `draft my standup` routes to standup.
+- [ ] Verify May daily totals reconcile to Traffic 800 -> Submission 216 -> Approval 24 -> Completion 23.
 - [ ] Verify `weekly meeting summary` drafts a meeting readout.
 - [ ] Verify Confluence publishing only when writes are intentionally enabled.

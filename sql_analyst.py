@@ -1,10 +1,10 @@
 """Read-only SQL analyst over application-level funnel data (DuckDB).
 
-The configured LLM is useful for ad-hoc language, but the safest demo path is
-"template first, LLM fallback". Common line-manager questions such as daily
-volume, by-product, by-channel, drop reason, and approval-drop diagnostics use
-known-good SQL templates. The model only writes SQL when no template matches;
-all SQL is read-only validated and returned for auditability.
+The safe demo path is template first, LLM fallback. Common line-manager
+questions such as daily volume, by-product, by-channel, approval-drop reasons,
+and contribution diagnostics use known-good SQL templates. The model only writes
+SQL when no template matches; all SQL is read-only validated and returned for
+auditability.
 """
 from __future__ import annotations
 
@@ -18,37 +18,106 @@ CSV = os.path.join(os.path.dirname(__file__), "data", "funnel_synthetic.csv")
 
 _VIEW_SQL = """
 CREATE OR REPLACE VIEW funnel AS
-SELECT *,
-  CASE final_stage WHEN 'applied' THEN 1 WHEN 'docs_submitted' THEN 2
-       WHEN 'approved' THEN 3 WHEN 'disbursed' THEN 4 END AS stage_rank,
-  CASE final_stage WHEN 'applied' THEN 'Traffic' WHEN 'docs_submitted' THEN 'Submission'
-       WHEN 'approved' THEN 'Approval' WHEN 'disbursed' THEN 'Disbursement' END AS funnel_stage,
-  CAST(applied_date AS DATE) AS applied_dt
+SELECT
+  entity_id,
+  entity_id AS app_id,              -- compatibility alias for older prompts/docs
+  product_type,
+  channel,
+  entered_date,
+  CAST(entered_date AS DATE) AS entered_dt,
+  entered_date AS applied_date,      -- compatibility alias for older templates
+  CAST(entered_date AS DATE) AS applied_dt,
+  iso_week,
+  potential_value_vnd,
+  potential_value_vnd AS requested_vnd,
+  final_stage,
+  drop_transition,
+  drop_reason,
+  CASE final_stage
+    WHEN 'traffic' THEN 1
+    WHEN 'submitted' THEN 2
+    WHEN 'approved' THEN 3
+    WHEN 'completed' THEN 4
+  END AS stage_rank,
+  CASE final_stage
+    WHEN 'traffic' THEN 'Traffic'
+    WHEN 'submitted' THEN 'Submission'
+    WHEN 'approved' THEN 'Approval'
+    WHEN 'completed' THEN 'Completion'
+  END AS funnel_stage
 FROM read_csv_auto('{csv}', header=true)
 """
 
-SCHEMA_DOC = """Table `funnel` — one row per user who entered the application flow (synthetic). Columns:
-- app_id (text)
+SCHEMA_DOC = """Table `funnel` — one row per distinct synthetic user/entity that entered the funnel.
+Columns:
+- entity_id (text); app_id is available as a backward-compatible alias
 - product_type: standard_application | premium_application | express_application | partner_application
 - channel: web | mobile_app | agent_referral
-- applied_date (text 'YYYY-MM-DD'); applied_dt (DATE) — use applied_dt for date math
+- entered_date (text 'YYYY-MM-DD'); entered_dt (DATE) — use entered_dt for date math
 - iso_week (int)
-- requested_vnd (bigint) — requested amount in VND
-- final_stage: applied | docs_submitted | approved | disbursed (furthest funnel stage reached)
-- funnel_stage: Traffic | Submission | Approval | Disbursement (reconciled label; applied=Traffic
-  means entered the flow but did not submit; docs_submitted=Submission, etc.)
-- stage_rank: 1..4 (applied/Traffic=1, docs_submitted/Submission=2, approved/Approval=3, disbursed=4)
-- drop_reason: '' when disbursed, else policy_check | docs_abandoned | docs_invalid | eligibility_check | customer_withdrew
-Rules: a row REACHED stage N if stage_rank >= N. Disbursed = stage_rank = 4.
-'May 2026' means applied_dt BETWEEN DATE '2026-05-01' AND DATE '2026-05-31'."""
+- potential_value_vnd (bigint) — synthetic potential/completed value in VND
+- final_stage: traffic | submitted | approved | completed (furthest funnel stage reached)
+- funnel_stage: Traffic | Submission | Approval | Completion
+- stage_rank: 1..4 (traffic=1, submitted=2, approved=3, completed=4)
+- drop_transition: traffic_to_submission | submission_to_approval | approval_to_completion | blank when completed
+- drop_reason: blank only when completed. It explains why the user/entity failed to reach the next stage.
+Counting rules:
+- traffic/users = COUNT(*)
+- submitted = COUNT(stage_rank >= 2)
+- approved = COUNT(stage_rank >= 3)
+- completed = COUNT(stage_rank = 4)
+- approval drops = COUNT(stage_rank = 2), which equals submitted - approved.
+'May 2026' means entered_dt BETWEEN DATE '2026-05-01' AND DATE '2026-05-31'."""
 
 _SELECT_ONLY = re.compile(r"^\s*(select|with)\b", re.IGNORECASE)
 _FORBIDDEN = re.compile(
     r"\b(insert|update|delete|drop|create|alter|attach|copy|pragma|install|load|export|call)\b",
     re.IGNORECASE,
 )
+
+
+def _strip_sql_literals(sql: str) -> str:
+    """Remove quoted strings before forbidden-keyword checks.
+
+    This avoids false positives for audit labels such as 'Submission -> Approval drop'
+    while still blocking actual DDL/DML commands.
+    """
+    return re.sub(r"'(?:''|[^'])*'|\"(?:\"\"|[^\"])*\"", "''", sql)
 _MONTHS = {m.lower(): i for i, m in enumerate(calendar.month_name) if m}
 _MONTHS.update({m.lower(): i for i, m in enumerate(calendar.month_abbr) if m})
+
+_STAGE_LOSSES = {
+    "submission": {
+        "label": "Traffic -> Submission drop",
+        "loss_key": "traffic_to_submission",
+        "failed": "stage_rank = 1",
+        "stage_start": "stage_rank >= 1",
+        "stage_passed": "stage_rank >= 2",
+        "rate_col": "submission_rate_pct",
+        "denom": "stage_rank >= 1",
+        "passed": "stage_rank >= 2",
+    },
+    "approval": {
+        "label": "Submission -> Approval drop",
+        "loss_key": "submission_to_approval",
+        "failed": "stage_rank = 2",
+        "stage_start": "stage_rank >= 2",
+        "stage_passed": "stage_rank >= 3",
+        "rate_col": "approval_rate_pct",
+        "denom": "stage_rank >= 2",
+        "passed": "stage_rank >= 3",
+    },
+    "completion": {
+        "label": "Approval -> Completion drop",
+        "loss_key": "approval_to_completion",
+        "failed": "stage_rank = 3",
+        "stage_start": "stage_rank >= 3",
+        "stage_passed": "stage_rank = 4",
+        "rate_col": "completion_rate_pct",
+        "denom": "stage_rank >= 3",
+        "passed": "stage_rank = 4",
+    },
+}
 
 
 def _cell(v):
@@ -81,7 +150,7 @@ def _con():
 def run_sql(sql: str, limit: int = 200) -> dict:
     """Execute a single read-only SELECT/WITH against the `funnel` view."""
     s = (sql or "").strip().rstrip(";").strip()
-    if not _SELECT_ONLY.match(s) or _FORBIDDEN.search(s):
+    if not _SELECT_ONLY.match(s) or _FORBIDDEN.search(_strip_sql_literals(s)):
         return {"error": "only a single read-only SELECT/WITH is allowed"}
     if ";" in s:
         return {"error": "multiple statements are not allowed"}
@@ -116,14 +185,14 @@ def _month_filter(question: str) -> str:
     for name, num in _MONTHS.items():
         if re.search(rf"\b{name}\b", q):
             last = calendar.monthrange(year, num)[1]
-            return f"applied_dt BETWEEN DATE '{year}-{num:02d}-01' AND DATE '{year}-{num:02d}-{last:02d}'"
+            return f"entered_dt BETWEEN DATE '{year}-{num:02d}-01' AND DATE '{year}-{num:02d}-{last:02d}'"
     ym = re.search(r"\b(20\d{2})-(\d{1,2})\b", q)
     if ym:
         y, m = int(ym.group(1)), int(ym.group(2))
         last = calendar.monthrange(y, m)[1]
-        return f"applied_dt BETWEEN DATE '{y}-{m:02d}-01' AND DATE '{y}-{m:02d}-{last:02d}'"
+        return f"entered_dt BETWEEN DATE '{y}-{m:02d}-01' AND DATE '{y}-{m:02d}-{last:02d}'"
     # Synthetic demo latest month.
-    return "applied_dt BETWEEN DATE '2026-05-01' AND DATE '2026-05-31'"
+    return "entered_dt BETWEEN DATE '2026-05-01' AND DATE '2026-05-31'"
 
 
 def _stage_counts_expr() -> str:
@@ -131,11 +200,102 @@ def _stage_counts_expr() -> str:
         "COUNT(*) AS applications, "
         "SUM(CASE WHEN stage_rank >= 2 THEN 1 ELSE 0 END) AS submitted, "
         "SUM(CASE WHEN stage_rank >= 3 THEN 1 ELSE 0 END) AS approved, "
-        "SUM(CASE WHEN stage_rank = 4 THEN 1 ELSE 0 END) AS disbursed, "
+        "SUM(CASE WHEN stage_rank = 4 THEN 1 ELSE 0 END) AS completed, "
         "ROUND(100.0 * SUM(CASE WHEN stage_rank >= 2 THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0), 1) AS submission_rate_pct, "
         "ROUND(100.0 * SUM(CASE WHEN stage_rank >= 3 THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN stage_rank >= 2 THEN 1 ELSE 0 END),0), 1) AS approval_rate_pct, "
-        "ROUND(100.0 * SUM(CASE WHEN stage_rank = 4 THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN stage_rank >= 3 THEN 1 ELSE 0 END),0), 1) AS disbursement_rate_pct"
+        "ROUND(100.0 * SUM(CASE WHEN stage_rank = 4 THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN stage_rank >= 3 THEN 1 ELSE 0 END),0), 1) AS completion_rate_pct"
     )
+
+
+def _amount_expr() -> str:
+    return (
+        "SUM(potential_value_vnd) AS potential_value_vnd, "
+        "SUM(CASE WHEN stage_rank = 4 THEN potential_value_vnd ELSE 0 END) AS completion_amount_vnd"
+    )
+
+
+def _detect_drop_stage(q: str) -> str:
+    """Default generic drop-reason questions to approval, the current demo risk."""
+    if any(k in q for k in ["traffic", "submission drop", "submit drop", "not submit", "not submitted"]):
+        return "submission"
+    if any(k in q for k in ["completion", "complete", "completed", "final outcome", "payout"]):
+        return "completion"
+    return "approval"
+
+
+def _drop_reason_sql(where: str, stage: str) -> str:
+    cfg = _STAGE_LOSSES[stage]
+    return f"""
+WITH scoped AS (
+  SELECT * FROM funnel WHERE {where}
+), totals AS (
+  SELECT
+    SUM(CASE WHEN {cfg['stage_start']} THEN 1 ELSE 0 END) AS stage_start_total,
+    SUM(CASE WHEN {cfg['stage_passed']} THEN 1 ELSE 0 END) AS stage_passed_total,
+    SUM(CASE WHEN {cfg['failed']} THEN 1 ELSE 0 END) AS stage_drop_total
+  FROM scoped
+)
+SELECT
+  '{cfg['label']}' AS loss_stage,
+  COALESCE(NULLIF(drop_reason, ''), 'unknown') AS drop_reason,
+  COUNT(*) AS dropped_applications,
+  totals.stage_start_total,
+  totals.stage_passed_total,
+  totals.stage_drop_total,
+  ROUND(100.0 * COUNT(*) / NULLIF(totals.stage_drop_total, 0), 1) AS share_of_stage_drop_pct
+FROM scoped
+CROSS JOIN totals
+WHERE {cfg['failed']}
+GROUP BY 1, 2, 4, 5, 6
+ORDER BY dropped_applications DESC
+"""
+
+
+def _all_drop_reason_sql(where: str) -> str:
+    return f"""
+WITH scoped AS (
+  SELECT * FROM funnel WHERE {where}
+), losses AS (
+  SELECT
+    CASE
+      WHEN stage_rank = 1 THEN 'Traffic -> Submission drop'
+      WHEN stage_rank = 2 THEN 'Submission -> Approval drop'
+      WHEN stage_rank = 3 THEN 'Approval -> Completion drop'
+    END AS loss_stage,
+    COALESCE(NULLIF(drop_reason, ''), 'unknown') AS drop_reason
+  FROM scoped
+  WHERE stage_rank < 4
+)
+SELECT
+  loss_stage,
+  drop_reason,
+  COUNT(*) AS dropped_applications,
+  ROUND(100.0 * COUNT(*) / NULLIF(SUM(COUNT(*)) OVER (PARTITION BY loss_stage), 0), 1) AS share_of_loss_stage_pct
+FROM losses
+GROUP BY loss_stage, drop_reason
+ORDER BY loss_stage, dropped_applications DESC
+"""
+
+
+def _stage_diagnostic_sql(where: str, stage: str) -> str:
+    cfg = _STAGE_LOSSES[stage]
+    rate_col = cfg["rate_col"]
+    counts = (
+        "COUNT(*) AS applications, "
+        f"SUM(CASE WHEN {cfg['passed']} THEN 1 ELSE 0 END) AS stage_passed_total, "
+        f"SUM(CASE WHEN {cfg['failed']} THEN 1 ELSE 0 END) AS stage_dropped_total, "
+        f"ROUND(100.0 * SUM(CASE WHEN {cfg['passed']} THEN 1 ELSE 0 END) / NULLIF(COUNT(*),0), 1) AS {rate_col}"
+    )
+    denom = cfg["denom"]
+    return f"""
+WITH scoped AS (SELECT * FROM funnel WHERE {where} AND ({denom}))
+SELECT 'product_type' AS dimension, product_type AS segment, {counts}
+FROM scoped GROUP BY product_type
+UNION ALL
+SELECT 'channel' AS dimension, channel AS segment, {counts}
+FROM scoped GROUP BY channel
+ORDER BY dimension, applications DESC
+"""
 
 
 def template_sql(question: str) -> tuple[str | None, str | None]:
@@ -143,54 +303,40 @@ def template_sql(question: str) -> tuple[str | None, str | None]:
     q = question.lower()
     where = _month_filter(question)
     counts = _stage_counts_expr()
+    amounts = _amount_expr()
 
-    if any(k in q for k in ["why", "root cause", "diagnose", "diagnostic", "approval drop", "approval fell"]):
-        sql = f"""
-WITH scoped AS (SELECT * FROM funnel WHERE {where})
-SELECT 'product_type' AS dimension, product_type AS segment, {counts}
-FROM scoped GROUP BY product_type
-UNION ALL
-SELECT 'channel' AS dimension, channel AS segment, {counts}
-FROM scoped GROUP BY channel
-UNION ALL
-SELECT 'drop_reason' AS dimension, COALESCE(NULLIF(drop_reason, ''), 'disbursed') AS segment, {counts}
-FROM scoped GROUP BY COALESCE(NULLIF(drop_reason, ''), 'disbursed')
-ORDER BY dimension, applications DESC
-"""
-        return sql, "diagnostic_contribution"
+    # Drop reason questions should explain the relevant loss stage, not include successful rows.
+    if "drop reason" in q or "by drop" in q or "reason breakdown" in q:
+        if any(k in q for k in ["all", "overall", "every stage", "all stages"]):
+            return _all_drop_reason_sql(where), "all_drop_reason_breakdown"
+        stage = _detect_drop_stage(q)
+        return _drop_reason_sql(where, stage), f"{stage}_drop_reason_breakdown"
 
-    if any(k in q for k in ["daily", "by day", "per day", "day by day", "each day"]):
+    if any(k in q for k in ["daily", "by day", "per day", "day by day", "each day", "day over day", "day-over-day"]):
         return f"""
-SELECT applied_dt AS day, {counts}, SUM(requested_vnd) AS requested_vnd
+SELECT entered_dt AS day, {counts}, {amounts}
 FROM funnel
 WHERE {where}
-GROUP BY applied_dt
-ORDER BY applied_dt
+GROUP BY entered_dt
+ORDER BY entered_dt
 """, "daily_volume"
 
     if "week" in q or "weekly" in q:
         return f"""
-SELECT iso_week, {counts}, SUM(requested_vnd) AS requested_vnd
+SELECT iso_week, {counts}, {amounts}
 FROM funnel
 WHERE {where}
 GROUP BY iso_week
 ORDER BY iso_week
 """, "weekly_volume"
 
-    if "drop reason" in q or "by drop" in q:
-        return f"""
-SELECT COALESCE(NULLIF(drop_reason, ''), 'disbursed') AS drop_reason, COUNT(*) AS applications,
-       SUM(CASE WHEN stage_rank = 4 THEN 1 ELSE 0 END) AS disbursed,
-       ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 1) AS share_pct
-FROM funnel
-WHERE {where}
-GROUP BY COALESCE(NULLIF(drop_reason, ''), 'disbursed')
-ORDER BY applications DESC
-""", "drop_reason_breakdown"
+    if any(k in q for k in ["why", "root cause", "diagnose", "diagnostic", "approval drop", "approval fell", "driver", "contribution"]):
+        stage = _detect_drop_stage(q)
+        return _stage_diagnostic_sql(where, stage), f"{stage}_diagnostic_contribution"
 
     if "product" in q or "segment" in q:
         return f"""
-SELECT product_type, {counts}, SUM(requested_vnd) AS requested_vnd
+SELECT product_type, {counts}, {amounts}
 FROM funnel
 WHERE {where}
 GROUP BY product_type
@@ -199,16 +345,16 @@ ORDER BY applications DESC
 
     if "channel" in q:
         return f"""
-SELECT channel, {counts}, SUM(requested_vnd) AS requested_vnd
+SELECT channel, {counts}, {amounts}
 FROM funnel
 WHERE {where}
 GROUP BY channel
 ORDER BY applications DESC
 """, "channel_breakdown"
 
-    if "volume" in q or "count" in q or "how many" in q:
+    if "volume" in q or "count" in q or "how many" in q or "number" in q:
         return f"""
-SELECT {counts}, SUM(requested_vnd) AS requested_vnd
+SELECT {counts}, {amounts}
 FROM funnel
 WHERE {where}
 """, "total_volume"
@@ -221,7 +367,7 @@ def write_sql(question: str) -> str | None:
     out = rp.llm_chat(
         "You are a SQL analyst. Write ONE read-only DuckDB SELECT that answers the user's "
         "question against this schema. Return ONLY the SQL — no prose, no code fences. "
-        "Prefer simple grouped aggregates.\n\n" + SCHEMA_DOC,
+        "Prefer simple grouped aggregates and the counting rules in the schema.\n\n" + SCHEMA_DOC,
         question,
         max_tokens=360,
         temperature=0.0,
@@ -256,20 +402,12 @@ def answer(question: str) -> dict:
 def diagnostic_findings(question: str, max_findings: int = 3) -> dict:
     """Run deterministic contribution analysis and return short evidence bullets."""
     q = (question or "").lower()
-    stage = "approval"
-    if "submission" in q:
-        stage = "submission"
-    elif "disbursement" in q:
-        stage = "disbursement"
+    stage = _detect_drop_stage(q)
 
-    metric_col = {
-        "submission": "submission_rate_pct",
-        "approval": "approval_rate_pct",
-        "disbursement": "disbursement_rate_pct",
-    }[stage]
+    metric_col = _STAGE_LOSSES[stage]["rate_col"]
     metric_label = metric_col.replace("_", " ").replace(" pct", "")
 
-    sql, template = template_sql(f"diagnose {stage} drop by product channel drop reason")
+    sql, template = template_sql(f"diagnose {stage} drop by product and channel")
     if not sql:
         return {"error": "no diagnostic template matched", "stage": stage, "top_findings": [], "highlights": []}
     res = run_sql(sql)
@@ -283,7 +421,7 @@ def diagnostic_findings(question: str, max_findings: int = 3) -> dict:
             rate_i = cols.index(metric_col)
             rows = sorted(res.get("rows", []), key=lambda r: (r[dim_i], -(r[apps_i] or 0)))
             for row in rows[:max_findings]:
-                findings.append(f"{row[dim_i]}={row[seg_i]}: {row[apps_i]} applications, {metric_label} {row[rate_i]}%")
+                findings.append(f"{row[dim_i]}={row[seg_i]}: {row[apps_i]} stage-start applications, {metric_label} {row[rate_i]}%")
         except Exception:  # noqa: BLE001
             pass
     return {"stage": stage, "template": template, "metric": metric_col, "sql": sql, "result": res, "top_findings": findings, "highlights": findings}

@@ -29,12 +29,12 @@ _STAGE = {
         "failed": "stage_rank = 2",
         "rate": "approval_rate_pct",
     },
-    "disbursement": {
-        "label": "Disbursement",
+    "completion": {
+        "label": "Completion",
         "denom": "stage_rank >= 3",
         "passed": "stage_rank = 4",
         "failed": "stage_rank = 3",
-        "rate": "disbursement_rate_pct",
+        "rate": "completion_rate_pct",
     },
 }
 
@@ -67,8 +67,8 @@ def _detect_stage(text: str) -> str | None:
         return "submission"
     if "approve" in low or "underwrit" in low or "declin" in low or "reject" in low:
         return "approval"
-    if "disburs" in low or "payout" in low:
-        return "disbursement"
+    if "completion" in low or "complete" in low or "completed" in low or "payout" in low:
+        return "completion"
     return None
 
 
@@ -95,14 +95,14 @@ def dimension_sql(stage: str, dimension: str, current: str | None = None, previo
 WITH scoped AS (
   SELECT
     CASE
-      WHEN strftime(applied_dt, '%Y-%m') = '{current}' THEN 'current'
-      WHEN strftime(applied_dt, '%Y-%m') = '{previous}' THEN 'previous'
+      WHEN strftime(entered_dt, '%Y-%m') = '{current}' THEN 'current'
+      WHEN strftime(entered_dt, '%Y-%m') = '{previous}' THEN 'previous'
     END AS period,
     {dimension} AS segment,
     CASE WHEN {cfg['passed']} THEN 1 ELSE 0 END AS passed
   FROM funnel
   WHERE ({cfg['denom']})
-    AND strftime(applied_dt, '%Y-%m') IN ('{previous}', '{current}')
+    AND strftime(entered_dt, '%Y-%m') IN ('{previous}', '{current}')
 ), agg AS (
   SELECT segment, period, COUNT(*) AS denominator, SUM(passed) AS passed
   FROM scoped
@@ -145,9 +145,9 @@ SELECT
   COALESCE(NULLIF(drop_reason, ''), 'n/a') AS drop_reason,
   COUNT(*) AS applications,
   ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 1) AS share_pct,
-  SUM(requested_vnd) AS requested_vnd
+  SUM(potential_value_vnd) AS potential_value_vnd
 FROM funnel
-WHERE applied_dt BETWEEN DATE '{start}' AND DATE '{end}'
+WHERE entered_dt BETWEEN DATE '{start}' AND DATE '{end}'
   AND ({cfg['failed']})
 GROUP BY 1
 ORDER BY applications DESC

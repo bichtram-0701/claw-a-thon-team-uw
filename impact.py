@@ -11,16 +11,16 @@ from typing import Iterable
 
 import funnel_metrics as fm
 
-STAGE_ORDER = ["submission", "approval", "disbursement"]
+STAGE_ORDER = ["submission", "approval", "completion"]
 STAGE_TO_RATE = {
     "submission": "submission_rate_pct",
     "approval": "approval_rate_pct",
-    "disbursement": "disbursement_rate_pct",
+    "completion": "completion_rate_pct",
 }
 RATE_LABEL = {
     "submission_rate_pct": "Submission rate",
     "approval_rate_pct": "Approval rate",
-    "disbursement_rate_pct": "Disbursement rate",
+    "completion_rate_pct": "Completion rate",
 }
 FORMULA_NOTE = "value_at_risk = stage volume x target gap x downstream conversion x avg ticket; execution risk adjusts the ranking score."
 
@@ -57,18 +57,18 @@ def _is_overdue(i: dict, today: str | None = None) -> bool:
 
 def estimate_value_at_risk(stage: str, row: dict | None = None,
                            targets: dict | None = None) -> dict:
-    """Estimate downstream disbursement value lost to the latest target gap.
+    """Estimate downstream completion value lost to the latest target gap.
 
     The formula is simple and auditable for a hackathon/demo:
-    - submission: traffic * submission_gap * actual approval rate * actual disbursement rate * avg ticket
-    - approval: submission * approval_gap * actual disbursement rate * avg ticket
-    - disbursement: approval * disbursement_gap * avg ticket
+    - submission: traffic * submission_gap * actual approval rate * actual completion rate * avg ticket
+    - approval: submission * approval_gap * actual completion rate * avg ticket
+    - completion: approval * completion_gap * avg ticket
     """
     row = row or fm.rows()[-1]
     targets = targets or fm.targets()
     rate_key = STAGE_TO_RATE.get(stage)
     if not rate_key:
-        return {"stage": stage, "metric_key": None, "value_at_risk_vnd": 0, "missed_disbursements": 0, "formula": "unsupported stage"}
+        return {"stage": stage, "metric_key": None, "value_at_risk_vnd": 0, "missed_completions": 0, "formula": "unsupported stage"}
 
     actual = row.get(rate_key)
     target = targets.get(rate_key)
@@ -76,22 +76,22 @@ def estimate_value_at_risk(stage: str, row: dict | None = None,
     gap = gap_pp_positive / 100.0
     avg_ticket = row.get("avg_ticket_vnd") or 0
     approval_rate = (row.get("approval_rate_pct") or 0) / 100.0
-    disbursement_rate = (row.get("disbursement_rate_pct") or 0) / 100.0
+    completion_rate = (row.get("completion_rate_pct") or 0) / 100.0
 
     if stage == "submission":
-        missed_disbursements = (row.get("traffic") or 0) * gap * approval_rate * disbursement_rate
-        formula = "traffic x submission gap x actual approval rate x actual disbursement rate x avg ticket"
+        missed_completions = (row.get("traffic") or 0) * gap * approval_rate * completion_rate
+        formula = "traffic x submission gap x actual approval rate x actual completion rate x avg ticket"
     elif stage == "approval":
-        missed_disbursements = (row.get("submission") or 0) * gap * disbursement_rate
-        formula = "submission volume x approval gap x actual disbursement rate x avg ticket"
-    elif stage == "disbursement":
-        missed_disbursements = (row.get("approval") or 0) * gap
-        formula = "approval volume x disbursement gap x avg ticket"
+        missed_completions = (row.get("submission") or 0) * gap * completion_rate
+        formula = "submission volume x approval gap x actual completion rate x avg ticket"
+    elif stage == "completion":
+        missed_completions = (row.get("approval") or 0) * gap
+        formula = "approval volume x completion gap x avg ticket"
     else:
-        missed_disbursements = 0
+        missed_completions = 0
         formula = "unsupported stage"
 
-    value = round(missed_disbursements * avg_ticket)
+    value = round(missed_completions * avg_ticket)
     return {
         "stage": stage,
         "metric_key": rate_key,
@@ -101,7 +101,7 @@ def estimate_value_at_risk(stage: str, row: dict | None = None,
         "gap_pp": round(-gap_pp_positive, 1) if gap_pp_positive else 0.0,
         "target_gap_pp": gap_pp_positive,
         "positive_gap_pp": gap_pp_positive,
-        "missed_disbursements": round(missed_disbursements, 1),
+        "missed_completions": round(missed_completions, 1),
         "avg_ticket_vnd": avg_ticket,
         "value_at_risk_vnd": value,
         "estimated_value_at_risk_vnd": value,

@@ -106,15 +106,17 @@ No, and it should not claim to. Root-cause drilldowns are contribution analysis:
 
 1. Ask: `show me the funnel metrics`.
    - It shows the latest conversion table and the top value-at-risk priority.
-2. Ask: `rank the target misses by value at risk`.
-   - It explains why the top stage outranks the rest.
+2. Ask: `why did approval drop?`.
+   - It runs a deterministic contribution-analysis template and shows the SQL.
 3. Ask: `break May down by drop reason`.
-   - It runs a deterministic SQL template and shows the SQL.
-4. Ask: `flag the drops and assign owners to investigate`.
+   - It reconciles the 192 submitted-but-not-approved rows by drop reason.
+4. Ask: `show daily volume in May`.
+   - It shows daily rows that sum back to the monthly funnel totals.
+5. Ask: `flag the drops and assign owners to investigate`.
    - It creates or updates one investigation per stage, with a structured contract.
-5. Ask: `weekly meeting summary`.
+6. Ask: `weekly meeting summary`.
    - It drafts the weekly readout: executive summary, risks, blockers, Confluence context, agenda.
-6. Ask: `publish weekly meeting summary to Confluence`.
+7. Ask: `publish weekly meeting summary to Confluence`.
    - With writes enabled, it creates or updates the Confluence weekly page.
 
 ## Final positioning

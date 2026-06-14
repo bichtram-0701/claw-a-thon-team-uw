@@ -41,7 +41,7 @@ Detect drift -> Rank impact -> Find owner/blockers -> Create/update action -> Su
 Use the simple synthetic funnel:
 
 ```text
-Traffic -> Submission -> Approval -> Disbursement
+Traffic -> Submission -> Approval -> Completion
 ```
 
 Say: the final stage can map to purchase, activation, contract signed, request completed, merchant live, or payout in another business.
@@ -63,7 +63,7 @@ Use four prompts maximum:
 
 ```text
 1. show me the funnel metrics
-2. rank the target misses by value at risk
+2. why did approval drop?
 3. flag the drops and assign owners to investigate
 4. weekly meeting summary
 ```

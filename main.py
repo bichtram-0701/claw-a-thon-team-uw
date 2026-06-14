@@ -49,13 +49,13 @@ async def _serve_chat(request):
 app.router.routes.append(Route("/", _serve_chat, methods=["GET"]))
 
 JIRA_EVENT_TOKEN = os.environ.get("JIRA_EVENT_TOKEN", "")
-ALLOW_WRITES = os.environ.get("ALLOW_WRITES", "false").lower() in ("1", "true", "yes")
+ALLOW_WRITES = os.environ.get("ALLOW_WRITES", "true").lower() in ("1", "true", "yes")
 
 STAGE_TO_EPIC = {
     "traffic": "Traffic",
     "submission": "Submission",
     "approval": "Approval",
-    "disbursement": "Disbursement",
+    "completion": "Completion",
     "crosscut": "Data & Platform",
 }
 
@@ -104,11 +104,11 @@ def extract_create_fields(message: str) -> dict:
     """Extract a Jira initiative; validate LLM JSON before use."""
     raw = rp.llm_chat(
         "Extract a Jira initiative from the user's message as STRICT JSON only. Keys: "
-        "summary (short imperative string), stage (traffic/submission/approval/disbursement/crosscut/null), "
+        "summary (short imperative string), stage (traffic/submission/approval/completion/crosscut/null), "
         "owner (person name or null), due (YYYY-MM-DD or null), confidence (low/medium/high or null), "
         "target_lift_pp (number or null), evidence (array of short strings or null). "
         "Infer stage only when obvious: acquisition/eligible traffic->traffic; submit/docs/KYC/form->submission; "
-        "approval/review/risk/income->approval; payout/e-sign/disburse->disbursement; shared data/platform->crosscut.",
+        "approval/review/risk/income->approval; payout/e-sign/final outcome->completion; shared data/platform->crosscut.",
         message,
         max_tokens=360,
         temperature=0.0,
@@ -134,9 +134,9 @@ def parse_assign(message: str):
 
 
 NARRATE_SYS = {
-    "oversight": "Lead with impact_ranking.ranking[0] if present, then needs_attention_now, due_soon, by_epic, and overloaded owners. Quote issue keys and owners. Be concise.",
-    "briefing": "Summarize the user's plate: blocked/overdue first, then active work. Quote issue keys.",
-    "sprint": "Give a team health summary: open vs done, status mix, blockers, overdue, and workload by owner.",
+    "oversight": "Lead with impact_ranking.ranking[0] if present, then needs_attention_now, due_soon, by_epic, and overloaded owners. Quote issue keys and owners. For blocked items, clarify that blocked is a label/flag, not necessarily the Jira workflow status; include blocked_by and blocks when present.",
+    "briefing": "Summarize the user's plate: blocked/overdue first, then active work. Quote issue keys. For blocked items, say what they are blocked by if the JSON includes blocked_by.",
+    "sprint": "Give a team health summary: open vs done, status mix, blockers, overdue, and workload by owner. For blocked items, clarify what dependency blocks them and what work they block when the JSON includes blocked_by/blocks.",
     "knowledge": "Answer using ONLY the provided Confluence pages. Quote page title and URL. If the pages do not answer it, say so plainly.",
     "standup": "Write a ready-to-paste standup with Yesterday / Today / Blockers using issue keys.",
 }
@@ -231,6 +231,7 @@ def _handle(payload: dict) -> dict:
             "You are Funnel Watchtower, a business-funnel execution intelligence assistant. "
             "Use ONLY the JSON data provided. Never invent issue keys, owners, page titles, URLs, numbers, or decisions. "
             "Answer the user's actual question first. For a narrow factual question, use 1-2 sentences. "
+            "If the user asks about 'blocked', explain that it can be a Jira label/flag while the workflow status may still be To Do/In Progress. "
             "For a digest, use clear markdown. " + sys_extra + " " + lang_line,
             "Question: " + message + "\nData JSON:\n" + json.dumps(result, ensure_ascii=False),
             max_tokens=1000,

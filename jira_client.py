@@ -2,7 +2,7 @@
 
 Reads/writes the synthetic business-funnel project via the Jira Cloud v3 API.
 Ownership is normalized from real assignee and/or `owner-<name>` labels; funnel
-stage is encoded as `stage-<traffic|submission|approval|disbursement|crosscut>`.
+stage is encoded as `stage-<traffic|submission|approval|completion|crosscut>`.
 Writes are still gated by main.ALLOW_WRITES.
 """
 from __future__ import annotations
@@ -17,7 +17,7 @@ EMAIL = os.environ.get("ATLASSIAN_EMAIL", "")
 TOKEN = os.environ.get("ATLASSIAN_TOKEN", "")
 TIMEOUT = 15.0
 
-FIELDS = "summary,status,assignee,duedate,labels,issuetype,updated,created,parent"
+FIELDS = "summary,status,assignee,duedate,labels,issuetype,updated,created,parent,description"
 
 
 def configured() -> bool:
@@ -51,12 +51,47 @@ def _epic_from_parent(f: dict) -> str | None:
     return None
 
 
+def _extract_line(text: str, labels: tuple[str, ...]) -> str | None:
+    """Extract `Blocker:` / `Blocks:` style lines from Jira descriptions."""
+    for raw in (text or "").splitlines():
+        line = raw.strip(" -\t")
+        for label in labels:
+            if line.lower().startswith(label.lower() + ":"):
+                return line.split(":", 1)[1].strip() or None
+    return None
+
+
+def _blocker_context(summary: str | None, description: str | None) -> tuple[str | None, str | None]:
+    """Return (blocked_by, blocks) for synthetic blocked issues.
+
+    In Jira, `blocked` is a label/flag, not a workflow status. Descriptions may
+    provide the explicit dependency; the fallback below keeps the seeded demo
+    understandable even if an older workspace was seeded before descriptions
+    were added.
+    """
+    text = description or ""
+    blocked_by = _extract_line(text, ("Blocked by", "Blocker"))
+    blocks = _extract_line(text, ("Blocks", "Blocking"))
+    lower = (summary or "").lower()
+    if not blocked_by and ("completion timestamp mismatch" in lower or "disbursement timestamp mismatch" in lower):
+        blocked_by = "verification status-map alignment from the partner feed"
+    if not blocks and ("completion timestamp mismatch" in lower or "disbursement timestamp mismatch" in lower):
+        blocks = "reliable Completion timestamp reconciliation and final-outcome reporting"
+    if not blocked_by and "missing records in the e2e funnel log" in lower:
+        blocked_by = "upstream event-feed/backfill from the data platform"
+    if not blocks and "missing records in the e2e funnel log" in lower:
+        blocks = "complete E2E funnel-log coverage and weekly metric confidence"
+    return blocked_by, blocks
+
+
 def _brief(issue: dict) -> dict:
     f = issue.get("fields", {})
     labels = f.get("labels") or []
     assignee = ((f.get("assignee") or {}).get("displayName")) or "Unassigned"
     stage = _stage_from_labels(labels)
     epic = _epic_from_parent(f)
+    description = _adf_text(f.get("description")).strip() or None
+    blocked_by, blocks = _blocker_context(f.get("summary"), description)
     return {
         "key": issue.get("key"),
         "url": f"{SITE}/browse/{issue.get('key')}",
@@ -71,6 +106,9 @@ def _brief(issue: dict) -> dict:
         "updated": f.get("updated"),
         "labels": labels,
         "type": (f.get("issuetype") or {}).get("name"),
+        "description": description,
+        "blocked_by": blocked_by,
+        "blocks": blocks,
     }
 
 
@@ -119,6 +157,8 @@ def get_issue_full(key: str) -> dict:
         f = r.json().get("fields", {})
     parent = f.get("parent") or {}
     pf = parent.get("fields") or {}
+    description = _adf_text(f.get("description")).strip() or None
+    blocked_by, blocks = _blocker_context(f.get("summary"), description)
     return {
         "key": key,
         "url": f"{SITE}/browse/{key}",
@@ -133,7 +173,9 @@ def get_issue_full(key: str) -> dict:
         "labels": f.get("labels") or [],
         "created": (f.get("created") or "")[:10] or None,
         "updated": (f.get("updated") or "")[:10] or None,
-        "description": _adf_text(f.get("description")).strip() or None,
+        "description": description,
+        "blocked_by": blocked_by,
+        "blocks": blocks,
     }
 
 

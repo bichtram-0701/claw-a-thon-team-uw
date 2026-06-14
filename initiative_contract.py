@@ -9,12 +9,12 @@ from __future__ import annotations
 import re
 from datetime import datetime
 
-ALLOWED_STAGES = {"traffic", "submission", "approval", "disbursement", "crosscut"}
+ALLOWED_STAGES = {"traffic", "submission", "approval", "completion", "crosscut"}
 STAGE_TO_METRIC = {
     "traffic": "eligible_traffic",
     "submission": "submission_rate_pct",
     "approval": "approval_rate_pct",
-    "disbursement": "disbursement_rate_pct",
+    "completion": "completion_rate_pct",
     "crosscut": "platform_reliability",
 }
 ALLOWED_CONFIDENCE = {"low", "medium", "high"}
@@ -34,7 +34,7 @@ def _clean_stage(v) -> str | None:
         "document": "submission",
         "documents": "submission",
         "review": "approval",
-        "payout": "disbursement",
+        "payout": "completion",
         "platform": "crosscut",
         "data": "crosscut",
     }

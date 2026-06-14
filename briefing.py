@@ -33,6 +33,21 @@ def _is_due_soon(i: dict, days: int = 3) -> bool:
     return i["due"] <= (date.today() + timedelta(days=days)).isoformat()
 
 
+def _blocker_note(i: dict) -> str | None:
+    """Human-readable blocker context for a blocked issue, if available."""
+    if not _is_blocked(i):
+        return None
+    blocked_by = i.get("blocked_by")
+    blocks = i.get("blocks")
+    if blocked_by and blocks:
+        return f"blocked by {blocked_by}; blocks {blocks}"
+    if blocked_by:
+        return f"blocked by {blocked_by}"
+    if blocks:
+        return f"blocks {blocks}"
+    return "blocked label present; blocker detail not specified in Jira"
+
+
 def _open_done() -> tuple[list[dict], list[dict]]:
     return jc.all_open_issues(), jc.done_issues()
 
@@ -86,7 +101,7 @@ def manager_digest() -> dict:
         "stage_owners": owners,
         "impact_ranking": im.rank_stage_risks(open_issues, owners),
         "recently_completed": done[:5],
-        "note": "needs_attention_now = overdue OR blocked. due_soon = due within 3 days. "
+        "note": "needs_attention_now = overdue OR blocked. In this demo, blocked means a Jira label/status flag, not a workflow state; blocked_by/blocks explains the dependency when known. due_soon = due within 3 days. "
                 "by_epic groups initiatives by Epic (funnel stage / project). "
                 "impact_ranking is deterministic: target gap + value at risk + Jira execution risk.",
     }
@@ -155,7 +170,7 @@ def _safe_recent_pages(limit: int = 8) -> list[dict]:
 
 def _safe_decisions() -> list[dict]:
     try:
-        return cf.search_pages("decision funnel approval submission disbursement weekly meeting", limit=5)
+        return cf.search_pages("decision funnel approval submission completion weekly meeting", limit=5)
     except Exception as e:  # noqa: BLE001
         return [{"error": str(e)[:160]}]
 
@@ -198,7 +213,7 @@ def render_weekly_summary(pack: dict) -> str:
         "",
         "## Executive summary",
         f"- Latest month: {fm_sum.get('latest_month')}.",
-        f"- E2E conversion: {latest.get('e2e_rate_pct')}%; disbursement amount: {latest.get('disbursement_amount_vnd', 0):,} VND.",
+        f"- E2E conversion: {latest.get('e2e_rate_pct')}%; completion amount: {latest.get('completion_amount_vnd', 0):,} VND.",
         f"- Jira execution: {totals.get('open', 0)} open, {totals.get('off_track', 0)} off-track, {totals.get('due_soon', 0)} due soon.",
     ]
     if ranks:
@@ -214,7 +229,9 @@ def render_weekly_summary(pack: dict) -> str:
                 why.append("blocked")
             if _is_overdue(i):
                 why.append("overdue")
-            lines.append(f"- {i.get('key')}: {i.get('summary')} — owner {i.get('owner')}, status {i.get('status')}, due {i.get('due')} ({', '.join(why)})")
+            blocker = _blocker_note(i)
+            suffix = f"; {blocker}" if blocker else ""
+            lines.append(f"- {i.get('key')}: {i.get('summary')} — owner {i.get('owner')}, workflow status {i.get('status')}, due {i.get('due')} ({', '.join(why)}){suffix}")
     else:
         lines.append("- No blocked or overdue open initiatives.")
     lines += ["", "## Recently completed"]

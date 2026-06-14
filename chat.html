@@ -68,7 +68,7 @@
 // Same-origin when served by the agent itself; absolute URL when opened as a local file.
 const ENDPOINT = location.protocol.startsWith("http")
   ? "/invocations"
-  : "https://endpoint-02241868-df01-4fa2-9b36-45145561851c.agentbase-runtime.aiplatform.vngcloud.vn/invocations";
+  : "https://endpoint-2f37c067-4516-4483-ba07-2199f07abb90.agentbase-runtime.aiplatform.vngcloud.vn/invocations";
 const chat = document.getElementById("chat"), form = document.getElementById("form"),
       input = document.getElementById("input"), send = document.getElementById("send");
 
@@ -81,7 +81,7 @@ function add(cls, html) {
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 add("bot", marked.parse("Hi! I'm **Funnel Watchtower** — I track the demo funnel " +
-  "(Traffic → Submission → Approval → Disbursement) across Jira + Confluence. Ask for the " +
+  "(Traffic → Submission → Approval → Completion) across Jira + Confluence. Ask for the " +
   "**funnel metrics** and value at risk, the **overview** of who owns what / what's critical " +
   "or off track, safe SQL breakdowns, **weekly Confluence summaries**, **create** or **assign** an initiative, " +
   "a past **decision**, or your own **plate** — English or Tiếng Việt. Try one below 👇"));

@@ -9,6 +9,7 @@ should also check route source, confidence, and final answer quality.
 | Prompt | Expected intent | Notes |
 |---|---|---|
 | daily volume in May | analyst | Must not route to standup |
+| can you give me the number day over day in May | analyst | Day-over-day wording should trigger daily template |
 | show daily volume | analyst | Analytics request |
 | draft my daily standup | standup | Standup keyword must win only with standup context |
 | draft my standup | standup | Standard standup request |
@@ -40,6 +41,8 @@ For metrics answers:
 For analyst answers:
 
 - Prefer `source=template` for supported breakdowns.
+- `show daily volume in May` and `can you give me the number day over day in May` should return daily rows whose totals reconcile to monthly metrics.
+- `break May down by drop reason` should explain the Submission -> Approval loss: May submitted 216, approved 24, stage drop 192.
 - Show the SQL.
 - Reject or avoid non-read SQL.
 

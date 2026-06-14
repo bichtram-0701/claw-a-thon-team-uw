@@ -8,7 +8,7 @@ Funnel Watchtower is a closed-loop execution intelligence agent for business fun
 
 The demo uses one straightforward synthetic funnel:
 
-`Traffic -> Submission -> Approval -> Disbursement`
+`Traffic -> Submission -> Approval -> Completion`
 
 Think of the final stage as the business outcome. In another team, that could be purchase, activation, contract signed, merchant live, request completed, or payout. The point is not the domain; the point is the recovery workflow.
 
@@ -21,11 +21,15 @@ The LLM layer is deliberately bounded and replaceable. It handles semantic routi
 - **LLM-first intent routing with guardrails**: fixes keyword collisions such as `daily volume` being mistaken for `standup`. Keywords remain only as fallback and validation signals.
 - **Impact Ranking Engine** (`impact.py`): ranks target misses by value at risk, trend severity, and Jira execution risk.
 - **Initiative contracts** (`contracts.py`): Jira issues include structured stage, metric, owner, due date, confidence, expected value, evidence, and success check.
-- **Template-first SQL analyst** (`sql_analyst.py`): common breakdowns use deterministic SQL templates; LLM SQL is only fallback and still read-only validated.
+- **Template-first SQL analyst** (`sql_analyst.py`): common breakdowns use deterministic SQL templates; LLM SQL is only fallback and still read-only validated. Daily and monthly views now reconcile from the same row-level fixture.
 - **Idempotent investigations**: `flag it` searches for an existing open investigation by stage, metric, and month before creating a new Jira issue.
 - **Weekly Confluence summary**: `weekly meeting summary` drafts a manager-ready weekly readout; `publish weekly meeting summary to Confluence` creates or updates a Confluence page.
 - **Legacy portfolio cleanup**: the old portfolio watchdog project is excluded from this clean package so it does not mix with Watchtower runtime code.
 - **Synthetic partner cleanup**: Jira seed tickets use fictional partner names only.
+
+## Demo script
+
+See `DEMO_PROMPTS.md` for the recommended demo prompts and exact expected outputs.
 
 ## Example questions
 
@@ -143,15 +147,19 @@ Writes are guarded:
 - Every created investigation includes an initiative contract in the Jira description.
 - The agent assigns a real Jira user when possible; otherwise it stamps an owner label.
 
-Recommended default for local development is `ALLOW_WRITES=false`. Turn it on only for the demo workspace.
+Demo default is `ALLOW_WRITES=true`. Set `ALLOW_WRITES=false` for read-only/local safety.
 
 ## Data
 
-All data is synthetic:
+All data is synthetic and generated to reconcile across daily SQL and monthly metrics. See `DATA_DESIGN.md` for the full schema.
 
-- `data/funnel_metrics.json`: monthly stage volumes, conversion rates, targets, and outcome value.
-- `data/funnel_synthetic.csv`: application-level data used by SQL templates.
+
+- `data/funnel_synthetic.csv`: source-of-truth row-level fixture, one distinct synthetic user/entity per row. Traffic = all rows; Submission = `stage_rank >= 2`; Approval = `stage_rank >= 3`; Completion = `stage_rank = 4`.
+- `data/funnel_metrics.json`: targets, stage definitions, and fallback monthly fixture. In the normal package, `funnel_metrics.py` aggregates monthly metrics from the CSV so daily totals and monthly totals match exactly.
+- `scripts/generate_synthetic_funnel.py`: deterministic generator for the row-level fixture.
 - `scripts/seed_atlassian.py`: creates synthetic Jira initiatives and Confluence pages with fictional partner names.
+
+For example, May 2026 reconciles as Traffic 800 -> Submission 216 -> Approval 24 -> Completion 23. The Submission -> Approval drop is 192 rows, and `break May down by drop reason` explains those rows instead of mixing them with successful completions.
 
 No company systems, real customers, or real partner names are used.
 
@@ -169,7 +177,7 @@ Offline tests do not require network credentials or LLM access:
 python tests/test_offline.py
 ```
 
-Current offline suite: **78 passed, 0 failed**.
+Current offline suite: **87 passed, 0 failed**.
 
 ## Environment variables
 
@@ -182,7 +190,7 @@ LLM_MODEL=
 ATLASSIAN_SITE=
 ATLASSIAN_EMAIL=
 ATLASSIAN_TOKEN=
-ALLOW_WRITES=false
+ALLOW_WRITES=true
 CONFLUENCE_SPACE_KEY=
 CONFLUENCE_SPACE_ID=
 TEAMS_WEBHOOK_URL=

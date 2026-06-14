@@ -12,7 +12,7 @@ A business, product, marketing, operations, or risk lead responsible for a recur
 Traffic -> Submission -> Approval -> Final outcome
 ```
 
-The current synthetic demo labels the final outcome as `Disbursement`, but the workflow is intentionally domain-agnostic.
+The current synthetic demo labels the final outcome as `Completion`, but the workflow is intentionally domain-agnostic.
 
 ## What the agent must do
 
@@ -62,7 +62,7 @@ The LLM must not be trusted to compute:
 
 ## Key safety rules
 
-- Writes are disabled unless `ALLOW_WRITES=true`.
+- Demo writes are enabled with `ALLOW_WRITES=true`; set `ALLOW_WRITES=false` for read-only mode.
 - Assignments require a real Jira account when available; otherwise the owner label is stamped.
 - `flag` creates at most one open investigation per stage/metric/month.
 - SQL must be read-only and pass validation.
