@@ -27,5 +27,7 @@ jobs:
           ATLASSIAN_SITE: ${{ secrets.ATLASSIAN_SITE }}
           ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
           ATLASSIAN_TOKEN: ${{ secrets.ATLASSIAN_TOKEN }}
+          JIRA_PROJECT_KEY: ${{ vars.JIRA_PROJECT_KEY || 'UW' }}
+          CONFLUENCE_SPACE_KEY: ${{ vars.CONFLUENCE_SPACE_KEY || '' }}
           SEED_RESET: ${{ inputs.reset && '1' || '0' }}
         run: python scripts/seed_atlassian.py

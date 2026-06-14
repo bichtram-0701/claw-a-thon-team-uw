@@ -102,7 +102,7 @@ print("routing:")
 check("metrics", m.route("show me the funnel metrics") == "metrics")
 check("conversion->metrics", m.route("what's the conversion rate?") == "metrics")
 check("create", m.route("create a ticket to improve submission") == "create")
-check("assign", m.route("assign KAN-23 to Mai") == "assign")
+check("assign", m.route("assign UW-23 to Mai") == "assign")
 check("overview->oversight", m.route("give me the funnel overview") == "oversight")
 check("off track->oversight", m.route("what's off track?") == "oversight")
 check("assigned-to-me->briefing", m.route("what's assigned to me?") == "briefing")
@@ -114,7 +114,6 @@ check("daily volume->analyst", m.route("show daily volume in May") == "analyst")
 check("day-over-day number->analyst", m.route("can you give me the number day over day in May") == "analyst")
 check("why approval drop->analyst", m.route("why did approval drop?") == "analyst")
 check("weekly summary->weekly", m.route("summarize everything for weekly meeting") == "weekly")
-check("VI->oversight", m.route("ai dang lam gi, co gi tre khong?") == "oversight")
 check("gibberish->help", m.route("zzz qwerty") == "help")
 
 print("handler:")
@@ -142,7 +141,7 @@ check("Completion in_progress=0", md["by_epic"]["Completion"]["in_progress"] == 
 
 print("epic parsing (real jira_client only):")
 if hasattr(jc, "_epic_from_parent"):
-    e = jc._epic_from_parent({"parent": {"key": "KAN-1",
+    e = jc._epic_from_parent({"parent": {"key": "UW-1",
                               "fields": {"summary": "Submission", "issuetype": {"name": "Epic"}}}})
     check("epic from parent = Submission", e == "Submission")
     check("no parent -> None", jc._epic_from_parent({}) is None)
@@ -208,7 +207,7 @@ jc.assign_issue = lambda key, assignee_id=None, owner=None: (
 jc.find_assignable_user = lambda q, key=None: ({"accountId": "acc-1", "displayName": "Mai N."}
                                               if "mai" in q.lower() else None)
 jc.myself = lambda: {"accountId": "me-1", "displayName": "You"}
-jc.find_epic = lambda name, key=None: "KAN-EPIC" if name else None
+jc.find_epic = lambda name, key=None: "UW-EPIC" if name else None
 
 rc = m.handler({"message": "create a ticket to pre-fill KYC"}, None)
 check("create success", rc.get("status") == "success")
@@ -217,10 +216,10 @@ check("created", _cap.get("create") is not None)
 check("no priority arg", "priority" not in _cap.get("create", {}))
 check("assigned to self by default", _cap["create"].get("assignee_id") == "me-1")
 
-k, o = m.parse_assign("assign KAN-23 to Mai")
-check("parse key", k == "KAN-23")
+k, o = m.parse_assign("assign UW-23 to Mai")
+check("parse key", k == "UW-23")
 check("parse owner", o == "Mai")
-ra = m.handler({"message": "assign KAN-23 to Mai"}, None)
+ra = m.handler({"message": "assign UW-23 to Mai"}, None)
 check("assign intent", ra.get("intent") == "assign")
 check("real assignee", _cap["assign"]["assignee_id"] == "acc-1")
 
@@ -250,13 +249,47 @@ check("weekly answer agenda", "agenda" in w.get("answer", "").lower())
 check("weekly confluence context", "recent_confluence_pages" in w.get("result", {}))
 check("weekly blocked context", "blocked by certificate approval" in w.get("answer", ""))
 
+print("confluence markdown conversion:")
+storage = cf.markdown_to_storage("""# Weekly Brief
+
+**Date:** 2026-06-14
+
+1. **Approval risk**
+
+* **Signal:** below target
+
+| Rank | Stage |
+|---:|---|
+| 1 | Approval |
+""")
+check("inline bold rendered", "<strong>Date:</strong>" in storage)
+check("star bullet rendered", "<li><strong>Signal:</strong> below target</li>" in storage)
+check("markdown table rendered", "<table>" in storage and "<th>Rank</th>" in storage)
+
+
+print("confluence storage rendering:")
+storage = cf.markdown_to_storage("""# Weekly Funnel Review Brief
+
+**Date:** 2026-06-14 | **Scenario:** Demo funnel
+
+1. **Approval Rate Decline**
+   * **Signal:** 11.1% actual vs target.
+
+| Metric | Value |
+|---|---|
+| **Approval** | `11.1%` |
+""")
+check("bold converted", "<strong>Date:</strong>" in storage and "**Date:**" not in storage)
+check("star bullet converted", "<li><strong>Signal:</strong>" in storage)
+check("table converted", "<table>" in storage and "<th>Metric</th>" in storage)
+
 print("flag dedup (MoM drop + target miss -> one task per stage):")
 jc.all_open_issues = lambda: [_mk("UW-7", "Approval analytics", "To Do", "Dat Nguyen", "approval", "2026-12-30"),
                               _mk("UW-8", "Submission lineage", "To Do", "Linh", "submission", "2026-12-30")]
 _capf = []
 jc.create_issue = lambda **k: (_capf.append(k) or {"key": "UW-%d" % (len(_capf) + 100), "url": "u"})
 jc.find_assignable_user = lambda q, key=None: {"accountId": "acc-" + q.split()[0].lower(), "displayName": q}
-jc.find_epic = lambda name, key=None: "KAN-EPIC"
+jc.find_epic = lambda name, key=None: "UW-EPIC"
 rf = m.handler({"message": "flag the drops and assign owners to investigate"}, None)
 check("flag intent", rf.get("intent") == "flag")
 check("flagged approval + submission (deduped)", set(rf["result"]["stages"]) == {"approval", "submission"})

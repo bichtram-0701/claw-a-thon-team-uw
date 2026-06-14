@@ -14,5 +14,4 @@
 {"prompt":"what did we decide about submission?","expected_intent":"knowledge"}
 {"prompt":"flag the approval drop","expected_intent":"flag"}
 {"prompt":"create a ticket to improve submission rate","expected_intent":"create"}
-{"prompt":"assign KAN-23 to Mai","expected_intent":"assign"}
-{"prompt":"ai dang lam gi co gi tre khong","expected_intent":"oversight"}
+{"prompt":"assign UW-23 to Mai","expected_intent":"assign"}

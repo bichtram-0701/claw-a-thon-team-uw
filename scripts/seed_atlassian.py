@@ -119,8 +119,7 @@ def issue_description(summary: str, labels: list[str]) -> str:
             f"Blocked by: {ctx['blocked_by']}",
             f"Blocks: {ctx['blocks']}",
         ]
-    return "
-".join(lines)
+    return "\n".join(lines)
 
 
 PAGES = [
@@ -221,10 +220,23 @@ def _adf_doc(text: str) -> dict:
 
 
 def jira_project_key(c: httpx.Client) -> str:
+    """Pick the Jira project/space to seed.
+
+    The demo workspace key is UW. Set JIRA_PROJECT_KEY to override. We fail
+    loudly instead of silently seeding an older project such as KAN.
+    """
+    wanted = os.environ.get("JIRA_PROJECT_KEY", "UW").strip()
     r = c.get(f"{SITE}/rest/api/3/project/search"); r.raise_for_status()
     vals = r.json().get("values", [])
     if not vals:
         sys.exit("No Jira project found - create one in the UI first")
+    if wanted:
+        for item in vals:
+            if item.get("key") == wanted:
+                print("Using Jira project:", item["key"], "-", item["name"])
+                return item["key"]
+        visible = ", ".join(v.get("key", "?") for v in vals)
+        sys.exit(f"JIRA_PROJECT_KEY={wanted!r} was not found. Visible Jira project keys: {visible}")
     print("Using Jira project:", vals[0]["key"], "-", vals[0]["name"])
     return vals[0]["key"]
 
@@ -393,10 +405,18 @@ def seed_jira(c: httpx.Client):
 
 
 def confluence_space_id(c: httpx.Client) -> str:
+    wanted = os.environ.get("CONFLUENCE_SPACE_KEY", "").strip()
     r = c.get(f"{SITE}/wiki/api/v2/spaces"); r.raise_for_status()
     results = [s for s in r.json().get("results", []) if s.get("type") != "personal"]
     if not results:
         sys.exit("No Confluence space found - create one in the UI first")
+    if wanted:
+        for item in results:
+            if item.get("key") == wanted:
+                print("Using Confluence space:", item["key"], "-", item["name"])
+                return item["id"]
+        visible = ", ".join(s.get("key", "?") for s in results)
+        sys.exit(f"CONFLUENCE_SPACE_KEY={wanted!r} was not found. Visible Confluence space keys: {visible}")
     print("Using Confluence space:", results[0]["key"], "-", results[0]["name"])
     return results[0]["id"]
 

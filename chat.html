@@ -39,23 +39,21 @@
 <body>
 <header>
   <h1>🛰️ Funnel <span>Watchtower</span></h1>
-  <p>Team UW — Claw-a-thon 2026 · Business-funnel initiative tracker · Jira + Confluence · synthetic workspace · EN & VI</p>
+  <p>Team UW — Claw-a-thon 2026 · Business-funnel initiative tracker · Jira + Confluence · synthetic workspace</p>
 </header>
 
 <div id="chat"></div>
 
 <div id="chips">
   <span class="chip">show me the funnel metrics</span>
-  <span class="chip">show daily approval volume in May</span>
+  <span class="chip">why did approval drop?</span>
   <span class="chip">break May down by drop reason</span>
-  <span class="chip">what is the top business risk?</span>
-  <span class="chip">flag the drop and assign the owner to investigate</span>
-  <span class="chip">who is working on what?</span>
-  <span class="chip">summarize everything for weekly meeting</span>
-  <span class="chip">what's off track?</span>
+  <span class="chip">show daily volume in May</span>
+  <span class="chip">flag the drops and assign owners to investigate</span>
+  <span class="chip">what is critical or off track right now?</span>
+  <span class="chip">what does blocked mean here and what is it blocking?</span>
   <span class="chip">weekly meeting summary</span>
-  <span class="chip">create a ticket to standardize the submission log schema</span>
-  <span class="chip">ai đang làm gì, có gì trễ không?</span>
+  <span class="chip">publish weekly meeting summary to Confluence</span>
 </div>
 
 <form id="form">
@@ -71,6 +69,7 @@ const ENDPOINT = location.protocol.startsWith("http")
   : "https://endpoint-2f37c067-4516-4483-ba07-2199f07abb90.agentbase-runtime.aiplatform.vngcloud.vn/invocations";
 const chat = document.getElementById("chat"), form = document.getElementById("form"),
       input = document.getElementById("input"), send = document.getElementById("send");
+let busy = false;
 
 function add(cls, html) {
   const d = document.createElement("div");
@@ -84,14 +83,16 @@ add("bot", marked.parse("Hi! I'm **Funnel Watchtower** — I track the demo funn
   "(Traffic → Submission → Approval → Completion) across Jira + Confluence. Ask for the " +
   "**funnel metrics** and value at risk, the **overview** of who owns what / what's critical " +
   "or off track, safe SQL breakdowns, **weekly Confluence summaries**, **create** or **assign** an initiative, " +
-  "a past **decision**, or your own **plate** — English or Tiếng Việt. Try one below 👇"));
+  "a past **decision**, or your own **plate**. Ask `how should I ask questions?` for the usage guide, or try the demo prompts below 👇"));
 
 document.querySelectorAll(".chip").forEach(c =>
   c.addEventListener("click", () => { input.value = c.textContent; form.requestSubmit(); }));
 
 form.addEventListener("submit", async e => {
   e.preventDefault();
+  if (busy) return;
   const q = input.value.trim(); if (!q) return;
+  busy = true;
   add("user", esc(q)); input.value = ""; send.disabled = true;
   const wait = add("bot thinking", "analyzing…");
   try {
@@ -115,7 +116,7 @@ form.addEventListener("submit", async e => {
     add("bot error", "Could not reach the agent (" + esc(err.message) + "). " +
       "If this page is opened in a browser and the error mentions CORS/network, the endpoint " +
       "may not allow browser calls yet — use chat.bat meanwhile.");
-  } finally { send.disabled = false; input.focus(); }
+  } finally { busy = false; send.disabled = false; input.focus(); }
 });
 </script>
 </body>

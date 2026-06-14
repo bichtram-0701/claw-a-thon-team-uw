@@ -34,9 +34,14 @@ jobs:
 
       - name: Jira projects visible
         run: |
+          TARGET="${{ vars.JIRA_PROJECT_KEY || 'UW' }}"
+          echo "Target Jira project key for demo: $TARGET"
           curl -sf -u "${{ secrets.ATLASSIAN_EMAIL }}:${{ secrets.ATLASSIAN_TOKEN }}" \
             "${{ secrets.ATLASSIAN_SITE }}/rest/api/3/project/search" \
+            | tee /tmp/projects.json \
             | jq -r '.values[]? | "\(.key)\t\(.name)"' || echo "(no projects yet - create one in the Jira UI)"
+          jq -e --arg k "$TARGET" '.values[]? | select(.key == $k)' /tmp/projects.json >/dev/null \
+            || echo "::warning::Target Jira project key $TARGET was not found. Create/rename the Jira project or set repo variable JIRA_PROJECT_KEY."
 
       - name: Confluence spaces visible
         run: |

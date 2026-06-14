@@ -34,7 +34,6 @@ flag the drops and assign owners to investigate
 what is critical or off track right now?
 weekly meeting summary
 publish weekly meeting summary to Confluence
-ai dang lam gi, co gi tre khong?
 ```
 
 All demo data is synthetic. The row-level daily fixture is now the source of truth, so daily totals reconcile to the monthly funnel numbers.

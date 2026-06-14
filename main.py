@@ -123,7 +123,7 @@ def extract_create_fields(message: str) -> dict:
 
 
 def parse_assign(message: str):
-    """Pull an issue key and target owner from e.g. 'assign KAN-23 to Mai'."""
+    """Pull an issue key and target owner from e.g. 'assign UW-23 to Mai'."""
     m = _KEY_RE.search(message)
     key = m.group(1) if m else None
     owner = None
@@ -217,11 +217,16 @@ def _handle(payload: dict) -> dict:
         result["route"] = route_info
     else:
         result = {"route": route_info,
-                  "hint": "Try: funnel metrics, value at risk, daily volume in May, funnel overview, flag it, weekly meeting summary, create a ticket, assign KAN-12 to Mai, or draft my standup."}
+                  "hint": "Try: funnel metrics, value at risk, daily volume in May, funnel overview, flag it, weekly meeting summary, create a ticket, assign UW-12 to Mai, or draft my standup."}
         answer = (
             "Hi, I am Funnel Watchtower. I track the business funnel, rank target misses by value at risk, "
             "connect them to Jira ownership, answer safe SQL-style breakdowns, summarize Confluence decisions, "
-            "draft weekly meeting briefs, and create or update Jira recovery work."
+            "draft weekly meeting briefs, and create or update Jira recovery work.\n\n"
+            "Best prompt pattern: **action + stage/metric + time period**. Examples: `show daily volume in May`, "
+            "`break May drop reasons by transition`, `why did approval drop?`, `flag the approval drop`, "
+            "or `publish weekly meeting summary to Confluence`.\n\n"
+            "Funnel stages: **Traffic → Submission → Approval → Completion**. If you ask only for `volume`, I default "
+            "to all funnel-stage counts. If you ask only for `drop reason`, I highlight the highest-risk transition."
         )
 
     if answer is None:
@@ -286,15 +291,11 @@ def _handle_weekly(message: str, lang: str, route_info: dict) -> dict:
     pack = bf.weekly_meeting_pack()
     pack["route"] = route_info
     publish = any(k in message.lower() for k in ["publish", "post", "save", "create page", "write to confluence", "post to confluence"])
-    out = rp.llm_chat(
-        "Write a concise weekly business-funnel meeting brief from the JSON only. Sections: Executive summary, "
-        "Impact-ranked risks, Execution follow-up, Decisions/Confluence context, Proposed agenda. Quote Jira keys and page titles. "
-        + ("Answer in Vietnamese." if lang == "vi" else "Answer in English."),
-        json.dumps(pack, ensure_ascii=False),
-        max_tokens=1300,
-        temperature=0.2,
-    )
-    answer = out or bf.render_weekly_summary(pack)
+
+    # Use the deterministic weekly summary as the canonical meeting artifact.
+    # This keeps Confluence pages stable and prevents the LLM from changing
+    # formatting, issue counts, or value-at-risk wording between runs.
+    answer = bf.render_weekly_summary(pack)
     result = dict(pack)
     if publish:
         if not ALLOW_WRITES:
@@ -463,7 +464,7 @@ def _handle_write(intent: str, message: str, route_info: dict) -> dict:
 
     key, owner = parse_assign(message)
     if not key or not owner:
-        return _respond("assign", "Tell me which ticket and who, e.g. `assign KAN-23 to Mai`.",
+        return _respond("assign", "Tell me which ticket and who, e.g. `assign UW-23 to Mai`.",
                         {"parsed": {"key": key, "owner": owner}, "route": route_info})
     user = jc.find_assignable_user(owner)
     res = jc.assign_issue(key, assignee_id=(user["accountId"] if user else None), owner=owner)

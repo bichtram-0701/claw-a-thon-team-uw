@@ -1,6 +1,6 @@
 {
   "_comment": "100% synthetic funnel performance data for Funnel Watchtower. Targets and fallback monthly totals only; normal monthly metrics are aggregated from data/funnel_synthetic.csv so daily and monthly views reconcile. No real customers, real partners, or production data.",
-  "partner": "Demo Partner (synthetic)",
+  "partner": "Synthetic demo funnel",
   "currency": "VND",
   "stages": [
     "traffic",
@@ -15,9 +15,9 @@
     "e2e_rate_pct": 4.5
   },
   "stage_definitions": {
-    "traffic": "Distinct synthetic users/entities that enter the funnel. Some stop here and never submit to the demo partner/system.",
-    "submission": "Users/entities that successfully submit the request/application to the demo partner/system.",
-    "approval": "Submitted users/entities approved by the demo partner/system.",
+    "traffic": "Distinct synthetic users/entities that enter the funnel. Some stop here and never submit to the demo system.",
+    "submission": "Users/entities that successfully submit the request/application to the demo system.",
+    "approval": "Submitted users/entities approved by the demo system.",
     "completion": "Approved users/entities that reach the final outcome event in the demo."
   },
   "months": [

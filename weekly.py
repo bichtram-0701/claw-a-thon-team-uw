@@ -30,13 +30,10 @@ def fallback_markdown(pack: dict) -> str:
 
 
 def narrate(pack: dict, message: str, lang: str = "en") -> str:
-    sys = (
-        "Prepare weekly business-funnel meeting notes from the JSON only. Sections: Executive summary, "
-        "Impact-ranked risks, Execution follow-up, Decisions/Confluence context, Proposed agenda. "
-        "Quote Jira keys, owners, page titles, and value-at-risk estimates when present."
-    )
-    out = rp.narrate_from_json(sys, message or "weekly meeting summary", pack, lang=lang, max_tokens=1300)
-    return out or fallback_markdown(pack)
+    # Canonical weekly notes are deterministic so Confluence output is stable.
+    # The LLM is intentionally not used here because meeting artifacts should not
+    # drift across runs or invent/rephrase operational facts.
+    return fallback_markdown(pack)
 
 
 def make_title(markdown: str | None = None, as_of: str | None = None) -> str:

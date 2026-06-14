@@ -47,7 +47,6 @@ what did we decide about submission?
 draft my standup
 weekly meeting summary
 publish weekly meeting summary to Confluence
-ai dang lam gi, co gi tre khong?
 ```
 
 ## Core value
@@ -190,6 +189,7 @@ LLM_MODEL=
 ATLASSIAN_SITE=
 ATLASSIAN_EMAIL=
 ATLASSIAN_TOKEN=
+JIRA_PROJECT_KEY=UW
 ALLOW_WRITES=true
 CONFLUENCE_SPACE_KEY=
 CONFLUENCE_SPACE_ID=
@@ -198,9 +198,18 @@ TEAMS_WEBHOOK_URL=
 
 Never commit `.env`, API tokens, or personal credentials. If a token was previously shared in a ZIP or repo, rotate it.
 
+If you renamed the Jira project/space key, set `JIRA_PROJECT_KEY` before deploying and before running the Atlassian seed workflow. The demo workspace currently uses `UW`, so all Jira reads/writes and seed scripts are scoped to `UW` by default.
+
+
 ## Team
 
 | Member | Department |
 |---|---|
 | Hathy (Tramctb2) | Credit Risk |
 | Rino (rinotrann) | TBD |
+
+
+## Usage guide
+
+For demo prompts, stage definitions, and safe defaults for ambiguous terms like `volume` and `drop`, see [`HOW_TO_USE_WATCHTOWER.md`](HOW_TO_USE_WATCHTOWER.md).
+

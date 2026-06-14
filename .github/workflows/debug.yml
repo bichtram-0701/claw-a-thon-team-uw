@@ -56,8 +56,9 @@ jobs:
             head -c 1500 /tmp/resp.json; echo
           }
           ask "funnel metrics"
-          ask "tuan nay co gi dang lo"
-          ask "give me the weekly report"
+          ask "why did approval drop?"
+          ask "weekly meeting summary"
+          ask "what does blocked mean here and what is it blocking?"
           echo "================ LOGS AFTER TESTS ================"
           curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" \
             -d '{"from": 0, "limit": 100}' \

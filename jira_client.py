@@ -20,6 +20,26 @@ TIMEOUT = 15.0
 FIELDS = "summary,status,assignee,duedate,labels,issuetype,updated,created,parent,description"
 
 
+def _preferred_project_key() -> str | None:
+    """Jira project/space key the demo should use.
+
+    The hackathon workspace was renamed to UW. Prefer the explicit env var so
+    Jira reads/writes do not accidentally mix with an older KAN project.
+    """
+    key = os.environ.get("JIRA_PROJECT_KEY", "").strip()
+    return key or None
+
+
+def _scope_jql(jql: str) -> str:
+    """Scope broad Jira searches to JIRA_PROJECT_KEY when configured."""
+    key = _preferred_project_key()
+    if not key:
+        return jql
+    if re.search(r"\bproject\s*=", jql or "", re.IGNORECASE):
+        return jql
+    return f'project = "{key}" AND ({jql})'
+
+
 def configured() -> bool:
     return bool(SITE and EMAIL and TOKEN)
 
@@ -210,11 +230,16 @@ def get_latest_changes(key: str) -> list[dict]:
 
 
 def search(jql: str, limit: int = 50) -> list[dict]:
-    """Run a JQL query, return brief issue dicts."""
+    """Run a JQL query, return brief issue dicts.
+
+    If JIRA_PROJECT_KEY is set, broad queries are automatically scoped to that
+    project so old demo projects cannot leak into owner/blocker summaries.
+    """
+    scoped_jql = _scope_jql(jql)
     with _client() as c:
         r = c.get(
             f"{SITE}/rest/api/3/search/jql",
-            params={"jql": jql, "maxResults": limit, "fields": FIELDS},
+            params={"jql": scoped_jql, "maxResults": limit, "fields": FIELDS},
         )
         r.raise_for_status()
         return [_brief(i) for i in r.json().get("issues", [])]
@@ -258,10 +283,21 @@ def stale_issues(days: int = 7) -> list[dict]:
 # Creating/assigning initiatives. Writes are gated by ALLOW_WRITES in main.py.
 
 def project_key() -> str | None:
+    """Return the Jira project/space key for writes.
+
+    Prefer JIRA_PROJECT_KEY. This matters after the demo workspace was renamed
+    from the old project key to UW.
+    """
+    wanted = _preferred_project_key()
+    if wanted:
+        return wanted
     with _client() as c:
         r = c.get(f"{SITE}/rest/api/3/project/search")
         if r.status_code == 200:
             vals = r.json().get("values", [])
+            for item in vals:
+                if item.get("key") == "UW":
+                    return item["key"]
             if vals:
                 return vals[0]["key"]
     return None

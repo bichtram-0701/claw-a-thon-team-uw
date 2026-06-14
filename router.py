@@ -17,19 +17,19 @@ VALID = {
 }
 
 ROUTES: list[tuple[set[str], str]] = [
+    ({"help", "how to use", "how should i ask", "guide", "usage", "instructions",
+      "what can you do", "prompt examples", "demo prompts"}, "help"),
     ({"weekly", "week in review", "weekly meeting", "meeting summary", "meeting notes",
       "recap everything", "summarize everything", "summarise everything", "post to confluence",
-      "save to confluence", "weekly readout", "weekly agenda", "bien ban tuan", "tong ket tuan"}, "weekly"),
+      "save to confluence", "weekly readout", "weekly agenda"}, "weekly"),
     ({"flag", "investigate", "open investigation", "open an investigation", "raise an investigation",
       "look into the drop"}, "flag"),
     ({"create ", "create a", "add ticket", "add a ticket", "new ticket", "new initiative",
-      "open a ticket", "file a ticket", "log a ticket", "tao ticket", "tao moi", "them ticket"}, "create"),
-    ({"assign ", "re-assign", "reassign ", "giao cho", "gan cho"}, "assign"),
+      "open a ticket", "file a ticket", "log a ticket"}, "create"),
+    ({"assign ", "re-assign", "reassign "}, "assign"),
     ({"standup", "stand-up", "stand up", "yesterday / today / blockers", "yesterday today blockers"}, "standup"),
-    ({"decide", "decision", "decided", "document", "wiki", "confluence", "wrote",
-      "quyet dinh", "tai lieu", "bien ban"}, "knowledge"),
-    ({"plate", "my task", "my issue", "my initiative", "assigned to me", "what should i",
-      "viec cua toi"}, "briefing"),
+    ({"decide", "decision", "decided", "document", "wiki", "confluence", "wrote"}, "knowledge"),
+    ({"plate", "my task", "my issue", "my initiative", "assigned to me", "what should i"}, "briefing"),
     ({"by day", "day by day", "per day", "daily", "day over day", "day-over-day", "by week", "per week", "by product",
       "per product", "by channel", "per channel", "by drop", "drop reason", "break down", "breakdown",
       "group by", "by segment", "slice", "each day", "by month per", "daily volume", "volume by", "count by",
@@ -37,14 +37,14 @@ ROUTES: list[tuple[set[str], str]] = [
      "analyst"),
     ({"metric", "conversion", "submission rate", "approval rate", "completion rate", "traffic",
       "ticket size", "funnel performance", "funnel numbers", "funnel table", "performance", "e2e",
-      "throughput", "how is the funnel doing", "ty le", "chuyen doi", "compare", "what changed",
+      "throughput", "how is the funnel doing", "compare", "what changed",
       "concerning", "drop", "dropped", "month over month", "mom", "vs last month", "anomal",
       "value at risk", "impact ranking", "business risk", "prioritize", "rank"}, "metrics"),
     ({"oversight", "overview", "funnel", "digest", "who is working", "who's working", "who owns",
       "ownership", "on track", "off track", "off-track", "critical", "at risk", "behind", "slipping",
-      "manager", "lead", "report", "status of", "ai dang lam", "tong quan", "quan trong", "tre ", "rui ro"},
+      "manager", "lead", "report", "status of"},
      "oversight"),
-    ({"sprint", "team", "pulse", "progress", "stuck", "blocked", "workload", "overdue", "tien do", "nhom"},
+    ({"sprint", "team", "pulse", "progress", "stuck", "blocked", "workload", "overdue"},
      "sprint"),
 ]
 
@@ -82,7 +82,7 @@ def _llm_route(message: str) -> tuple[str | None, float, str]:
         "- metrics = standard funnel performance, conversion, target miss, value-at-risk/impact ranking.\n"
         "- oversight = manager view of Jira initiatives: ownership, blockers, off-track, critical.\n"
         "- weekly = weekly meeting readout/summary/agenda/recap of everything, optionally posted to Confluence.\n"
-        "Important: 'daily volume' or 'daily approval volume' is analyst, not standup. Do not choose standup unless the user explicitly asks for standup or Yesterday/Today/Blockers.",
+        "Important: 'daily volume' or 'daily approval volume' is analyst, not standup. Do not choose standup unless the user explicitly asks for standup or Yesterday/Today/Blockers. Default to English for ambiguous prompts.",
         message,
         max_tokens=220,
         temperature=0.0,

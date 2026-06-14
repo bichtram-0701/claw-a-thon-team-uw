@@ -111,23 +111,127 @@ def default_space_id() -> str | None:
         return spaces[0].get("id") if spaces else None
 
 
-def markdown_to_storage(markdown: str) -> str:
-    """Small, safe markdown subset for Confluence storage format.
+def _inline_markdown(text: str) -> str:
+    """Escape text, then render a tiny inline Markdown subset safely."""
+    out = html.escape(text or "")
+    out = re.sub(r"`([^`]+)`", r"<code>\1</code>", out)
+    out = re.sub(r"\[([^\]]+)\]\((https?://[^)\s]+)\)", r'<a href="\2">\1</a>', out)
+    out = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", out)
+    out = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"<em>\1</em>", out)
+    return out
 
-    We intentionally keep this conservative: headings, bullets and paragraphs.
-    Tables/code are preserved as preformatted text so meeting notes remain readable
-    even when the LLM emits markdown tables.
+
+def _split_table_row(line: str) -> list[str]:
+    parts = line.strip().strip("|").split("|")
+    return [p.strip() for p in parts]
+
+
+def _is_table_sep(line: str) -> bool:
+    cells = _split_table_row(line)
+    return bool(cells) and all(re.fullmatch(r":?-{3,}:?", c or "") for c in cells)
+
+
+def _render_table(lines: list[str]) -> str:
+    rows = [_split_table_row(x) for x in lines if x.strip().startswith("|")]
+    if not rows:
+        return ""
+    header = rows[0]
+    body = rows[2:] if len(rows) > 1 and _is_table_sep(lines[1]) else rows[1:]
+    out = ["<table><tbody>"]
+    out.append("<tr>" + "".join(f"<th>{_inline_markdown(c)}</th>" for c in header) + "</tr>")
+    for row in body:
+        out.append("<tr>" + "".join(f"<td>{_inline_markdown(c)}</td>" for c in row) + "</tr>")
+    out.append("</tbody></table>")
+    return "\n".join(out)
+
+
+
+def _inline_markdown_to_storage(text: str) -> str:
+    """Escape text and render a tiny markdown inline subset for Confluence.
+
+    The previous converter escaped the whole line, so Confluence showed literals
+    like **Owner:** instead of bold text. Keep this deliberately small and safe:
+    bold, italic, inline code, and markdown links.
+    """
+    safe = html.escape(str(text or ""))
+
+    def link_repl(m: re.Match) -> str:
+        label = m.group(1)
+        url = m.group(2)
+        return f'<a href="{url}">{label}</a>'
+
+    safe = re.sub(r"\[([^\]]+)\]\((https?://[^)\s]+)\)", link_repl, safe)
+    safe = re.sub(r"`([^`]+)`", r"<code>\1</code>", safe)
+    safe = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", safe)
+    safe = re.sub(r"__([^_]+)__", r"<strong>\1</strong>", safe)
+    safe = re.sub(r"(?<!\*)\*([^*\n]+)\*(?!\*)", r"<em>\1</em>", safe)
+    safe = re.sub(r"(?<!_)_([^_\n]+)_(?!_)", r"<em>\1</em>", safe)
+    return safe
+
+
+def _split_table_row(line: str) -> list[str]:
+    line = line.strip()
+    if line.startswith("|"):
+        line = line[1:]
+    if line.endswith("|"):
+        line = line[:-1]
+    return [cell.strip() for cell in line.split("|")]
+
+
+def _is_table_separator(line: str) -> bool:
+    cells = _split_table_row(line)
+    return bool(cells) and all(re.fullmatch(r":?-{3,}:?", c or "") for c in cells)
+
+
+def _table_to_storage(lines: list[str]) -> str:
+    rows = [_split_table_row(x) for x in lines if x.strip()]
+    if not rows:
+        return ""
+    has_header = len(rows) >= 2 and _is_table_separator(lines[1])
+    header = rows[0] if has_header else []
+    body = rows[2:] if has_header else rows
+    out = ["<table>"]
+    if header:
+        out.append("<thead><tr>" + "".join(f"<th>{_inline_markdown_to_storage(c)}</th>" for c in header) + "</tr></thead>")
+    out.append("<tbody>")
+    for row in body:
+        out.append("<tr>" + "".join(f"<td>{_inline_markdown_to_storage(c)}</td>" for c in row) + "</tr>")
+    out.append("</tbody></table>")
+    return "\n".join(out)
+
+
+def markdown_to_storage(markdown: str) -> str:
+    """Convert a safe markdown subset into Confluence storage XHTML.
+
+    Supported because they appear in Watchtower meeting notes:
+    - headings (# through ####)
+    - unordered bullets using '-' or '*'
+    - ordered bullets such as '1.'
+    - paragraphs with bold/italic/inline-code/links
+    - markdown tables
+    - fenced code blocks
+
+    Unsupported markdown is escaped as text instead of passed through raw.
     """
     blocks: list[str] = []
-    in_ul = False
+    list_mode: str | None = None
     in_pre = False
     pre_lines: list[str] = []
+    lines = str(markdown or "").splitlines()
+    i = 0
 
-    def close_ul() -> None:
-        nonlocal in_ul
-        if in_ul:
-            blocks.append("</ul>")
-            in_ul = False
+    def close_list() -> None:
+        nonlocal list_mode
+        if list_mode:
+            blocks.append(f"</{list_mode}>")
+            list_mode = None
+
+    def open_list(mode: str) -> None:
+        nonlocal list_mode
+        if list_mode != mode:
+            close_list()
+            blocks.append(f"<{mode}>")
+            list_mode = mode
 
     def close_pre() -> None:
         nonlocal in_pre, pre_lines
@@ -136,40 +240,73 @@ def markdown_to_storage(markdown: str) -> str:
             in_pre = False
             pre_lines = []
 
-    for raw in str(markdown or "").splitlines():
+    while i < len(lines):
+        raw = lines[i]
         line = raw.rstrip()
-        if line.startswith("```"):
+        stripped = line.strip()
+
+        if stripped.startswith("```"):
             if in_pre:
                 close_pre()
             else:
-                close_ul()
+                close_list()
                 in_pre = True
                 pre_lines = []
+            i += 1
             continue
         if in_pre:
             pre_lines.append(line)
+            i += 1
             continue
-        if not line:
-            close_ul()
+        if not stripped:
+            close_list()
+            i += 1
             continue
-        if line.startswith("# "):
-            close_ul(); blocks.append(f"<h1>{html.escape(line[2:])}</h1>")
-        elif line.startswith("## "):
-            close_ul(); blocks.append(f"<h2>{html.escape(line[3:])}</h2>")
-        elif line.startswith("### "):
-            close_ul(); blocks.append(f"<h3>{html.escape(line[4:])}</h3>")
-        elif line.startswith("- "):
-            if not in_ul:
-                blocks.append("<ul>"); in_ul = True
-            blocks.append(f"<li>{html.escape(line[2:])}</li>")
-        elif line.startswith("|"):
-            close_ul(); blocks.append("<pre>" + html.escape(line) + "</pre>")
-        else:
-            close_ul(); blocks.append(f"<p>{html.escape(line)}</p>")
-    close_pre()
-    close_ul()
-    return "\n".join(blocks) or "<p>No content.</p>"
 
+        if stripped.startswith("|"):
+            close_list()
+            table_lines: list[str] = []
+            while i < len(lines) and lines[i].strip().startswith("|"):
+                table_lines.append(lines[i].strip())
+                i += 1
+            blocks.append(_table_to_storage(table_lines) or "<pre>" + html.escape("\n".join(table_lines)) + "</pre>")
+            continue
+
+        m_head = re.match(r"^(#{1,4})\s+(.+)$", stripped)
+        if m_head:
+            close_list()
+            level = len(m_head.group(1))
+            blocks.append(f"<h{level}>{_inline_markdown_to_storage(m_head.group(2))}</h{level}>")
+            i += 1
+            continue
+
+        m_ul = re.match(r"^[-*]\s+(.+)$", stripped)
+        if m_ul:
+            open_list("ul")
+            blocks.append(f"<li>{_inline_markdown_to_storage(m_ul.group(1))}</li>")
+            i += 1
+            continue
+
+        m_ol = re.match(r"^\d+[.)]\s+(.+)$", stripped)
+        if m_ol:
+            open_list("ol")
+            blocks.append(f"<li>{_inline_markdown_to_storage(m_ol.group(1))}</li>")
+            i += 1
+            continue
+
+        if stripped.startswith(">"):
+            close_list()
+            blocks.append(f"<blockquote><p>{_inline_markdown_to_storage(stripped.lstrip('> ').strip())}</p></blockquote>")
+            i += 1
+            continue
+
+        close_list()
+        blocks.append(f"<p>{_inline_markdown_to_storage(stripped)}</p>")
+        i += 1
+
+    close_pre()
+    close_list()
+    return "\n".join(blocks) or "<p>No content.</p>"
 
 def _find_page(title: str, space_id: str | None = None) -> dict[str, Any] | None:
     if not configured():

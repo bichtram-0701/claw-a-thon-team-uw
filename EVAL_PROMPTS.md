@@ -27,8 +27,7 @@ should also check route source, confidence, and final answer quality.
 | flag the approval drop | flag | Jira investigation flow |
 | flag it | flag | Contextual flagging |
 | create a ticket to improve submission rate | create | Jira create |
-| assign KAN-23 to Mai | assign | Jira assign |
-| ai dang lam gi, co gi tre khong? | oversight | Vietnamese oversight |
+| assign UW-23 to Mai | assign | Jira assign |
 
 ## Answer-quality checks
 

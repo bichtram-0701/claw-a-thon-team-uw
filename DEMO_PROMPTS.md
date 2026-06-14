@@ -208,6 +208,8 @@ Expected behavior:
 Weekly Funnel Watchtower Summary - YYYY-MM-DD
 ```
 
+- The Confluence page should render headings, bullets, tables, and bold text normally. It should not show raw Markdown markers like `**Date:**` or `* **Signal:**`.
+
 Use this only if the demo workspace is safe and seeded.
 
 ## Fallback prompts if time is short
