@@ -22,8 +22,8 @@ def d(days: int) -> str:
     return (TODAY + timedelta(days=days)).isoformat()
 
 
-# ----------------------------------------------------- lending-funnel data
-# Initiatives to improve the loan funnel
+# ----------------------------------------------------- business-funnel data
+# Initiatives to improve the demo funnel
 # (traffic -> submission -> approval -> disbursement), plus cross-cutting work.
 # Simple model: every initiative is a Task. Each is tagged with owner-<name>
 # (who's accountable), stage-<funnel stage>, and optional blocked. There is no
@@ -52,21 +52,21 @@ ISSUES = [
     # --- approval stage (approval analytics, rejection reasons, backtest) ---
     ("Bug: approved-user count discrepancy vs partner report", 2,
      ["stage-approval", "data"], "In Progress"),
-    ("Monitor approval rate by vintage (motorbike cohort)", 8,
+    ("Monitor approval rate by vintage (standard-application cohort)", 8,
      ["stage-approval", "monitoring"], "To Do"),
     ("Rejection-reason classification for declined applications", 6,
      ["stage-approval", "data"], "In Review"),
     ("Backtest approval-model output vs actuals", 10,
      ["stage-approval", "data"], "To Do"),
     # --- disbursement stage (reconciliation against partner records) ---
-    ("Reconcile disbursed amount vs partner statement", 4,
+    ("Reconcile final outcome value vs partner statement", 4,
      ["stage-disbursement", "data"], "To Do"),
-    ("Bug: TNEX disbursement records missing in funnel log", 0,
+    ("Bug: NimbusPay disbursement records missing in funnel log", 0,
      ["stage-disbursement", "data"], "In Progress"),
-    ("Bug: disbursement timestamp mismatch (KYC status map)", -2,
+    ("Bug: disbursement timestamp mismatch (verification status map)", -2,
      ["stage-disbursement", "data", "blocked"], "To Do"),
     # --- data & platform (build / monitor shared data assets) ---
-    ("Centralize all model outputs from Ant into the Risk database", 1,
+    ("Centralize all model outputs from AsterScore into the Risk database", 1,
      ["stage-crosscut", "data"], "In Progress"),
     ("Schema convention for model-output tables", 5,
      ["stage-crosscut", "schema"], "To Do"),
@@ -77,7 +77,7 @@ ISSUES = [
     # --- done pile (recent wins, for momentum / 'what changed') ---
     ("Baseline E2E funnel conversion log", -3,
      ["stage-crosscut", "data"], "Done"),
-    ("Add motorbike approval-rate monitor", -4,
+    ("Add standard-application approval-rate monitor", -4,
      ["stage-approval", "monitoring"], "Done"),
     ("Data lineage map: traffic -> disbursement", -6,
      ["stage-crosscut", "data"], "Done"),
@@ -87,13 +87,13 @@ ISSUES = [
 
 PAGES = [
     ("Funnel stage definitions", """
-<p>The loan funnel has four stages. Conversion is measured between consecutive stages.</p>
+<p>The demo funnel has four stages. Conversion is measured between consecutive stages.</p>
 <table data-layout="default"><tbody>
 <tr><th>Stage</th><th>Definition</th></tr>
-<tr><td><strong>Traffic</strong></td><td>Users who are eligible and enter the lending flow (eligible traffic only).</td></tr>
+<tr><td><strong>Traffic</strong></td><td>Users who are eligible and enter the application flow (eligible traffic only).</td></tr>
 <tr><td><strong>Submission</strong></td><td>Users whose application is successfully submitted and received by the partner.</td></tr>
 <tr><td><strong>Approval</strong></td><td>Users who are approved by the partner.</td></tr>
-<tr><td><strong>Disbursement</strong></td><td>Users who receive any disbursed amount from the partner.</td></tr>
+<tr><td><strong>Disbursement</strong></td><td>Users whose approved application reaches the final outcome event in the demo.</td></tr>
 </tbody></table>
 <p><strong>Rates:</strong> Submission = Submission/Traffic · Approval = Approval/Submission ·
 Disbursement = Disbursement/Approval · End-to-end (E2E) = Disbursement/Traffic.</p>
@@ -103,13 +103,13 @@ Disbursement = Disbursement/Approval · End-to-end (E2E) = Disbursement/Traffic.
 <p>End-to-end (Traffic → Disbursement) conversion sits around <strong>3.8–4.4%</strong>,
 and the steepest drop is at <strong>Submission</strong> (document upload on web). This
 program groups every initiative that moves a funnel-stage metric, with one accountable
-owner each, so the lending lead can see at a glance what's in flight and what's at risk.</p>
+owner each, so the business lead can see at a glance what's in flight and what's at risk.</p>
 <h2>Stages &amp; current owners</h2>
 <ul>
 <li><strong>Traffic</strong> (eligible users entering the flow) — Mai, Linh</li>
 <li><strong>Submission</strong> (submit &amp; documents) — Linh, Mai, Nam</li>
-<li><strong>Approval</strong> (partner underwriting) — Hathy</li>
-<li><strong>Disbursement</strong> (payout) — Nam</li>
+<li><strong>Approval</strong> (partner review) — Hathy</li>
+<li><strong>Disbursement</strong> (final outcome event) — Nam</li>
 <li><strong>Cross-cutting</strong> (instrumentation, reporting) — Rino</li>
 </ul>
 <p>Urgency = the due date. Anything <em>overdue</em> or <em>blocked</em> is escalated
@@ -126,7 +126,7 @@ stand up data lineage first, then monitor docs-upload drop-off. Owner: the
 Submission Epic owner.</p>
 <h2>Decision: monitor approval rate by vintage</h2>
 <p><strong>Date:</strong> {d2} · <strong>Status:</strong> APPROVED</p>
-<p>Recent motorbike originations approve far below older cohorts (51% vs 70%).
+<p>Recent standard applications approve far below older cohorts (51% vs 70%).
 Decision: track approval rate by vintage so deterioration is caught early.
 Owner: the Approval Epic owner. Revisit after Q3.</p>
 """),
@@ -134,14 +134,14 @@ Owner: the Approval Epic owner. Revisit after Q3.</p>
 <p><strong>Goal:</strong> stand up the E2E funnel log (traffic -> submission ->
 approval -> disbursement) and standardise the submission-stage schema.</p>
 <ul><li>Carry-over: centralising model outputs into the Risk database (in progress)</li>
-<li><strong>Top risk:</strong> the disbursement timestamp-mismatch bug (KYC status map)
+<li><strong>Top risk:</strong> the disbursement timestamp-mismatch bug (verification status map)
 is blocked AND overdue — escalate by {d3}.</li>
 <li>Watch: the "missing records in the E2E funnel log" alert is blocked on upstream data.</li></ul>
 """),
     ("Incident postmortem — duplicate disbursement alerts (2026-06-03)", """
 <h2>Summary</h2><p>The payment gateway retried webhooks during a maintenance window;
 our consumer lacked idempotency keys, causing duplicate alert storms at the
-disbursed stage (no duplicate payouts — reconciliation caught them).</p>
+final stage (no duplicate outcomes — reconciliation caught them).</p>
 <h2>Action items</h2>
 <ul><li>Add idempotency keys to the disbursement webhook consumer (in progress)</li>
 <li>Silence alert storms via a 5-minute dedup window</li></ul>

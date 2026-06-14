@@ -1,4 +1,4 @@
-# Daily LM digest — the "task reminder for the lending lead".
+# Daily LM digest — the "task reminder for the business lead".
 #
 # Each weekday morning this calls the live Funnel Watchtower agent for its
 # oversight read (what's critical / off track, who owns what) and writes it to
@@ -16,7 +16,7 @@ on:
   workflow_dispatch: {}
 
 env:
-  RUNTIME_NAME: lending-watchdog
+  RUNTIME_NAME: funnel-watchtower
   IAM_TOKEN_URL: https://iam.api.vngcloud.vn/accounts-api/v2/auth/token
   RUNTIME_API: https://agentbase.api.vngcloud.vn/runtime
   QUESTION: "Give me today's funnel oversight: what is critical or off track right now, who owns it, and a one-line read per funnel stage."

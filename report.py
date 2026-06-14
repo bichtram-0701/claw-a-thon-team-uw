@@ -1,14 +1,18 @@
-"""LLM helpers: narrative report + intent classification, with offline fallbacks.
+"""LLM helpers for Funnel Watchtower.
 
-Env config (injected by the deploy workflow): LLM_API_KEY, LLM_BASE_URL, LLM_MODEL.
-Every LLM call degrades gracefully — the agent never breaks if MaaS is down.
+The configured LLM is used as a controlled language layer: semantic routing, bounded
+field extraction and narration from verified JSON. Business metrics, rankings,
+SQL safety and write decisions live in deterministic code.
 """
+from __future__ import annotations
+
+import json
 import os
+import re
+from typing import Any
 
-VALID_INTENTS = ["summary", "flagged", "province", "segment", "funnel", "report", "help"]
-
-
-_MODEL_CACHE: dict = {}
+_MODEL_CACHE: dict[str, str] = {}
+_MODEL_OVERRIDE: str | None = None
 
 
 def _client():
@@ -18,159 +22,142 @@ def _client():
     if not (api_key and base_url):
         return None, None
     from openai import OpenAI
-    client = OpenAI(api_key=api_key, base_url=base_url, timeout=25)
-    if not model:  # auto-discover: prefer a Qwen model from /models
-        try:
-            ids = [m.id for m in client.models.list()]
-            pref = [i for i in ids if "qwen" in i.lower()] or ids
-            model = pref[0] if pref else None
-            _MODEL_CACHE["name"] = model
-        except Exception:  # noqa: BLE001
-            return None, None
+    client = OpenAI(api_key=api_key, base_url=base_url, timeout=float(os.environ.get("LLM_TIMEOUT", "25")))
     if not model:
-        return None, None
-    return client, model
-
-
-_MODEL_OVERRIDE = None  # set when the configured model name 404s and we autodiscover
-
-
-def _call(client, model, system, user, max_tokens):
-    # Qwen 3 "thinks" before answering and can burn the whole token budget on
-    # reasoning, leaving content empty. Ask the server to skip thinking; keep
-    # budgets generous in case the flag is ignored. Empty content -> None.
-    resp = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "system", "content": system},
-                  {"role": "user", "content": user}],
-        temperature=0.3,
-        max_tokens=max_tokens,
-        extra_body={"chat_template_kwargs": {"enable_thinking": False}},
-    )
-    content = (resp.choices[0].message.content or "").strip()
-    return content or None
+        try:
+            model = _discover_model(client)
+            if model:
+                _MODEL_CACHE["name"] = model
+        except Exception as e:  # noqa: BLE001
+            print(f"Model discovery failed ({e})")
+            return None, None
+    return (client, model) if model else (None, None)
 
 
 def _discover_model(client) -> str | None:
-    """Ask the serving endpoint for its real model ids; prefer qwen, then gemma."""
-    ids = [m.id for m in client.models.list().data]
+    """Ask the serving endpoint for model ids; prefer the current approved MaaS defaults when no model is configured."""
+    models = client.models.list()
+    ids = [m.id for m in getattr(models, "data", models)]
     return (next((i for i in ids if "qwen" in i.lower()), None)
             or next((i for i in ids if "gemma" in i.lower()), None)
             or (ids[0] if ids else None))
 
 
-def llm_chat(system: str, user: str, max_tokens: int = 900) -> str | None:
-    """One LLM call; self-heals wrong model names; returns None on failure."""
+def _profile_defaults(profile: str | None, temperature: float, max_tokens: int, enable_thinking: bool) -> tuple[float, int, bool]:
+    if profile in {"classifier", "extract", "json"}:
+        return 0.0, min(max_tokens, 500), False
+    if profile == "reasoning":
+        # Keep reasoning bounded; turn thinking on only when explicitly enabled.
+        thinking = enable_thinking or os.environ.get("LLM_ENABLE_THINKING", "false").lower() in ("1", "true", "yes")
+        return min(temperature, 0.2), max_tokens, thinking
+    return temperature, max_tokens, enable_thinking
+
+
+def _call(client, model: str, system: str, user: str, max_tokens: int,
+          temperature: float, enable_thinking: bool, *, with_extra_body: bool = True) -> str | None:
+    kwargs = {
+        "model": model,
+        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    if with_extra_body:
+        # Some MaaS servers use this to disable verbose thinking output.
+        kwargs["extra_body"] = {"chat_template_kwargs": {"enable_thinking": bool(enable_thinking)}}
+    resp = client.chat.completions.create(**kwargs)
+    content = (resp.choices[0].message.content or "").strip()
+    return content or None
+
+
+def llm_chat(system: str, user: str, max_tokens: int = 900,
+             temperature: float = 0.2, enable_thinking: bool = False,
+             profile: str | None = None) -> str | None:
+    """One robust LLM call; returns None on failure so callers can fall back."""
     global _MODEL_OVERRIDE
+    temperature, max_tokens, enable_thinking = _profile_defaults(profile, temperature, max_tokens, enable_thinking)
     client, model = _client()
-    if client is None:
+    if client is None or model is None:
         return None
     model = _MODEL_OVERRIDE or model
-    try:
-        return _call(client, model, system, user, max_tokens)
-    except Exception as e:  # noqa: BLE001
-        if "not found" in str(e).lower() or "404" in str(e):
-            try:
-                pick = _discover_model(client)
-                if pick and pick != model:
-                    print(f"Model '{model}' not found; switching to '{pick}'")
-                    _MODEL_OVERRIDE = pick
-                    return _call(client, pick, system, user, max_tokens)
-            except Exception as e2:  # noqa: BLE001
-                print(f"Model autodiscovery failed ({e2})")
-        print(f"LLM call failed ({e}); falling back")
-        return None
 
+    attempts: list[tuple[str, bool]] = [(model, True)]
+    # Some OpenAI-compatible servers reject extra_body. Retry without it.
+    attempts.append((model, False))
 
-def classify_intent(message: str) -> str | None:
-    """LLM intent routing when keyword routing misses. Returns None offline."""
-    out = llm_chat(
-        "Classify the user's question about a loan portfolio into exactly one word from: "
-        "summary, flagged, province, segment, funnel, report, help. "
-        "flagged = at-risk accounts/alerts; province = regional breakdown; "
-        "segment = product/segment breakdown; funnel = application pipeline, conversion or "
-        "drop-off rates; report = full written report; "
-        "summary = overall health numbers; help = anything else. Reply with the single word only.",
-        message, max_tokens=64)
-    if out:
-        word = out.strip().lower().split()[0].strip(".,!")
-        if word in VALID_INTENTS:
-            return word
+    last_error: Exception | None = None
+    for model_name, with_extra in attempts:
+        try:
+            return _call(client, model_name, system, user, max_tokens, temperature, enable_thinking, with_extra_body=with_extra)
+        except Exception as e:  # noqa: BLE001
+            last_error = e
+            text = str(e).lower()
+            if not with_extra and ("not found" in text or "404" in text):
+                try:
+                    pick = _discover_model(client)
+                    if pick and pick != model_name:
+                        print(f"Model '{model_name}' not found; switching to '{pick}'")
+                        _MODEL_OVERRIDE = pick
+                        try:
+                            return _call(client, pick, system, user, max_tokens, temperature, enable_thinking, with_extra_body=True)
+                        except Exception:
+                            return _call(client, pick, system, user, max_tokens, temperature, enable_thinking, with_extra_body=False)
+                except Exception as e2:  # noqa: BLE001
+                    print(f"Model autodiscovery failed ({e2})")
+            # On first extra_body-related failure, immediately try the same model without it.
+            if with_extra and any(s in text for s in ("extra_body", "chat_template", "unknown field", "unexpected")):
+                continue
+    print(f"LLM call failed ({last_error}); falling back")
     return None
 
 
-def _fmt_vnd(v):
-    return f"{v/1e9:,.1f}B VND" if v >= 1e9 else f"{v/1e6:,.0f}M VND"
+def extract_json(text: str | None) -> dict | None:
+    """Best-effort JSON object extraction from small-model output."""
+    if not text:
+        return None
+    s = text.strip()
+    s = re.sub(r"^```(?:json)?", "", s, flags=re.IGNORECASE).strip()
+    s = re.sub(r"```$", "", s).strip()
+    start, end = s.find("{"), s.rfind("}")
+    if start >= 0 and end > start:
+        s = s[start:end + 1]
+    try:
+        data = json.loads(s)
+        return data if isinstance(data, dict) else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
-def build_facts(metrics: dict, delta: dict | None) -> str:
-    lines = [
-        f"As-of date: {metrics.get('as_of_date', 'n/a')}",
-        f"Loans: {metrics['loans']:,} | Total outstanding: {_fmt_vnd(metrics['total_outstanding_vnd'])}",
-        f"NPL ratio (90+ DPD, by balance): {metrics['npl_ratio_pct']}%",
-        f"Total delinquency (1+ DPD): {metrics['delinquency_ratio_pct']}%",
-        "DPD buckets (% of balance): " + ", ".join(f"{b['bucket']}: {b['balance_pct']}%" for b in metrics["dpd_buckets"]),
-        "By product: " + ", ".join(f"{x['name']}: {x['balance_pct']}%" for x in metrics["by_product"]),
-        "By region: " + ", ".join(f"{x['name']}: {x['balance_pct']}%" for x in metrics["by_region"]),
-    ]
-    if metrics.get("wavg_interest_rate_pct") is not None:
-        lines.append(f"Weighted avg interest rate: {metrics['wavg_interest_rate_pct']}%")
-    if delta:
-        lines.append(
-            f"vs previous period: NPL {delta['npl_ratio_pp']:+}pp, delinquency {delta['delinquency_ratio_pp']:+}pp, "
-            f"outstanding growth {delta['outstanding_growth_pct']:+}%, loans {delta['loan_count_change']:+,}")
-    return "\n".join(lines)
+def llm_json(system: str, user: str, max_tokens: int = 400, temperature: float = 0.0, **_ignored) -> dict | None:
+    raw = llm_chat(system + "\nReturn ONLY a valid JSON object. No prose, no code fences.",
+                   user, max_tokens=max_tokens, temperature=temperature, profile="json")
+    return extract_json(raw)
 
 
-REPORT_SYSTEM = {
-    "vi": ("Ban la chuyen vien phan tich rui ro tin dung cao cap. Viet bao cao danh gia danh muc cho vay "
-           "bang tieng Viet, ngan gon, chuyen nghiep, dang markdown voi cac muc: Tom tat (3-4 cau), "
-           "Chat luong danh muc, Xu huong, Canh bao & Khuyen nghi (toi da 4 gach dau dong). "
-           "CHI dung so lieu trong fact sheet, KHONG bia so lieu."),
-    "en": ("You are a senior credit risk analyst. Write a concise, professional loan portfolio review "
-           "in markdown with sections: Executive Summary (3-4 sentences), Portfolio Quality, Trends, "
-           "Warnings & Recommendations (max 4 bullets). Use ONLY figures from the fact sheet. Never invent numbers."),
-}
+def narrate_json(question: str, result: dict[str, Any], *, system_extra: str = "",
+                 lang: str = "en", max_tokens: int = 900) -> str | None:
+    lang_line = "Answer in Vietnamese." if lang == "vi" else "Answer in the user's language, default English."
+    return llm_chat(
+        "You are Funnel Watchtower, a business-funnel execution intelligence assistant. "
+        "Use ONLY the JSON data provided. Never invent issue keys, owners, values, page titles, URLs, causes, or decisions. "
+        "Start with the direct answer. For broad status requests, use concise markdown. "
+        "For diagnostics, say 'concentrated in' rather than 'caused by' unless the JSON explicitly proves causality. "
+        + system_extra + " " + lang_line,
+        "Question: " + question + "\nData JSON:\n" + json.dumps(result, ensure_ascii=False),
+        max_tokens=max_tokens,
+        temperature=0.2,
+    )
 
 
-def fallback_report(metrics: dict, delta: dict | None, lang: str) -> str:
-    npl = metrics["npl_ratio_pct"]
-    risk = ("cao" if npl > 3 else "trung binh" if npl > 1.5 else "thap") if lang == "vi" else \
-           ("elevated" if npl > 3 else "moderate" if npl > 1.5 else "low")
-    title = "# Bao cao danh muc tin dung" if lang == "vi" else "# Credit Portfolio Report"
-    trend = ""
-    if delta:
-        trend = (f"\n\n**Xu huong:** NPL {'tang' if delta['npl_ratio_pp'] > 0 else 'giam'} "
-                 f"{abs(delta['npl_ratio_pp'])}pp so voi ky truoc; du no thay doi {delta['outstanding_growth_pct']:+}%."
-                 if lang == "vi" else
-                 f"\n\n**Trend:** NPL {'up' if delta['npl_ratio_pp'] > 0 else 'down'} "
-                 f"{abs(delta['npl_ratio_pp'])}pp vs prior period; outstanding {delta['outstanding_growth_pct']:+}%.")
-    buckets = "\n".join(f"- {b['bucket']}: {b['balance_pct']}% ({b['loans']:,} loans)" for b in metrics["dpd_buckets"])
-    return (f"{title}\n\n*As of {metrics.get('as_of_date', 'n/a')} — template mode (no LLM)*\n\n"
-            f"- Loans: {metrics['loans']:,} | Outstanding: {_fmt_vnd(metrics['total_outstanding_vnd'])}\n"
-            f"- NPL ratio: **{npl}%** (risk level: {risk})\n"
-            f"- Delinquency (1+ DPD): {metrics['delinquency_ratio_pct']}%\n\n"
-            f"## DPD buckets\n{buckets}{trend}")
+# Compatibility aliases used by current app/tests.
+def extract_json_object(text: str | None) -> dict | None:
+    return extract_json(text)
 
 
-def portfolio_report(metrics: dict, delta: dict | None, lang: str = "vi") -> tuple[str, str]:
-    """Full written report: LLM narrative or deterministic fallback. Returns (markdown, mode)."""
-    facts = build_facts(metrics, delta)
-    out = llm_chat(REPORT_SYSTEM.get(lang, REPORT_SYSTEM["vi"]), f"Fact sheet:\n{facts}")
-    if out:
-        return out, "llm"
-    return fallback_report(metrics, delta, lang), "fallback"
+def narrate_from_json(system: str, question: str, result: dict, *, lang: str = "en", max_tokens: int = 900) -> str | None:
+    return narrate_json(question, result, system_extra=system, lang=lang, max_tokens=max_tokens)
 
 
-def narrate(question: str, result: dict, lang: str = "vi") -> str | None:
-    """Phrase a tool result as a short natural-language answer. None when offline."""
-    import json
-    sys_p = ("Ban la tro ly phan tich danh muc cho vay. Tra loi cau hoi cua nguoi dung "
-             "ngan gon dua DUY NHAT tren JSON ket qua. Neu nguoi dung muon bang/so sanh, "
-             "dung bang markdown. Nguoc lai toi da 5 cau. Tra loi bang tieng Viet."
-             if lang == "vi" else
-             "You are a lending portfolio analyst assistant. Answer the user's question using ONLY "
-             "the JSON result. If the user asks for a table or comparison, format it as a markdown "
-             "table. Otherwise answer concisely (max 5 sentences).")
-    return llm_chat(sys_p, f"Question: {question}\nResult JSON:\n{json.dumps(result, ensure_ascii=False)}",
-                    max_tokens=700)
+def one_line(text: str | None) -> str | None:
+    if not text:
+        return None
+    return text.strip().splitlines()[0].strip().strip("`.,!\"'") or None

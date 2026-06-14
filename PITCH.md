@@ -1,143 +1,122 @@
-# Funnel Watchtower — Why this, not a general chatbot
+# Funnel Watchtower - pitch
 
-> Demo script + objection handling for Claw-a-thon 2026, Team UW.
-> One idea runs through it: **the bottleneck was never intelligence — it's a
-> trustworthy, ready-made way of working, wired into our funnel and our team.**
+## One-line pitch
 
-## Lead with the method, not the tech
+**Funnel Watchtower turns funnel drift into ranked, owned recovery actions.**
 
-Funnel Watchtower is our **actual team workflow, running itself**. Not a generic
-project bot — the opinionated way a credit-risk data team already works, made
-effortless:
+## Core insight
 
-- **Epics = the funnel** (Traffic → Submission → Approval → Disbursement) plus a
-  Data & Platform Epic. Each Epic has one owner.
-- **Tasks = the work**, with just two things that matter: a **name** and a **due
-  date**. Owner defaults to you. That's it — simple enough for anyone to follow.
-- **Reminders** keep it honest: overdue, due-soon, and stale work get pushed to
-  the team automatically.
+The bottleneck is not knowing that a metric moved. Dashboards already do that.
 
-This is the real moat. Methodology is hard to copy, and the agent's answers are
-only meaningful *because* the workflow underneath is clean. We're not selling a
-chatbot; we're selling a proven operating rhythm that maintains itself.
+The bottleneck is turning metric drift into accountable recovery work: deciding which drop matters most, how much value is at risk, who owns recovery, what work is blocked, and what needs to be discussed in the weekly meeting.
 
-**And it runs on the exact tools we already use — Jira, Teams, Confluence.** No
-new app, no migration, no behavior change. The agent meets the team where the
-work already happens, so the friction to adopt is as close to zero as it gets.
-Low friction in the method *and* the tooling.
+## 30-second pitch
 
-## The bottleneck (the "Why")
+Every business team owns a funnel: marketing leads, product onboarding, sales pipeline, merchant activation, operations requests, or application flows. Dashboards show when metrics move, but managers still have to connect metrics, Jira work, Confluence decisions, and team follow-up manually.
 
-A lending lead's morning: "How's the funnel? What's slipping? Who owns it? What
-do we do?" The answers live in five places — Jira, Confluence, CSV exports,
-dashboards, Teams. So it's 20 minutes of tab-hopping daily, the same pivots
-rebuilt weekly, and deterioration spotted **weeks late**. The bottleneck isn't
-that nobody can reason about the funnel — it's that the reasoning isn't
-connected to the data, the board, the team, or the ability to act.
+Funnel Watchtower closes that loop. It detects target drift, estimates value at risk, ranks the highest-impact funnel problem, finds the owner and execution risk in Jira, summarizes relevant Confluence context, and creates or updates the recovery action. It also prepares the weekly meeting readout so the team can follow through.
 
-## Why the funnel (and why it's not niche)
+The LLM is a replaceable interface layer. It understands the user's question and explains verified facts. Deterministic tools compute the numbers, rankings, SQL diagnostics, and write guards.
 
-The funnel isn't an arbitrary demo topic — it's the best fit for what this agent
-*does*. The engine is "a number moved the wrong way → which part owns it → assign
-that owner → notify." That loop needs an **attributable, structured metric**, and
-a funnel delivers exactly that: sequential stages, a conversion rate between each,
-and one owner per stage. When approval drops, there's an obvious person to flag.
+## 100-200 word submission pitch
 
-The funnel already carries the headline volume number too — disbursement count and
-**amount** (the VND row) and avg ticket size — and because it's a funnel, that
-number already has an owner. A standalone KPI can't say who's responsible; the
-funnel can.
+Business teams do not only need to know that a funnel metric moved. They need to know which movement matters most, how much value is at risk, who owns recovery, what work is already in flight, whether that work is blocked, and what should be discussed in the weekly meeting.
 
-**Layer OKR targets on top and every metric becomes goal-aware.** Add a target per
-metric and the agent reports *actual vs target* ("disbursement is 4.0B, 12% behind
-June's target"), and the flag engine gains a second trigger: not only "dropped
-month-over-month" but "**behind / at risk of missing target**" — routed to the same
-stage owner. This maps straight to the real board (the "will we reach 635B in June?"
-question is an OKR), and OKRs are even more universal than funnels.
+**Funnel Watchtower** is an execution intelligence layer for owned business funnels. It computes funnel conversion, target gaps, month-over-month anomalies, and estimated value at risk from synthetic data. It then connects those signals to Jira initiatives, Confluence decisions, Teams notifications, and weekly meeting summaries. When a metric slips, it ranks the issue by business impact and execution risk, identifies the stage owner, and can open or update one Jira investigation for that stage, metric, and month.
 
-Frame it as the **flagship example of a universal pattern, not the whole product**:
+The model only routes, extracts bounded fields, and narrates verified facts. The math, issue keys, owners, SQL templates, duplicate-ticket prevention, and write decisions are validated by code. Generic chat can answer questions. Funnel Watchtower runs the recovery workflow.
 
-> Every end-to-end product at ZaloPay has a funnel — lending, payments onboarding
-> (KYC → first transaction), merchant acquisition, BNPL, wallet activation. And
-> the same engine works for *any owned metric*, not just funnels.
+## Why agent, not normal Claude/ChatGPT?
 
-That keeps the vivid, attributable demo while answering "isn't this niche?".
+Normal chat is good at answering a one-off question. This problem is a recurring operating loop across multiple systems.
 
-## "Couldn't you just use Claude or ChatGPT?" (the honest answer)
+| Normal chat | Funnel Watchtower |
+|---|---|
+| Answers when asked | Runs a repeatable recovery workflow |
+| Needs pasted context | Pulls metrics, Jira, and Confluence context |
+| Summarizes text | Computes target gaps and value at risk |
+| Gives advice | Opens or updates owned recovery work |
+| Can duplicate tasks | Uses idempotent investigation logic |
+| Has no weekly operating state | Produces a weekly recovery readout |
 
-Yes — you can connect Claude or ChatGPT to Jira/Confluence today (connectors,
-GPT actions, Atlassian Rovo). So "a general model can't connect or act" is **not**
-our claim. What a general assistant does *not* give a regulated funnel team:
+**A chatbot gives an answer. Watchtower closes the loop.**
 
-1. **Numbers you can trust and reproduce.** Watchtower computes funnel
-   conversion, month-over-month drops, and by-stage ownership **deterministically
-   in code** — same question, same audited number, every time, with the source.
-   A general model reasoning over your data drifts run-to-run; for risk reporting,
-   reproducibility beats cleverness.
-2. **A proven workflow, zero setup.** A connector still needs wiring, prompt
-   skill, and a definition of "off track," and gives variable output. Here a
-   non-technical lead gets analyst-grade answers from one link, bilingual (VI/EN),
-   with no prompting.
-3. **It acts and pushes, in the tool the team lives in.** Detect a drop → open an
-   investigation under the right Epic → assign the stage owner → notify them in
-   **Teams**, on a schedule, without anyone asking. That proactive layer is built,
-   not assumed.
-4. **It runs on our own approved stack.** GreenNode MaaS keeps data in-tenant —
-   which matters for in-country financial-data rules — at zero external cost.
+## Why this workflow?
 
-Honest framing: parts of this *could* be assembled on a general agent. The value
-is the **verticalization + determinism + workflow + governance + packaging**, not
-impossibility. We pitch it as that.
+Funnel recovery is recurring, cross-functional, and action-oriented. Every week, managers need to know:
 
-## "Why MaaS and not the Claude model?"
+1. Which funnel stage is drifting?
+2. Which drift has the highest business impact?
+3. Who owns recovery?
+4. What Jira work exists, and is it blocked or overdue?
+5. What Confluence decisions explain the current direction?
+6. What should be on the weekly meeting agenda?
 
-Be straight about this — a judge will ask.
+That is why the workflow is:
 
-- **GreenNode MaaS** serves open models (Qwen/Gemma) on VNG's own infra: data
-  stays in-tenant, it's the required competition stack, tokens are free/internal.
-- **Claude** is a stronger frontier model (better reasoning, multilingual, code/SQL)
-  but an external, paid service unless contracted in-region.
+```text
+Detect drift -> Rank impact -> Find owner/blockers -> Create/update action -> Summarize decisions -> Prepare weekly readout
+```
 
-The key insight: **the model is a swappable engine, not the product.**
+## What is the real bottleneck?
 
-- Our numbers come from deterministic Python/SQL, **not** the model — so even Qwen
-  returns correct figures. A stronger model would only narrate better and write
-  better queries; it would not change whether "11%" is right.
-- The agent auto-discovers its model from an env variable, so pointing it at
-  enterprise Claude later is essentially a **one-line config change**.
-- This also answers "use Claude/ChatGPT for the reasoning": go ahead — the agent
-  deterministically *finds and localizes* the problem; the *why/what-to-do* reasoning
-  is the swappable engine's job, and you can point it at whatever model you trust.
+The real bottleneck is **metric-to-action translation**.
 
-So: we build and demo on MaaS (required, free, in-country, and it proves the
-numbers don't need a frontier model). If the org standardizes on enterprise Claude
-later, Watchtower runs on it tomorrow — **the engine is swappable by design.**
+Metrics, tasks, documents, and chat already exist. The hard part is connecting them quickly enough that the team can recover before the target is missed.
 
-## Live demo flow (4–5 min)
+## Why this is defensible
 
-1. **Show the pain** (10s): a slide of scattered tabs — Jira, Confluence, a CSV.
-2. **"Show me the funnel metrics"** → the monthly table; it **flags May's approval
-   drop (15%→11%) and names the owner**.
-3. **"Flag it"** → opens an investigation under the Approval Epic, **assigned to
-   that owner**.
-4. **Cut to Teams** → the notification card appears; the owner is pinged. Mention
-   the morning overdue/stale digest also runs automatically.
-5. **"Who's working on what / what's off track?"** → oversight grouped by Epic.
-6. *(If SQL analyst is added)* **"break May down by day / by drop reason"** → it
-   writes the query and answers **with the SQL shown** — proof the numbers are real.
-7. **Close**: detect → assign → notify, automatically, bilingual, on synthetic data,
-   already deployed. *Hours of manual oversight → one question and an automatic
-   morning push.*
+Generic assistants can summarize Jira and Confluence. Watchtower adds the missing business operating layer:
 
-## Judge-ready rebuttals
+- **Funnel ontology**: stages, metrics, targets, owners, and Epics are explicit.
+- **Value-at-risk math**: target gaps are converted into estimated business impact.
+- **Execution-risk scoring**: Jira blockers, overdue work, and open workload change the priority.
+- **Initiative contracts**: recovery tasks declare metric, expected lift, value, evidence, owner, and success check.
+- **Idempotent action loop**: one open investigation per stage + metric + month, updated instead of duplicated.
+- **Weekly operating rhythm**: the agent prepares and can publish the Confluence weekly meeting readout.
+- **Model-agnostic design**: the LLM can be replaced; the operating logic stays in code.
 
-- **"Why not Rovo / a Claude connector?"** → "Great if you can put your data in
-  them and trust a model to compute risk metrics on the fly. We run on our own MaaS
-  stack with deterministic, auditable funnel math — compliance is satisfied and the
-  numbers are identical every time."
-- **"Isn't this just a Jira wrapper?"** → "The wrapper is the point: it encodes a
-  proven funnel workflow — Epics as stages, one owner each, task + due date — and
-  turns metric drift into an assigned, notified action."
-- **"What's the real innovation?"** → "Closing the loop on our own infra: from a
-  funnel number to the right person doing something about it, with no setup and no
-  data leaving the building."
+The moat is the **Funnel Execution Graph**:
+
+```text
+metric -> stage -> target -> owner -> initiative -> blocker -> decision -> outcome
+```
+
+Over time, this can learn which interventions actually recover which metrics.
+
+## Objection handling
+
+### "Isn't this just Jira AI or a dashboard?"
+
+No. A dashboard shows metric movement. Jira shows work. Confluence stores decisions. Watchtower connects them into one recovery loop: impact ranking, owner, blocker, existing work, investigation, and weekly follow-up.
+
+### "Why not just use a normal chatbot?"
+
+Because the user would still have to paste data, search Jira, search Confluence, check duplicates, create the ticket, and prepare the weekly meeting summary. Watchtower does those steps as a governed workflow.
+
+### "Does it depend on a specific model?"
+
+No. The current runtime can use the approved MaaS model, but the LLM layer is replaceable. The business logic is deterministic: Python and SQL compute the metrics, value at risk, SQL templates, duplicate checks, and write guards. The LLM understands and explains; code computes and validates.
+
+### "Does it prove causality?"
+
+No, and it should not claim to. Root-cause drilldowns are contribution analysis: where the drop is concentrated by channel, product, or drop reason. The agent says "concentrated in" unless a causal test exists.
+
+## Demo flow
+
+1. Ask: `show me the funnel metrics`.
+   - It shows the latest conversion table and the top value-at-risk priority.
+2. Ask: `rank the target misses by value at risk`.
+   - It explains why the top stage outranks the rest.
+3. Ask: `break May down by drop reason`.
+   - It runs a deterministic SQL template and shows the SQL.
+4. Ask: `flag the drops and assign owners to investigate`.
+   - It creates or updates one investigation per stage, with a structured contract.
+5. Ask: `weekly meeting summary`.
+   - It drafts the weekly readout: executive summary, risks, blockers, Confluence context, agenda.
+6. Ask: `publish weekly meeting summary to Confluence`.
+   - With writes enabled, it creates or updates the Confluence weekly page.
+
+## Final positioning
+
+**Funnel Watchtower is not another dashboard and not just a chatbot. It is an execution layer for owned business metrics: it detects drift, ranks what matters, assigns ownership, and keeps the recovery loop moving.**

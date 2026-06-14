@@ -1,10 +1,14 @@
 """Briefing composition — Funnel Watchtower, Team UW.
 
-Deterministic data shaping from Jira/Confluence; LLM (report.llm_chat) narrates.
-Every function returns structured JSON the LLM can quote but not contradict.
-The centerpiece is manager_digest() — the lending lead's oversight view.
+Deterministic data shaping from Jira/Confluence; the LLM narrates only from
+this structured JSON. The centerpiece is manager_digest(): the business lead's
+execution view, augmented with impact ranking and value-at-risk scoring.
 """
+from __future__ import annotations
+
 import confluence_client as cf
+import funnel_metrics as fm
+import impact as im
 import jira_client as jc
 
 
@@ -14,32 +18,50 @@ def jc_today() -> str:
 
 
 def _is_blocked(i: dict) -> bool:
-    return "blocked" in [l.lower() for l in i["labels"]] or (i["status"] or "").lower() == "blocked"
+    return "blocked" in [str(l).lower() for l in i.get("labels", [])] or (i.get("status") or "").lower() == "blocked"
 
 
 def _is_overdue(i: dict) -> bool:
-    return bool(i["due"]) and i["due"] < jc_today()
+    return bool(i.get("due")) and i["due"] < jc_today()
 
 
 def _is_due_soon(i: dict, days: int = 3) -> bool:
-    """Open item due within `days` (and not already overdue). No priority field —
-    the due date is the urgency signal."""
-    if not i["due"] or _is_overdue(i):
+    """Open item due within `days` and not already overdue."""
+    if not i.get("due") or _is_overdue(i):
         return False
     from datetime import date, timedelta
     return i["due"] <= (date.today() + timedelta(days=days)).isoformat()
 
 
+def _open_done() -> tuple[list[dict], list[dict]]:
+    return jc.all_open_issues(), jc.done_issues()
+
+
+def stage_owners_from_issues(issues: list[dict]) -> dict:
+    """Map each funnel stage -> most common owner in a supplied issue list."""
+    from collections import Counter
+    buckets: dict = {}
+    for i in issues:
+        st = i.get("stage")
+        if st:
+            buckets.setdefault(st, []).append(i.get("owner") or i.get("assignee") or "Unassigned")
+    return {st: Counter(o).most_common(1)[0][0] for st, o in buckets.items() if o}
+
+
+def stage_owners() -> dict:
+    """Map each funnel stage -> the person who owns it."""
+    return stage_owners_from_issues(jc.all_open_issues())
+
+
 def manager_digest() -> dict:
-    """Lending lead's oversight view: who owns what, what's off track or due soon,
-    broken down by funnel stage. Urgency = due date + blocked (no priority field)."""
-    open_issues = jc.all_open_issues()
-    done = jc.done_issues()
+    """Business lead's oversight view: ownership, off-track work, and ranked risks."""
+    open_issues, done = _open_done()
+    owners = stage_owners_from_issues(open_issues)
 
     by_owner: dict = {}
     by_epic: dict = {}
     for i in open_issues:
-        owner = i["owner"]
+        owner = i.get("owner") or "Unassigned"
         epic = i.get("epic") or "Unsorted"   # Epic = funnel stage / project
         by_owner.setdefault(owner, {"count": 0, "off_track": 0})
         by_owner[owner]["count"] += 1
@@ -47,7 +69,7 @@ def manager_digest() -> dict:
             by_owner[owner]["off_track"] += 1
         by_epic.setdefault(epic, {"open": 0, "in_progress": 0})
         by_epic[epic]["open"] += 1
-        if (i["status"] or "").lower() == "in progress":
+        if (i.get("status") or "").lower() == "in progress":
             by_epic[epic]["in_progress"] += 1
 
     off_track = [i for i in open_issues if _is_overdue(i) or _is_blocked(i)]
@@ -57,28 +79,17 @@ def manager_digest() -> dict:
         "as_of": jc_today(),
         "totals": {"open": len(open_issues), "done": len(done),
                    "off_track": len(off_track), "due_soon": len(due_soon)},
-        # what a lead must look at first: anything overdue or blocked
         "needs_attention_now": off_track,
         "due_soon": due_soon,
         "by_owner": by_owner,
         "by_epic": by_epic,
+        "stage_owners": owners,
+        "impact_ranking": im.rank_stage_risks(open_issues, owners),
         "recently_completed": done[:5],
         "note": "needs_attention_now = overdue OR blocked. due_soon = due within 3 days. "
-                "by_epic groups initiatives by their Epic (funnel stage / project). "
-                "Urgency is the due date; there is no priority field.",
+                "by_epic groups initiatives by Epic (funnel stage / project). "
+                "impact_ranking is deterministic: target gap + value at risk + Jira execution risk.",
     }
-
-
-def stage_owners() -> dict:
-    """Map each funnel stage -> the person who owns it (the most common assignee
-    of that stage's open tasks). Used to route a flagged drop to the right owner."""
-    from collections import Counter
-    buckets: dict = {}
-    for i in jc.all_open_issues():
-        st = i.get("stage")
-        if st:
-            buckets.setdefault(st, []).append(i["owner"])
-    return {st: Counter(o).most_common(1)[0][0] for st, o in buckets.items() if o}
 
 
 def my_briefing() -> dict:
@@ -94,13 +105,13 @@ def my_briefing() -> dict:
 
 def sprint_pulse() -> dict:
     """Whole-team view: status mix, blockers, overdue, load per owner."""
-    open_issues = jc.all_open_issues()
-    done = jc.done_issues()
+    open_issues, done = _open_done()
     by_status: dict = {}
     by_owner: dict = {}
     for i in open_issues:
-        by_status[i["status"]] = by_status.get(i["status"], 0) + 1
-        by_owner[i["owner"]] = by_owner.get(i["owner"], 0) + 1
+        by_status[i.get("status")] = by_status.get(i.get("status"), 0) + 1
+        owner = i.get("owner") or "Unassigned"
+        by_owner[owner] = by_owner.get(owner, 0) + 1
     return {
         "open_total": len(open_issues),
         "done_total": len(done),
@@ -129,7 +140,101 @@ def standup_draft() -> dict:
     done = jc.done_issues()[:5]
     return {
         "recently_done_by_team": done,
-        "my_in_progress": [i for i in mine if (i["status"] or "").lower() == "in progress"],
-        "my_todo": [i for i in mine if (i["status"] or "").lower() in ("to do", "open", "backlog")],
+        "my_in_progress": [i for i in mine if (i.get("status") or "").lower() == "in progress"],
+        "my_todo": [i for i in mine if (i.get("status") or "").lower() in ("to do", "open", "backlog")],
         "my_blockers": [i for i in mine if _is_blocked(i)],
     }
+
+
+def _safe_recent_pages(limit: int = 8) -> list[dict]:
+    try:
+        return cf.recent_pages(limit=limit, with_body=True)
+    except Exception as e:  # noqa: BLE001
+        return [{"error": str(e)[:160]}]
+
+
+def _safe_decisions() -> list[dict]:
+    try:
+        return cf.search_pages("decision funnel approval submission disbursement weekly meeting", limit=5)
+    except Exception as e:  # noqa: BLE001
+        return [{"error": str(e)[:160]}]
+
+
+def weekly_meeting_pack() -> dict:
+    """All deterministic material needed for a weekly LM meeting summary."""
+    digest = manager_digest()
+    pulse = sprint_pulse()
+    metric_summary = fm.summary()
+    return {
+        "as_of": jc_today(),
+        "meeting_type": "weekly_funnel_review",
+        "funnel_metrics": metric_summary,
+        "impact_ranking": digest.get("impact_ranking"),
+        "execution_digest": digest,
+        "sprint_pulse": pulse,
+        "recently_completed": digest.get("recently_completed", []),
+        "confluence_decisions": _safe_decisions(),
+        "recent_confluence_pages": _safe_recent_pages(),
+        "recommended_agenda": [
+            "Review target misses and estimated value at risk",
+            "Confirm owner and ETA for the top recovery item",
+            "Review blockers and overdue work",
+            "Check completed initiatives and whether metrics moved",
+            "Record decisions and next recovery actions in Confluence",
+        ],
+        "note": "Ready for weekly meeting notes. Metrics and impact are deterministic; LLM wording must not invent facts.",
+    }
+
+
+def render_weekly_summary(pack: dict) -> str:
+    """Deterministic weekly meeting notes fallback and Confluence draft."""
+    fm_sum = pack.get("funnel_metrics") or {}
+    latest = fm_sum.get("latest") or {}
+    ranks = ((pack.get("impact_ranking") or {}).get("ranking") or [])
+    digest = pack.get("execution_digest") or {}
+    totals = digest.get("totals") or {}
+    lines = [
+        f"# Funnel Watchtower Weekly Readout - {pack.get('as_of')}",
+        "",
+        "## Executive summary",
+        f"- Latest month: {fm_sum.get('latest_month')}.",
+        f"- E2E conversion: {latest.get('e2e_rate_pct')}%; disbursement amount: {latest.get('disbursement_amount_vnd', 0):,} VND.",
+        f"- Jira execution: {totals.get('open', 0)} open, {totals.get('off_track', 0)} off-track, {totals.get('due_soon', 0)} due soon.",
+    ]
+    if ranks:
+        top = ranks[0]
+        lines.append(f"- Top recovery priority: {top['stage'].title()} ({top['actual_pct']}% vs {top.get('target_pct')}% target), estimated value at risk {im.fmt_vnd(top.get('estimated_value_at_risk_vnd'))}.")
+    lines += ["", "## Impact ranking", im.render_ranking(pack.get("impact_ranking") or {}), ""]
+    lines += ["## Needs attention now"]
+    attention = digest.get("needs_attention_now") or []
+    if attention:
+        for i in attention[:8]:
+            why = []
+            if _is_blocked(i):
+                why.append("blocked")
+            if _is_overdue(i):
+                why.append("overdue")
+            lines.append(f"- {i.get('key')}: {i.get('summary')} — owner {i.get('owner')}, status {i.get('status')}, due {i.get('due')} ({', '.join(why)})")
+    else:
+        lines.append("- No blocked or overdue open initiatives.")
+    lines += ["", "## Recently completed"]
+    done = pack.get("recently_completed") or []
+    if done:
+        for i in done[:6]:
+            lines.append(f"- {i.get('key')}: {i.get('summary')} — owner {i.get('owner')}")
+    else:
+        lines.append("- No recently completed initiatives returned by Jira.")
+    lines += ["", "## Confluence context"]
+    pages = pack.get("confluence_decisions") or pack.get("recent_confluence_pages") or []
+    if pages and not pages[0].get("error"):
+        for p in pages[:6]:
+            detail = (p.get("body") or p.get("excerpt") or p.get("url") or "")[:180]
+            lines.append(f"- {p.get('title')}: {detail}")
+    elif pages:
+        lines.append(f"- Could not read Confluence pages: {pages[0].get('error')}")
+    else:
+        lines.append("- No recent Confluence pages returned.")
+    lines += ["", "## Recommended agenda"]
+    for a in pack.get("recommended_agenda") or []:
+        lines.append(f"- {a}")
+    return "\n".join(lines)

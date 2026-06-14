@@ -1,143 +1,198 @@
 # Funnel Watchtower
 
-> Claw-a-thon 2026 — **Team UW** — Track: **Agentic Assistant**
+Claw-a-thon 2026 - Team UW - Track: Agentic Assistant
 
-A line-manager oversight agent for the **lending application funnel**
-(Traffic → Submission → Approval → Disbursement). It answers, in plain language
-(Vietnamese or English): **how is the funnel performing, who is working on what,
-what's on track, and what's critical** — and it can **create and assign**
-initiatives back into Jira. Deterministic clients fetch and compute every fact;
-the MaaS LLM only narrates, so it never invents a number, ticket, or owner, and
-every feature degrades gracefully when Jira, Confluence, or the LLM is down.
+**Tagline:** Turns funnel drift into ranked, owned, auditable recovery actions.
 
-**💬 Try it in your browser (no install):**
-https://endpoint-02241868-df01-4fa2-9b36-45145561851c.agentbase-runtime.aiplatform.vngcloud.vn/
+Funnel Watchtower is a closed-loop execution intelligence agent for business funnels. It is designed for any recurring funnel owned by a team: marketing acquisition, product onboarding, merchant activation, sales pipeline, operations workflow, or a simple application funnel.
 
-## Problem
+The demo uses one straightforward synthetic funnel:
 
-A lending lead's morning is spent reconstructing the funnel by hand: the latest
-conversion numbers in one spreadsheet, and which improvement initiatives are in
-flight, who owns each, and what's slipping spread across Jira and Confluence.
-Problems surface after a stage metric has already dropped.
+`Traffic -> Submission -> Approval -> Disbursement`
 
-## User
+Think of the final stage as the business outcome. In another team, that could be purchase, activation, contract signed, merchant live, request completed, or payout. The point is not the domain; the point is the recovery workflow.
 
-The **lending team lead / line manager** running the funnel (primary), and the
-contributors who each own initiatives (secondary).
+Funnel Watchtower does more than summarize Jira. It detects target drift, estimates business value at risk, ranks the affected funnel stage, checks Jira ownership and execution risk, drafts or updates the recovery task, and prepares weekly meeting notes from metrics, Jira, and Confluence.
 
-## The funnel (4 stages)
+The LLM layer is deliberately bounded and replaceable. It handles semantic routing, field extraction, and manager-ready narration. Python and SQL own the facts: conversion math, target gaps, value-at-risk sizing, SQL templates, Jira issue keys, owners, write guards, and Confluence publishing.
 
-| Stage | Definition |
-|-------|------------|
-| **Traffic** | Users who are eligible and enter the lending flow (eligible traffic only) |
-| **Submission** | Users whose application is successfully submitted and received by the partner |
-| **Approval** | Users who are approved by the partner |
-| **Disbursement** | Users who receive any disbursed amount from the partner |
+## What changed in this upgraded version
 
-Conversion is measured between consecutive stages (Submission = Submission/Traffic,
-Approval = Approval/Submission, Disbursement = Disbursement/Approval, E2E =
-Disbursement/Traffic).
+- **LLM-first intent routing with guardrails**: fixes keyword collisions such as `daily volume` being mistaken for `standup`. Keywords remain only as fallback and validation signals.
+- **Impact Ranking Engine** (`impact.py`): ranks target misses by value at risk, trend severity, and Jira execution risk.
+- **Initiative contracts** (`contracts.py`): Jira issues include structured stage, metric, owner, due date, confidence, expected value, evidence, and success check.
+- **Template-first SQL analyst** (`sql_analyst.py`): common breakdowns use deterministic SQL templates; LLM SQL is only fallback and still read-only validated.
+- **Idempotent investigations**: `flag it` searches for an existing open investigation by stage, metric, and month before creating a new Jira issue.
+- **Weekly Confluence summary**: `weekly meeting summary` drafts a manager-ready weekly readout; `publish weekly meeting summary to Confluence` creates or updates a Confluence page.
+- **Legacy portfolio cleanup**: the old portfolio watchdog project is excluded from this clean package so it does not mix with Watchtower runtime code.
+- **Synthetic partner cleanup**: Jira seed tickets use fictional partner names only.
 
-## Solution
+## Example questions
 
-Ask in plain language (VI/EN) — the agent:
-
-1. **Funnel metrics** — "show me the funnel metrics": a monthly table of Traffic /
-   Submission / Approval / Disbursement, disbursed amount, avg ticket size, and the
-   conversion rates between stages, with a trend headline.
-2. **Funnel oversight (LM view)** — "what's critical or off track?": leads with
-   *needs-attention-now* (critical **and** overdue/blocked), then a read per stage,
-   flagging overloaded owners.
-3. **Ownership** — "who is working on what?": initiative load per owner.
-4. **Create** — "create a ticket to improve submission rate": extracts a structured
-   initiative and files it in Jira (stage/owner/priority/due), assigning a real user
-   when one matches.
-5. **Assign** — "assign KAN-23 to Mai": sets a real Jira assignee (and the owner label).
-6. **Knowledge** — "what did we decide about submission?": answers from Confluence with a link.
-7. **My plate / Standup** — a contributor's ranked items, or a paste-ready standup.
-8. **Daily LM digest** — a scheduled GitHub Action posts the oversight read each weekday.
-9. **Web chat UI** — served by the agent at the endpoint root; EN & VI.
-
-## Value
-
-Both halves of the lead's morning in one place: how the funnel is performing **and**
-what's being done about it. Critical-and-slipping work surfaces first; ownership and
-stage health are visible at a glance; new initiatives can be filed and assigned
-conversationally. Every figure is real (computed, not model-invented).
-
-## Try it (live)
-
-Deployed endpoint: https://endpoint-02241868-df01-4fa2-9b36-45145561851c.agentbase-runtime.aiplatform.vngcloud.vn
-
-```bash
-curl -X POST .../invocations -H 'Content-Type: application/json' -d '{"message": "show me the funnel metrics"}'
-curl -X POST .../invocations -H 'Content-Type: application/json' -d '{"message": "what is critical or off track right now?"}'
-curl -X POST .../invocations -H 'Content-Type: application/json' -d '{"message": "ai dang lam gi, co gi tre khong?", "language": "vi"}'
+```text
+show me the funnel metrics
+what is the top business risk?
+rank the target misses by value at risk
+break May down by drop reason
+show daily volume in May
+why did approval drop?
+flag the drops and assign owners to investigate
+what is critical or off track right now?
+who is working on what?
+what did we decide about submission?
+draft my standup
+weekly meeting summary
+publish weekly meeting summary to Confluence
+ai dang lam gi, co gi tre khong?
 ```
 
-Run locally: `pip install -r requirements.txt && python main.py` (port 8080).
-Offline tests (no network/credentials): `python tests/test_offline.py` (60 checks).
+## Core value
 
-## Demo video
+A dashboard can show that approval dropped. Watchtower answers the operational follow-up:
 
-🎬 _[link — to be added]_
+1. Which stage is the top recovery priority?
+2. How much synthetic business value is at risk?
+3. Who owns that stage or related work?
+4. Is recovery work blocked, overdue, or missing?
+5. Should we open a new investigation or update an existing one?
+6. What should be discussed in the weekly meeting?
 
-## Architecture & design
+## Architecture
 
+```text
+User message
+  -> router.py                 LLM-first intent classification + deterministic guards
+  -> deterministic handlers
+      -> funnel_metrics.py     monthly conversion, MoM anomalies, OKR target misses
+      -> impact.py             value-at-risk ranking + execution-risk scoring
+      -> sql_analyst.py        template-first application breakdowns
+      -> jira_client.py        Jira read/create/assign/comment/search
+      -> confluence_client.py  search decisions + publish weekly summaries
+      -> briefing.py           manager, sprint, standup, weekly packets
+      -> contracts.py          validated initiative/investigation contracts
+  -> report.py                 LLM narration from verified JSON only
 ```
-User ─▶ Agent (AgentBase, MaaS model: Qwen/Gemma)
-            │
-            ├── intent router (keywords first, LLM classify on miss)
-            ├── funnel_metrics.py     → monthly conversion table (data/funnel_metrics.json)
-            ├── jira_client.py        → Jira Cloud REST v3  (read + create/assign)
-            ├── confluence_client.py  → Confluence Cloud v2 (decisions / definitions)
-            ├── briefing.py           → manager_digest(): who/on-track/critical/by-stage
-            └── report.llm_chat       → LLM narration + offline fallback
+
+### Why the model layer is swappable
+
+This is not a pitch about a specific model. The configured LLM is only a language layer:
+
+| Layer | Owner |
+|---|---|
+| Intent understanding | LLM first, guardrail validation second |
+| Funnel rates and targets | Deterministic Python |
+| Value-at-risk ranking | Deterministic Python |
+| Root-cause drilldown | SQL templates / contribution analysis |
+| Jira write safety | Deterministic guards and idempotency |
+| Ticket descriptions and summaries | LLM narration from validated JSON |
+| Weekly meeting notes | Deterministic packet + LLM wording |
+
+That makes the system cheaper, safer, reproducible, and portable across approved internal model infrastructure. If the organization changes models later, the LLM adapter can be swapped without changing the workflow logic.
+
+## Impact ranking
+
+Watchtower estimates value at risk with simple, auditable formulas. For example:
+
+```text
+approval value at risk = submission volume x approval target gap x actual downstream completion rate x average outcome value
 ```
 
-Deterministic clients compute every fact; the LLM only phrases it. Ownership and
-funnel stage are Jira labels (`owner-<name>`, `stage-<traffic|submission|approval|
-disbursement|crosscut>`) because the free workspace has few real users; priority
-encodes criticality and the due date is the on-track signal. Writes are gated by
-`ALLOW_WRITES` and assign to a real Jira user when one matches, else stamp the owner label.
+Ranking then combines:
 
-## Daily LM digest (the reminder)
+```text
+impact_score = value_at_risk x trend_weight x execution_risk_weight
+```
 
-`.github/workflows/lm-digest.yml` runs on a weekday-morning cron, calls the live
-agent for its oversight read, and writes the digest to the workflow run summary.
-GitHub runners are used because the dev sandbox can't reach vngcloud.vn — same
-pattern as deploy/seed/debug.
+Execution risk comes from Jira signals such as blocked issues, overdue work, and overloaded stage work.
 
-## Models & resources
+## Weekly Confluence summary
 
-- GreenNode MaaS (competition tokens): Qwen / Gemma, auto-discovered at runtime
-- Atlassian: a **free** Atlassian Cloud workspace (personal API token), seeded with
-  synthetic funnel initiatives + funnel metrics — no company systems, no real data
-- Deploy: GitHub Actions → AgentBase Container Registry → Agent Runtime
-- No external paid models used
+Ask:
+
+```text
+weekly meeting summary
+```
+
+The agent returns a weekly meeting brief with:
+
+- executive summary
+- impact-ranked risks
+- Jira execution follow-up
+- recent Confluence decision context
+- proposed agenda
+
+Ask:
+
+```text
+publish weekly meeting summary to Confluence
+```
+
+When `ALLOW_WRITES=true`, the agent creates or updates a Confluence page titled like:
+
+```text
+Weekly Funnel Watchtower Summary - YYYY-MM-DD
+```
+
+## Jira write safety
+
+Writes are guarded:
+
+- `ALLOW_WRITES=false` disables Jira and Confluence writes.
+- Jira investigation creation is idempotent by stage + metric + month.
+- `create` requests validate extracted fields before writing.
+- Every created investigation includes an initiative contract in the Jira description.
+- The agent assigns a real Jira user when possible; otherwise it stamps an owner label.
+
+Recommended default for local development is `ALLOW_WRITES=false`. Turn it on only for the demo workspace.
 
 ## Data
 
-100% synthetic. `scripts/seed_atlassian.py` (run via the *Seed Atlassian workspace*
-Action, `reset` to replace) populates ~20 initiatives across Traffic / Submission /
-Approval / Disbursement + cross-cutting, each with owner, due date, criticality and
-status, plus Confluence pages (stage definitions, charter, decision log, metric
-definitions, planning, postmortem, working agreements). `data/funnel_metrics.json`
-holds a small 6-month synthetic performance series. The seed maps unsupported issue
-types (e.g. Story) to ones the project accepts. No real people, tickets, or data.
+All data is synthetic:
 
-> Note: company Jira is internal and **not** used in the competition. To assign to
-> real people, invite teammates as users in the free Atlassian site (up to 10) —
-> two underwriting users have already joined for the Approval stage.
+- `data/funnel_metrics.json`: monthly stage volumes, conversion rates, targets, and outcome value.
+- `data/funnel_synthetic.csv`: application-level data used by SQL templates.
+- `scripts/seed_atlassian.py`: creates synthetic Jira initiatives and Confluence pages with fictional partner names.
 
-## Repo notes
+No company systems, real customers, or real partner names are used.
 
-The team's earlier entry, *Lending Portfolio Watchdog* (Data Analysis track), lives
-on in git history; this agent reuses its deploy pipeline, chat UI, and LLM brain.
+## Run locally
+
+```bash
+pip install -r requirements.txt
+cp .env.example .env
+python main.py
+```
+
+Offline tests do not require network credentials or LLM access:
+
+```bash
+python tests/test_offline.py
+```
+
+Current offline suite: **78 passed, 0 failed**.
+
+## Environment variables
+
+See `.env.example`. Key values:
+
+```text
+LLM_API_KEY=
+LLM_BASE_URL=https://maas-llm-aiplatform-hcm.api.vngcloud.vn/v1
+LLM_MODEL=
+ATLASSIAN_SITE=
+ATLASSIAN_EMAIL=
+ATLASSIAN_TOKEN=
+ALLOW_WRITES=false
+CONFLUENCE_SPACE_KEY=
+CONFLUENCE_SPACE_ID=
+TEAMS_WEBHOOK_URL=
+```
+
+Never commit `.env`, API tokens, or personal credentials. If a token was previously shared in a ZIP or repo, rotate it.
 
 ## Team
 
 | Member | Department |
-|--------|-----------|
+|---|---|
 | Hathy (Tramctb2) | Credit Risk |
-| Rino (rinotrann) | _[dept]_ |
+| Rino (rinotrann) | TBD |

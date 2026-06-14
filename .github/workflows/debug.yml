@@ -8,7 +8,7 @@ on:
   workflow_dispatch: {}
 
 env:
-  RUNTIME_NAME: lending-watchdog
+  RUNTIME_NAME: funnel-watchtower
   IAM_TOKEN_URL: https://iam.api.vngcloud.vn/accounts-api/v2/auth/token
   RUNTIME_API: https://agentbase.api.vngcloud.vn/runtime
   LLM_BASE_URL: https://maas-llm-aiplatform-hcm.api.vngcloud.vn/v1
@@ -55,7 +55,7 @@ jobs:
             echo "HTTP $HTTP in $(( $(date +%s) - T0 ))s"
             head -c 1500 /tmp/resp.json; echo
           }
-          ask "portfolio summary"
+          ask "funnel metrics"
           ask "tuan nay co gi dang lo"
           ask "give me the weekly report"
           echo "================ LOGS AFTER TESTS ================"

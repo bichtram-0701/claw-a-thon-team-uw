@@ -1,4 +1,4 @@
-# Deploy Sprint Sidekick to GreenNode AgentBase.
+# Deploy Funnel Watchtower to GreenNode AgentBase.
 #
 # Why this exists: our vibe-code environment has no Docker and no network
 # route to vngcloud.vn, so GitHub's servers do the build + deploy instead.
@@ -22,6 +22,11 @@ on:
       - "confluence_client.py"
       - "teams_client.py"
       - "briefing.py"
+      - "diagnostics.py"
+      - "weekly.py"
+      - "contracts.py"
+      - "impact.py"
+      - "router.py"
       - "funnel_metrics.py"
       - "sql_analyst.py"
       - "chat.html"
@@ -36,8 +41,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  RUNTIME_NAME: lending-watchdog
-  IMAGE_NAME: lending-watchdog
+  RUNTIME_NAME: funnel-watchtower
+  IMAGE_NAME: funnel-watchtower
   # Compute size: we want 2 vCPU / 4 GB ("2x4" per the competition guide).
   FLAVOR_PATTERN: "2x4"
   IAM_TOKEN_URL: https://iam.api.vngcloud.vn/accounts-api/v2/auth/token
@@ -165,7 +170,7 @@ jobs:
             --arg atlsite "${{ secrets.ATLASSIAN_SITE }}" \
             --arg atlemail "${{ secrets.ATLASSIAN_EMAIL }}" \
             --arg atltoken "${{ secrets.ATLASSIAN_TOKEN }}" \
-            --arg allowwrites "${{ vars.ALLOW_WRITES || 'true' }}" \
+            --arg allowwrites "${{ vars.ALLOW_WRITES || 'false' }}" \
             --arg teamshook "${{ secrets.TEAMS_WEBHOOK_URL }}" \
             --arg jiraevttoken "${{ secrets.JIRA_EVENT_TOKEN }}" \
             '{name: $name, description: $desc, imageUrl: $image,
@@ -234,7 +239,7 @@ jobs:
             sleep 10
           done
           {
-            echo "## Lending Watchdog deployed"
+            echo "## Funnel Watchtower deployed"
             echo "- **Runtime ID:** ${{ steps.runtime.outputs.id }}"
             echo "- **Image:** ${{ steps.cr.outputs.image }}"
             echo "- **Endpoint:** $URL"

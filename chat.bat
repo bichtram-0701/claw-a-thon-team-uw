@@ -1,9 +1,9 @@
 @echo off
-title Lending Watchdog - Team UW
+title Funnel Watchtower - Team UW
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$url = 'https://endpoint-02241868-df01-4fa2-9b36-45145561851c.agentbase-runtime.aiplatform.vngcloud.vn/invocations';" ^
-  "Write-Host ''; Write-Host '=== Lending Portfolio Watchdog (live on AgentBase) ===' -ForegroundColor Green;" ^
-  "Write-Host 'Try: portfolio summary | at-risk accounts | breakdown by province | by segment' -ForegroundColor DarkGray;" ^
+  "Write-Host ''; Write-Host '=== Funnel Watchtower (live on AgentBase) ===' -ForegroundColor Green;" ^
+  "Write-Host 'Try: funnel metrics | daily volume in May | funnel overview | weekly meeting summary' -ForegroundColor DarkGray;" ^
   "Write-Host 'Press Enter on an empty line to quit.' -ForegroundColor DarkGray; Write-Host '';" ^
   "while ($true) {" ^
   "  $q = Read-Host 'You';" ^

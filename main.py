@@ -1,27 +1,18 @@
-"""Funnel Watchtower — lending-funnel initiative tracker. Team UW, Claw-a-thon 2026.
+"""Funnel Watchtower — Team UW, Claw-a-thon 2026.
 
-A line-manager oversight agent over the loan-application funnel. Ask in plain
-language (VI/EN): give me the funnel overview, who is working on what, what's
-critical / off track, what did we decide about X, what's on my plate, draft my
-standup. Deterministic clients fetch the facts from Jira + Confluence; the MaaS
-LLM narrates — it never invents data, and every feature degrades gracefully when
-Jira/Confluence/LLM are unreachable.
-
-Connected to a FREE Atlassian Cloud workspace seeded with synthetic funnel
-initiatives. No company systems, no real personal data.
-(The team's earlier lending-analytics agent lives on in git history.)
+Execution intelligence for a business funnel. The LLM routes and narrates; Python
+and SQL own the business facts: conversion math, value-at-risk ranking, issue
+keys, owners, write guards, Jira idempotency, and Confluence weekly summaries.
 """
+from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime
 
 from dotenv import load_dotenv
-from greennode_agentbase import (
-    GreenNodeAgentBaseApp,
-    PingStatus,
-    RequestContext,
-)
+from greennode_agentbase import GreenNodeAgentBaseApp, PingStatus, RequestContext
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import FileResponse, JSONResponse
@@ -31,23 +22,23 @@ load_dotenv()
 
 import briefing as bf            # noqa: E402
 import confluence_client as cf   # noqa: E402
+import contracts as ct           # noqa: E402
 import funnel_metrics as fm      # noqa: E402
+import impact as im              # noqa: E402
 import jira_client as jc         # noqa: E402
 import report as rp              # noqa: E402
+import router as rt              # noqa: E402
 import sql_analyst as sa         # noqa: E402
 import teams_client as tc        # noqa: E402
 
-# CORS: allow browsers (chat page) to call /invocations.
 _middleware = [Middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])]
-try:  # keep the SDK's own middleware if importable (private API, may move)
+try:
     from greennode_agentbase.runtime.app import XAccelBufferingMiddleware
     _middleware.insert(0, Middleware(XAccelBufferingMiddleware))
 except ImportError:
     pass
 
 app = GreenNodeAgentBaseApp(middleware=_middleware)
-
-# Serve the chat UI at the endpoint root — same origin, no CORS needed.
 _CHAT_PAGE = os.path.join(os.path.dirname(__file__), "chat.html")
 
 
@@ -57,10 +48,16 @@ async def _serve_chat(request):
 
 app.router.routes.append(Route("/", _serve_chat, methods=["GET"]))
 
-
-# Real-time Jira -> Teams diff. A Jira Automation rule POSTs {"key": "KAN-123"}
-# here on issue update; we read the latest changelog (old->new) and post a card.
 JIRA_EVENT_TOKEN = os.environ.get("JIRA_EVENT_TOKEN", "")
+ALLOW_WRITES = os.environ.get("ALLOW_WRITES", "false").lower() in ("1", "true", "yes")
+
+STAGE_TO_EPIC = {
+    "traffic": "Traffic",
+    "submission": "Submission",
+    "approval": "Approval",
+    "disbursement": "Disbursement",
+    "crosscut": "Data & Platform",
+}
 
 
 async def _jira_event(request):
@@ -84,130 +81,45 @@ async def _jira_event(request):
 
 app.router.routes.append(Route("/jira-event", _jira_event, methods=["POST"]))
 
-# ------------------------------------------------------------- intent router
-# Keyword matching first (free); LLM classification when keywords miss.
 
-ALLOW_WRITES = os.environ.get("ALLOW_WRITES", "true").lower() in ("1", "true", "yes")
-
-# Funnel stage -> Epic name (the Epic is the swimlane / project a task lives under)
-STAGE_TO_EPIC = {
-    "traffic": "Traffic", "submission": "Submission", "approval": "Approval",
-    "disbursement": "Disbursement", "crosscut": "Data & Platform",
-}
-
-# Order matters: write intents first (specific verbs), then standup, then the
-# manager keywords, then the LM oversight view. "assign " has a trailing space
-# so it does not swallow "what's assigned to me" (briefing).
-ROUTES = [
-    # flag first: a "flag … and assign … to investigate" request is a flag action,
-    # and must win over the 'assign' keyword it also contains.
-    ({"flag", "investigate", "open investigation", "open an investigation",
-      "raise an investigation", "look into the drop"}, "flag"),
-    ({"create ", "create a", "add ticket", "add a ticket", "new ticket",
-      "new initiative", "open a ticket", "file a ticket", "log a ticket",
-      "tao ticket", "tạo ticket", "tao moi", "them ticket"}, "create"),
-    ({"assign ", "re-assign", "reassign ", "giao cho", "gan cho", "gán cho"}, "assign"),
-    ({"standup", "stand-up", "stand up"}, "standup"),
-    ({"decide", "decision", "decided", "document", "wiki", "confluence", "wrote",
-      "quyết định", "quyet dinh", "tài liệu", "tai lieu", "biên bản", "bien ban"}, "knowledge"),
-    ({"plate", "my task", "my issue", "my initiative", "assigned to me", "what should i",
-      "việc của tôi", "viec cua toi"}, "briefing"),
-    ({"by day", "day by day", "per day", "daily", "by week", "per week", "by product",
-      "per product", "by channel", "per channel", "by drop", "drop reason", "break down",
-      "breakdown", "group by", "by segment", "slice", "each day", "by month per"},
-     "analyst"),
-    ({"metric", "conversion", "submission rate", "approval rate", "disbursement rate",
-      "traffic", "ticket size", "funnel performance", "funnel numbers", "funnel table",
-      "performance", "e2e", "throughput", "how is the funnel doing", "ty le", "chuyen doi",
-      "compare", "what changed", "concerning", "drop", "dropped", "month over month",
-      "mom", "vs last month", "anomal"},
-     "metrics"),
-    ({"oversight", "overview", "funnel", "digest", "who is working", "who's working",
-      "who owns", "ownership", "on track", "off track", "off-track", "critical",
-      "at risk", "behind", "slipping", "manager", "lead", "report", "status of",
-      "ai đang làm", "ai dang lam", "tổng quan", "tong quan", "quan trọng", "quan trong",
-      "trễ", "tre ", "rủi ro", "rui ro"}, "oversight"),
-    ({"sprint", "team", "pulse", "progress", "stuck", "blocked", "workload", "overdue",
-      "tiến độ", "tien do", "nhóm", "nhom"}, "sprint"),
-]
-
-VALID = {"create", "assign", "flag", "analyst", "metrics", "oversight", "briefing", "sprint", "knowledge", "standup", "help"}
-
-
+# ---------------------------------------------------------------- routing ----
 def route(message: str) -> str:
-    """Model-first routing: let the LLM understand the request. Keyword matching
-    is only a fallback for when the model is unavailable (offline / tests)."""
-    return rp_classify(message) or _keyword_route(message)
+    """LLM-first semantic routing with keyword fallback."""
+    return rt.route(message)
 
 
 def _keyword_route(message: str) -> str:
-    msg = message.lower()
-    for keywords, intent in ROUTES:
-        if any(k in msg for k in keywords):
-            return intent
-    return "help"
+    return rt.keyword_route(message)
 
 
-def rp_classify(message: str) -> str | None:
-    out = rp.llm_chat(
-        "You route messages for a lending-funnel assistant. Classify the user's message into "
-        "EXACTLY one of these words: create, assign, flag, analyst, metrics, oversight, briefing, "
-        "sprint, knowledge, standup, help.\n"
-        "- create = make a NEW initiative/ticket\n"
-        "- assign = set the owner of an EXISTING ticket\n"
-        "- flag = a metric dropped / is off — flag it and open an investigation for the owner\n"
-        "- analyst = ANY ad-hoc data question / query / custom breakdown of the application data "
-        "(by day, week, product, channel, drop reason, volume, counts — 'can you do queries', "
-        "'daily volume', 'break down by X')\n"
-        "- metrics = the standard monthly funnel performance table / conversion rates, comparing months\n"
-        "- oversight = the lead's view of all initiatives: who owns what, what's critical, on/off track\n"
-        "- briefing = the user's OWN tasks/priorities\n"
-        "- sprint = simple status mix / workload of the whole team\n"
-        "- knowledge = past decisions, documentation, meeting notes (Confluence)\n"
-        "- standup = draft a stand-up update\n"
-        "- help = greetings, capability questions about the assistant itself, or anything else\n"
-        "Reply with the single word only.",
-        message, max_tokens=16)
-    if out:
-        word = out.strip().lower().split()[0].strip(".,!\"'`")
-        if word in VALID:
-            return word
-    return None
-
-
-# --------------------------------------------------------------- write helpers
-import re  # noqa: E402
-
+# --------------------------------------------------------------- write utils --
 _KEY_RE = re.compile(r"\b([A-Z][A-Z0-9]+-\d+)\b")
 _CREATE_PREFIX = re.compile(
     r"^\s*(please\s+)?(create|add|open|file|log|make|new)\b[^:]*?(ticket|initiative|task|issue)?\s*[:\-]?\s*",
-    re.IGNORECASE)
+    re.IGNORECASE,
+)
 
 
-def extract_create_fields(message: str) -> dict | None:
-    """LLM extracts a structured initiative; falls back to a heuristic if the LLM
-    is offline so creation still works."""
+def extract_create_fields(message: str) -> dict:
+    """Extract a Jira initiative; validate LLM JSON before use."""
     raw = rp.llm_chat(
-        "Extract a Jira initiative from the user's message as STRICT JSON with keys: "
-        "summary (short imperative string), "
-        "stage (one of traffic, submission, approval, disbursement, crosscut, or null), "
-        "owner (a person's name, or null), due (YYYY-MM-DD or null). "
-        "Infer stage from the topic when obvious "
-        "(eligible traffic/acquisition->traffic, application submit/document upload->submission, "
-        "approval/underwriting->approval, payout/e-sign->disbursement). Reply with ONLY the JSON object.",
-        message, max_tokens=300)
-    fields = None
-    if raw:
-        try:
-            s = raw.strip().strip("`")
-            s = s[s.find("{"): s.rfind("}") + 1]
-            fields = json.loads(s)
-        except Exception:  # noqa: BLE001
-            fields = None
+        "Extract a Jira initiative from the user's message as STRICT JSON only. Keys: "
+        "summary (short imperative string), stage (traffic/submission/approval/disbursement/crosscut/null), "
+        "owner (person name or null), due (YYYY-MM-DD or null), confidence (low/medium/high or null), "
+        "target_lift_pp (number or null), evidence (array of short strings or null). "
+        "Infer stage only when obvious: acquisition/eligible traffic->traffic; submit/docs/KYC/form->submission; "
+        "approval/review/risk/income->approval; payout/e-sign/disburse->disbursement; shared data/platform->crosscut.",
+        message,
+        max_tokens=360,
+        temperature=0.0,
+        profile="classifier",
+    )
+    fields = rp.extract_json_object(raw)
     if not fields or not fields.get("summary"):
         summary = _CREATE_PREFIX.sub("", message).strip().rstrip("?.!") or message.strip()
-        fields = {"summary": summary, "stage": None, "owner": None, "due": None}
-    return fields
+        fields = {"summary": summary, "stage": ct.infer_stage(message), "owner": None,
+                  "due": None, "confidence": "low", "evidence": [message]}
+    return ct.validate_create_fields(fields, message)
 
 
 def parse_assign(message: str):
@@ -217,35 +129,28 @@ def parse_assign(message: str):
     owner = None
     mt = re.search(r"\bto\s+([A-Za-z][\w '.-]*)$", message.strip())
     if mt:
-        owner = mt.group(1).strip().rstrip(" ?.!")
+        owner = mt.group(1).strip().rstrip(" ?.! ")
     return key, owner
 
 
-# ---------------------------------------------------------------- entrypoint
-
 NARRATE_SYS = {
-    "oversight": "You are briefing the lending lead on the funnel initiatives. Lead with "
-                 "'needs_attention_now' (anything overdue or blocked) — name the item, owner and "
-                 "why — then mention what's 'due_soon'. Give a short read on each Epic (funnel "
-                 "stage / project) from 'by_epic' and flag any owner carrying off-track work. Quote "
-                 "issue keys and owners. Be decisive and brief; for a breakdown use a markdown table.",
-    "briefing": "Summarize what's on the user's plate: lead with the most urgent item "
-                "(overdue/blocked first), then the rest in priority order. Quote issue keys.",
-    "sprint":   "Give a team health summary: open vs done, where work is piling up, "
-                "blocked and overdue items with issue keys, who looks overloaded.",
-    "knowledge": "Answer the question using ONLY the page contents provided. Quote the "
-                 "deciding sentence(s), then cite page title and url. If pages don't "
-                 "contain the answer, say so plainly.",
-    "standup":  "Write a ready-to-paste standup message with sections Yesterday / Today / "
-                "Blockers, using issue keys. Keep it tight and human.",
+    "oversight": "Lead with impact_ranking.ranking[0] if present, then needs_attention_now, due_soon, by_epic, and overloaded owners. Quote issue keys and owners. Be concise.",
+    "briefing": "Summarize the user's plate: blocked/overdue first, then active work. Quote issue keys.",
+    "sprint": "Give a team health summary: open vs done, status mix, blockers, overdue, and workload by owner.",
+    "knowledge": "Answer using ONLY the provided Confluence pages. Quote page title and URL. If the pages do not answer it, say so plainly.",
+    "standup": "Write a ready-to-paste standup with Yesterday / Today / Blockers using issue keys.",
 }
+
+
+def _needs_atlassian(intent: str) -> bool:
+    return intent in {"create", "assign", "flag", "oversight", "briefing", "sprint", "knowledge", "standup", "weekly"}
 
 
 @app.entrypoint
 def handler(payload: dict, context: RequestContext) -> dict:
     try:
         return _handle(payload)
-    except Exception as e:  # noqa: BLE001 — never return a bare 500 to the caller
+    except Exception as e:  # noqa: BLE001 — never expose a bare 500 to chat UI
         import traceback
         return {
             "status": "error",
@@ -259,111 +164,169 @@ def handler(payload: dict, context: RequestContext) -> dict:
 def _handle(payload: dict) -> dict:
     message = str(payload.get("message", ""))
     lang = payload.get("language", "en")
-    intent = route(message)
+    rr = rt.route_result(message)
+    intent = rr.intent
+    route_info = rr.__dict__
 
-    if not jc.configured() and intent != "help":
+    if _needs_atlassian(intent) and not jc.configured():
         return _respond(intent,
-                        "I can't reach Jira/Confluence right now (credentials not configured). "
-                        "Please tell the team to check the deployment.",
-                        {"error": "Atlassian credentials not configured on the runtime"})
+                        "I cannot reach Jira/Confluence right now because Atlassian credentials are not configured.",
+                        {"error": "Atlassian credentials not configured", "route": route_info})
 
     if intent in ("create", "assign"):
-        return _handle_write(intent, message)
+        return _handle_write(intent, message, route_info)
     if intent == "flag":
-        return _handle_flag(message)
+        return _handle_flag(message, route_info)
+    if intent == "weekly":
+        return _handle_weekly(message, lang, route_info)
 
     answer = None
     if intent == "analyst":
         if not sa.configured():
-            result = {"error": "analyst data not available"}
-            answer = "The application-level dataset isn't available on this deployment."
+            result = {"error": "analyst data not available", "route": route_info}
+            answer = "The application-level dataset is not available on this deployment."
         else:
             result = sa.answer(message)
+            result["route"] = route_info
             if result.get("error"):
-                answer = (f"I couldn't run that analysis ({result['error']}). Try e.g. "
-                          "\"May applications by product\" or \"disbursed by drop reason\".")
+                answer = (f"I could not run that analysis ({result['error']}). Try e.g. "
+                          "daily volume in May, May applications by product, or by drop reason.")
             else:
                 answer = sa.to_markdown(result)
+                if result.get("source") == "template":
+                    answer = f"_Template: {result.get('template')}_\n\n" + answer
                 if result.get("sql"):
                     answer += "\n\n_SQL:_ `" + result["sql"] + "`"
     elif intent == "metrics":
-        result = fm.summary()
-        lang_hint = "Reply in Vietnamese." if lang == "vi" else "Reply in English."
-        headline = rp.llm_chat(
-            "You are Funnel Watchtower. In ONE or TWO sentences give the lead the headline trend "
-            "from this funnel data: name the latest month, its end-to-end rate, and the single most "
-            "notable month-over-month change. Use ONLY these numbers, never invent. " + lang_hint,
-            json.dumps(result, ensure_ascii=False), max_tokens=200)
-        heads_up = ""
-        notes = []
-        owners = bf.stage_owners() if (result.get("anomalies") or result.get("target_misses")) else {}
-        for a in result.get("anomalies", []):
-            o = owners.get(a["stage"])
-            notes.append(f"**{a['metric']}** fell {abs(a['delta_pp'])}pp "
-                         f"({a['prev_pct']}%→{a['latest_pct']}%) {a['prev_month']}→{a['latest_month']}"
-                         + (f", owned by {o}" if o else ""))
-        for mm in result.get("target_misses", []):
-            o = owners.get(mm["stage"])
-            notes.append(f"**{mm['metric']}** {mm['actual_pct']}% vs {mm['target_pct']}% target "
-                         f"({mm['gap_pp']}pp)" + (f", owned by {o}" if o else ""))
-        if notes:
-            heads_up = ("> ⚠ **Needs attention:** " + "; ".join(notes) +
-                        ". Say \"flag it\" and I'll open investigations for the owners.\n\n")
-        answer = heads_up + (headline + "\n\n" if headline else "") + fm.render_markdown()
+        result = _metrics_result(route_info)
+        answer = _render_metrics_answer(result, lang)
     elif intent == "oversight":
         result = bf.manager_digest()
+        result["route"] = route_info
     elif intent == "briefing":
         result = bf.my_briefing()
+        result["route"] = route_info
     elif intent == "sprint":
         result = bf.sprint_pulse()
+        result["route"] = route_info
     elif intent == "knowledge":
         result = bf.knowledge(message)
+        result["route"] = route_info
     elif intent == "standup":
         result = bf.standup_draft()
+        result["route"] = route_info
     else:
-        result = {"hint": "Try: show me the funnel metrics · give me the funnel overview · "
-                          "who is working on what? · what's critical or off track? · "
-                          "create a ticket to ... · assign KAN-12 to <name> · "
-                          "what did we decide about submission? · draft my standup"}
+        result = {"route": route_info,
+                  "hint": "Try: funnel metrics, value at risk, daily volume in May, funnel overview, flag it, weekly meeting summary, create a ticket, assign KAN-12 to Mai, or draft my standup."}
         answer = (
-            "Hi! I'm Funnel Watchtower (Team UW). I track the loan funnel (Traffic → Submission → "
-            "Approval → Disbursement) across Jira + Confluence. I can: show the **funnel metrics** "
-            "(vs target), answer **ad-hoc data queries** (e.g. \"daily volume in May\", \"by drop "
-            "reason\", \"by product\"), **flag** a drop and open an investigation for the owner, give "
-            "the **funnel overview** (who owns what, what's off track), **create**/**assign** an "
-            "initiative, recall a past **decision**, or show your **plate**. Tiếng Việt cũng được nhé!"
+            "Hi, I am Funnel Watchtower. I track the business funnel, rank target misses by value at risk, "
+            "connect them to Jira ownership, answer safe SQL-style breakdowns, summarize Confluence decisions, "
+            "draft weekly meeting briefs, and create or update Jira recovery work."
         )
 
-    # LLM narration with intent-specific instructions (deterministic JSON is the truth)
     if answer is None:
         sys_extra = NARRATE_SYS.get(intent, "")
-        lang_line = "Answer in Vietnamese." if lang == "vi" else "Answer in the user's language (default English)."
+        lang_line = "Answer in Vietnamese." if lang == "vi" else "Answer in the user's language, default English."
         out = rp.llm_chat(
-            "You are Funnel Watchtower, a lending-funnel initiative tracker for the team lead. "
-            "Use ONLY the JSON data provided — never invent issues, owners or numbers. "
-            "FIRST, answer the user's actual question directly. If it's a narrow or factual "
-            "question (a count, one owner, a single item, yes/no), reply in 1–2 sentences with "
-            "just that answer and stop — do NOT dump the full report. Only if the user asked for a "
-            "broad overview/status/digest should you give the fuller breakdown. When you do: " +
-            sys_extra + " If the user asks for a table, use a markdown table. " + lang_line,
+            "You are Funnel Watchtower, a business-funnel execution intelligence assistant. "
+            "Use ONLY the JSON data provided. Never invent issue keys, owners, page titles, URLs, numbers, or decisions. "
+            "Answer the user's actual question first. For a narrow factual question, use 1-2 sentences. "
+            "For a digest, use clear markdown. " + sys_extra + " " + lang_line,
             "Question: " + message + "\nData JSON:\n" + json.dumps(result, ensure_ascii=False),
-            max_tokens=900,
+            max_tokens=1000,
+            temperature=0.2,
         )
         answer = out or json.dumps(result, ensure_ascii=False, indent=2)
 
     return _respond(intent, answer, result)
 
 
-def _handle_flag(message: str) -> dict:
-    """Flag both significant MoM rate drops AND metrics behind their OKR target,
-    then open ONE investigation Task per affected stage (owner = stage owner)."""
+def _metrics_result(route_info: dict | None = None) -> dict:
+    result = fm.summary()
+    open_issues = []
+    owners = {}
+    if jc.configured():
+        try:
+            open_issues = jc.all_open_issues()
+            owners = bf.stage_owners_from_issues(open_issues)
+        except Exception:  # noqa: BLE001
+            open_issues = []
+            owners = {}
+    result["impact_ranking"] = im.rank_stage_risks(open_issues, owners)
+    if route_info is not None:
+        result["route"] = route_info
+    return result
+
+
+def _render_metrics_answer(result: dict, lang: str) -> str:
+    lang_hint = "Reply in Vietnamese." if lang == "vi" else "Reply in English."
+    headline = rp.llm_chat(
+        "You are Funnel Watchtower. In 1-2 sentences give the lead the headline trend from this funnel data. "
+        "Name the latest month, end-to-end rate, top target miss/value-at-risk if present, and the most notable MoM change. "
+        "Use ONLY the JSON numbers. " + lang_hint,
+        json.dumps({k: result.get(k) for k in ["latest_month", "latest", "mom_pp", "target_misses", "impact_ranking"]}, ensure_ascii=False),
+        max_tokens=220,
+        temperature=0.2,
+    )
+    heads_up = ""
+    ranking = (result.get("impact_ranking") or {}).get("ranking") or []
+    if ranking:
+        top = ranking[0]
+        heads_up = (
+            f"> ⚠ **Top recovery priority:** {top['stage'].title()} — "
+            f"estimated value at risk {im.fmt_vnd(top.get('estimated_value_at_risk_vnd'))}; "
+            f"score {top.get('score')}. Say `flag it` to open or update the investigation.\n\n"
+            f"**Impact ranking**\n\n{im.render_ranking(result.get('impact_ranking'))}\n\n"
+        )
+    return heads_up + (headline + "\n\n" if headline else "") + fm.render_markdown()
+
+
+def _handle_weekly(message: str, lang: str, route_info: dict) -> dict:
+    pack = bf.weekly_meeting_pack()
+    pack["route"] = route_info
+    publish = any(k in message.lower() for k in ["publish", "post", "save", "create page", "write to confluence", "post to confluence"])
+    out = rp.llm_chat(
+        "Write a concise weekly business-funnel meeting brief from the JSON only. Sections: Executive summary, "
+        "Impact-ranked risks, Execution follow-up, Decisions/Confluence context, Proposed agenda. Quote Jira keys and page titles. "
+        + ("Answer in Vietnamese." if lang == "vi" else "Answer in English."),
+        json.dumps(pack, ensure_ascii=False),
+        max_tokens=1300,
+        temperature=0.2,
+    )
+    answer = out or bf.render_weekly_summary(pack)
+    result = dict(pack)
+    if publish:
+        if not ALLOW_WRITES:
+            answer += "\n\n(Writes are off, so I drafted the weekly summary but did not publish it to Confluence.)"
+            result["published"] = False
+            result["publish_error"] = "ALLOW_WRITES=false"
+        else:
+            page = cf.upsert_page(cf.weekly_title(pack.get("as_of")), answer)
+            result["confluence_page"] = page
+            result["published"] = bool(page.get("id"))
+            if page.get("url"):
+                answer += f"\n\nPublished to Confluence: {page['url']}"
+            else:
+                answer += f"\n\nCould not publish to Confluence ({page.get('error', 'unknown error')})."
+    return _respond("weekly", answer, result)
+
+
+def _handle_flag(message: str, route_info: dict) -> dict:
     drops = fm.anomalies()
     misses = fm.target_misses()
     if not drops and not misses:
-        return _respond("flag", "No significant drops or target misses right now — "
-                                "the funnel looks stable.", {"anomalies": [], "target_misses": []})
-    # combine reasons per stage so we open one task per stage, not one per signal
-    reasons: dict = {}
+        return _respond("flag", "No significant drops or target misses right now — the funnel looks stable.",
+                        {"anomalies": [], "target_misses": [], "route": route_info})
+
+    try:
+        open_issues = jc.all_open_issues()
+    except Exception:  # noqa: BLE001
+        open_issues = []
+    owners = bf.stage_owners_from_issues(open_issues)
+    ranking_pack = im.rank_stage_risks(open_issues, owners)
+    ranked_by_stage = {x["stage"]: x for x in ranking_pack.get("ranking", [])}
+
+    reasons: dict[str, list[str]] = {}
     for a in drops:
         reasons.setdefault(a["stage"], []).append(
             f"{a['metric']} dropped {abs(a['delta_pp'])}pp MoM ({a['prev_pct']}%→{a['latest_pct']}%)")
@@ -371,40 +334,93 @@ def _handle_flag(message: str) -> dict:
         reasons.setdefault(mm["stage"], []).append(
             f"{mm['metric']} {mm['actual_pct']}% vs {mm['target_pct']}% target ({mm['gap_pp']}pp)")
 
-    owners = bf.stage_owners()
-    lines, created = [], []
-    for stage, why in reasons.items():
-        owner = owners.get(stage)
-        line = f"**{stage.title()}**: " + "; ".join(why) + (f" — owner: {owner}" if owner else "")
+    lines, actions = [], []
+    for stage in sorted(reasons, key=lambda s: ranked_by_stage.get(s, {}).get("rank", 99)):
+        why = reasons[stage]
+        risk = ranked_by_stage.get(stage, {})
+        owner = owners.get(stage) or risk.get("owner")
+        diagnostic = sa.diagnostic_findings(stage + " drop") if sa.configured() else {}
+        contract = im.investigation_contract(stage, why, owner, risk, diagnostic)
+        description = ct.contract_markdown(contract, title="Investigation contract")
+        metric = contract.get("metric")
+        month = risk.get("month") or fm.summary().get("latest_month")
+        metric_label = str(metric or stage).replace("_rate_pct", "-rate").replace("_", "-")
+        labels_extra = ["investigation", "month-" + str(month), "metric-" + metric_label]
+
+        line = f"**{stage.title()}**: " + "; ".join(why)
+        if risk.get("estimated_value_at_risk_vnd"):
+            line += f"; estimated value at risk {im.fmt_vnd(risk.get('estimated_value_at_risk_vnd'))}"
+        if owner:
+            line += f"; owner: {owner}"
+
         if ALLOW_WRITES:
             assignee_id = None
             if owner:
-                u = jc.find_assignable_user(owner)
-                if u:
-                    assignee_id = u["accountId"]
-            epic_name = STAGE_TO_EPIC.get(stage)
-            epic_key = jc.find_epic(epic_name) if epic_name else None
-            title = f"Investigate {stage.title()}: " + "; ".join(why)
-            res = jc.create_issue(summary=title, stage=stage, owner=None, due=None,
-                                  assignee_id=assignee_id, epic_key=epic_key)
-            if res.get("key"):
-                created.append(res["key"])
-                line += f" → opened {res['key']}" + (f" for {owner}" if owner else "")
-            elif res.get("error"):
-                line += " (couldn't open task)"
+                try:
+                    user = jc.find_assignable_user(owner)
+                    if user:
+                        assignee_id = user["accountId"]
+                except Exception:  # noqa: BLE001
+                    assignee_id = None
+            existing = None
+            try:
+                existing = jc.find_open_investigation(stage, metric=metric, month=str(month))
+            except Exception:  # noqa: BLE001
+                existing = None
+            if existing:
+                try:
+                    jc.comment_issue(existing["key"], "Funnel Watchtower refreshed this investigation.\n\n" + description)
+                except Exception:  # noqa: BLE001
+                    pass
+                line += f" → updated existing {existing['key']}"
+                actions.append({"stage": stage, "action": "updated", "key": existing["key"], "contract": contract})
+            else:
+                epic_name = STAGE_TO_EPIC.get(stage)
+                try:
+                    epic_key = jc.find_epic(epic_name) if epic_name else None
+                except Exception:  # noqa: BLE001
+                    epic_key = None
+                title = f"Investigate {stage.title()}: " + "; ".join(why)
+                res = jc.create_issue(summary=title, stage=stage, owner=None, due=None,
+                                      assignee_id=assignee_id, epic_key=epic_key,
+                                      labels_extra=labels_extra, description=description)
+                if res.get("key"):
+                    line += f" → opened {res['key']}" + (f" for {owner}" if owner else "")
+                    actions.append({"stage": stage, "action": "created", "key": res["key"], "contract": contract})
+                else:
+                    line += " (could not open task)"
+                    actions.append({"stage": stage, "action": "error", "error": res.get("error"), "contract": contract})
         lines.append("- " + line)
-    verb = "Flagged and opened investigation task(s)" if created else "Flagged"
+
+    created = [a["key"] for a in actions if a.get("action") == "created"]
+    updated = [a["key"] for a in actions if a.get("action") == "updated"]
+    verb = "Flagged"
+    if created or updated:
+        parts = []
+        if created:
+            parts.append(f"created {len(created)}")
+        if updated:
+            parts.append(f"updated {len(updated)}")
+        verb += " and " + " / ".join(parts) + " investigation(s)"
     answer = f"{verb} for {len(reasons)} stage(s):\n\n" + "\n".join(lines)
     if not ALLOW_WRITES:
-        answer += "\n\n_(Writes are off, so I only flagged them.)_"
-    return _respond("flag", answer, {"anomalies": drops, "target_misses": misses,
-                                     "stages": list(reasons), "created": created})
+        answer += "\n\n(Writes are off, so I only flagged them.)"
+    return _respond("flag", answer, {
+        "anomalies": drops,
+        "target_misses": misses,
+        "impact_ranking": ranking_pack,
+        "stages": list(reasons),
+        "actions": actions,
+        "created": created,
+        "updated": updated,
+        "route": route_info,
+    })
 
 
-def _handle_write(intent: str, message: str) -> dict:
+def _handle_write(intent: str, message: str, route_info: dict) -> dict:
     if not ALLOW_WRITES:
-        return _respond(intent, "Writing to Jira is disabled on this deployment "
-                                "(set ALLOW_WRITES=true to enable).", {"allow_writes": False})
+        return _respond(intent, "Writing to Jira is disabled on this deployment (set ALLOW_WRITES=true to enable).",
+                        {"allow_writes": False, "route": route_info})
 
     if intent == "create":
         f = extract_create_fields(message)
@@ -412,56 +428,51 @@ def _handle_write(intent: str, message: str) -> dict:
         assignee_id = None
         assign_note = ""
         if owner:
-            u = jc.find_assignable_user(owner)
-            if u:
-                assignee_id = u["accountId"]
-                assign_note = f"assigned to {u['displayName']}"
+            user = jc.find_assignable_user(owner)
+            if user:
+                assignee_id = user["accountId"]
+                assign_note = f"assigned to {user['displayName']}"
             else:
-                assign_note = (f"tagged owner-{owner.strip().lower().replace(' ', '-')} "
-                               f"(no Jira user matched '{owner}', so not assigned to a real account)")
+                assign_note = f"tagged {jc.owner_label(owner)}"
         else:
-            # no owner given -> assign to yourself (the caller / token user)
             me = jc.myself()
             if me:
                 assignee_id = me["accountId"]
                 assign_note = f"assigned to you ({me['displayName']})"
-        # the Epic (funnel stage / project) the task belongs under
-        stage = (f.get("stage") or "").lower() or None
+
+        stage = f.get("stage")
         epic_name = STAGE_TO_EPIC.get(stage) if stage else None
         epic_key = jc.find_epic(epic_name) if epic_name else None
-        res = jc.create_issue(summary=f["summary"], stage=stage, owner=owner,
-                              due=f.get("due"), assignee_id=assignee_id, epic_key=epic_key)
+        description = ct.contract_markdown(f, title="Initiative contract")
+        res = jc.create_issue(summary=f["summary"], stage=stage, owner=owner, due=f.get("due"),
+                              assignee_id=assignee_id, epic_key=epic_key, description=description)
         if res.get("error"):
-            return _respond("create", f"Couldn't create that initiative ({res['error']}).", res)
+            return _respond("create", f"Could not create that initiative ({res['error']}).", {**res, "route": route_info})
         bits = []
         if epic_name:
             bits.append(f"Epic: {epic_name}" + ("" if res.get("epic_key") else " (label only)"))
-        if f.get("due"):
-            bits.append(f"due {f['due']}")
-        else:
-            bits.append("backlog (no due date)")
+        bits.append(f"due {f['due']}" if f.get("due") else "backlog (no due date)")
         if assign_note:
             bits.append(assign_note)
         answer = f"Created **{res['key']}** — {f['summary']}"
         if bits:
             answer += " (" + ", ".join(bits) + ")"
         answer += f". {res['url']}"
-        return _respond("create", answer, {**res, "fields": f})
+        return _respond("create", answer, {**res, "fields": f, "contract": f, "route": route_info})
 
-    # intent == "assign"
     key, owner = parse_assign(message)
     if not key or not owner:
-        return _respond("assign", "Tell me which ticket and who — e.g. "
-                                  "\"assign KAN-23 to Mai\".", {"parsed": {"key": key, "owner": owner}})
-    u = jc.find_assignable_user(owner)
-    res = jc.assign_issue(key, assignee_id=(u["accountId"] if u else None), owner=owner)
-    if u and res.get("assigned_real"):
-        answer = f"Assigned **{key}** to {u['displayName']} (owner-{owner.strip().lower()} stamped too)."
+        return _respond("assign", "Tell me which ticket and who, e.g. `assign KAN-23 to Mai`.",
+                        {"parsed": {"key": key, "owner": owner}, "route": route_info})
+    user = jc.find_assignable_user(owner)
+    res = jc.assign_issue(key, assignee_id=(user["accountId"] if user else None), owner=owner)
+    if user and res.get("assigned_real"):
+        answer = f"Assigned **{key}** to {user['displayName']} (owner label stamped too)."
     elif res.get("owner_label"):
-        answer = (f"Set **{key}** owner to {owner} (label {res['owner_label']}). No matching Jira "
-                  f"user to assign for real — invite {owner} to the workspace to enable real assignment.")
+        answer = f"Set **{key}** owner to {owner} via label {res['owner_label']}."
     else:
-        answer = f"Couldn't assign {key} ({res.get('error', 'unknown error')})."
+        answer = f"Could not assign {key} ({res.get('error', 'unknown error')})."
+    res["route"] = route_info
     return _respond("assign", answer, res)
 
 

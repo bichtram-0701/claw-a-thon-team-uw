@@ -1,81 +1,61 @@
-# Submission form drafts — Team UW (copy-paste on submission day)
-
-> Form fields per training slides: Agent name · Tagline · Problem · Solution ·
-> Value · Voter guide · Links. Use case description: 100–200 words (user guide).
-> Form opens after Training Day, editable until 17/06 12:00. Submit EARLY (16/06 evening).
+# Submission form draft - Team UW
 
 ## Agent name
 Funnel Watchtower
 
 ## Tagline
-The lending lead's morning oversight — who owns each funnel initiative, what's on
-track, and what's critical right now, in plain language.
+Turns funnel drift into ranked, owned recovery actions.
 
 ## Track
 Agentic Assistant
 
 ## Problem
-A lending lead's morning is spent reconstructing the funnel program by hand:
-which conversion initiatives are in flight (reduce docs-upload drop-off, lift
-approval rate, cut disbursement abandonment), who owns each, what's slipping, and
-what's critical — scattered across Jira boards and Confluence pages. Blockers and
-deterioration surface late, after a stage metric has already dropped.
+Business teams already have dashboards, Jira, Confluence, and chat. But when a funnel metric moves, the recovery workflow is still manual: managers must decide which drop matters most, estimate impact, find the owner, check whether work exists, read the latest decisions, and prepare follow-up for the weekly meeting.
+
+The real bottleneck is metric-to-action translation.
 
 ## Solution
-A bilingual (VI/EN) AI agent on GreenNode AgentBase, connected to Jira +
-Confluence, built for line-manager oversight of the loan funnel
-(Traffic → Submission → Approval → Disbursement). Ask "show me the funnel metrics"
-for a monthly conversion table; "what's critical or off track?" / "who is working
-on what?" for the oversight read; "what did we decide about submission?" for a
-Confluence-sourced answer; and it can even "create a ticket to..." or "assign
-KAN-23 to Mai" — writing real initiatives back into Jira. Deterministic clients
-compute every fact; the MaaS LLM (Qwen) only narrates — so it never invents a
-number, ticket or owner, and every feature has an offline fallback.
+Funnel Watchtower is an execution intelligence agent for owned business funnels. Ask for funnel metrics and it computes conversion, target gaps, month-over-month anomalies, and estimated value at risk. Ask what is off track and it links those risks to Jira owners, blockers, overdue work, and open initiatives. Ask `flag it` and it creates or updates one Jira investigation per stage + metric + month with a structured initiative contract. Ask for a weekly meeting summary and it drafts, and optionally publishes, a Confluence readout with impact-ranked risks, execution follow-up, decisions, and agenda.
+
+The LLM handles routing, extraction, and narration only. Python and SQL compute numbers, rankings, SQL templates, Jira writes, duplicate-ticket prevention, and Confluence publishing guards.
 
 ## Value
-The lead's morning tab-hop becomes one question — or an automatic daily digest.
-Critical-and-slipping work is surfaced first, the moment it's asked. Ownership
-and stage health are visible at a glance, and every figure is real (from a Jira/
-Confluence call) rather than model-invented. A web chat means anyone can use it
-with zero setup.
+Watchtower compresses the manager's operating loop from dashboard -> Jira -> Confluence -> Teams into one accountable workflow: detect target drift, estimate business value at risk, rank the priority, identify the owner, open/update recovery work, and prepare the weekly readout. It is useful even with a replaceable internal model layer because the business truth is deterministic and auditable.
 
-## Voter guide (how to try it)
-Open the link, no install needed:
-https://endpoint-02241868-df01-4fa2-9b36-45145561851c.agentbase-runtime.aiplatform.vngcloud.vn/
-Click a suggestion chip or ask your own question — English or Vietnamese:
-- "show me the funnel metrics"
-- "what's critical or off track?"
-- "who is working on what?"
-- "create a ticket to improve submission rate"
-- "ai dang lam gi, co gi tre khong?"
-All data is in a synthetic workspace — no company systems, no real personal data.
+## Voter guide
+Try:
 
-## Use case description (100–200 words; current count ≈ 155)
-A lending team lead running the application-funnel improvement program loses time
-every morning reconstructing it by hand: which initiatives are in flight, who
-owns each, what's blocked, what's critical — spread across Jira and Confluence.
-Problems surface after a stage metric has already dropped.
+```text
+show me the funnel metrics
+rank the target misses by value at risk
+break May down by drop reason
+flag the drops and assign owners to investigate
+what is critical or off track right now?
+weekly meeting summary
+publish weekly meeting summary to Confluence
+ai dang lam gi, co gi tre khong?
+```
 
-Funnel Watchtower is an AI agent on GreenNode AgentBase, connected to Jira and
-Confluence, built for that oversight. In Vietnamese or English — "what's critical
-or off track?", "who is working on what?", "what did we decide about docs-upload?"
-— it answers with concrete issue keys and owners, because deterministic clients
-fetch every fact and the MaaS LLM (Qwen) only narrates. It leads with what needs
-attention now (critical AND overdue/blocked), reads each funnel stage, flags
-overloaded owners, and a scheduled job pushes the digest each morning. A built-in
-web chat means anyone can use it with zero setup. All demo data is synthetic.
+All demo data is synthetic.
+
+## 100-200 word use case description
+Business teams do not only need to know that a funnel metric moved. They need to know which movement matters most, how much value is at risk, who owns recovery, whether work is blocked, and what should be discussed in the weekly meeting.
+
+Funnel Watchtower is an execution intelligence agent for owned funnels. The demo uses a simple four-stage funnel: Traffic -> Submission -> Approval -> Disbursement, but the pattern applies to marketing acquisition, product onboarding, sales pipeline, merchant activation, and operations workflows. It computes conversion, OKR target gaps, month-over-month drops, and estimated value at risk deterministically from synthetic data. It then links those signals to Jira initiatives, owners, blockers, Confluence decisions, Teams follow-up, and weekly meeting summaries. When a metric slips, Watchtower ranks the issue by business impact and execution risk, identifies the owner, and can open or update a Jira investigation with a structured initiative contract.
+
+The LLM only routes, extracts bounded fields, and narrates verified JSON. The math, issue keys, owners, SQL templates, and write decisions are validated by code.
 
 ## Links
-- Repo (PUBLIC through 03/07): https://github.com/bichtram-0701/claw-a-thon-team-uw
-- Live agent + web chat (optional endpoint field):
-  https://endpoint-02241868-df01-4fa2-9b36-45145561851c.agentbase-runtime.aiplatform.vngcloud.vn/
-- Demo video: _[add after recording — YouTube unlisted or OneDrive shared to @vng.com.vn]_
+- Repo: https://github.com/bichtram-0701/claw-a-thon-team-uw
+- Live agent: https://endpoint-02241868-df01-4fa2-9b36-45145561851c.agentbase-runtime.aiplatform.vngcloud.vn/
+- Demo video: _add after recording_
 
-## Submission-day checklist
-- [ ] Repo public, README filled (name, description, how to run) ✓ already
-- [ ] Agent ACTIVE on AgentBase (BTC will call it at least once)
-- [ ] Workspace re-seeded with funnel initiatives + token still valid (re-run Verify if unsure)
-- [ ] Redeploy AFTER secrets valid so the runtime has Atlassian env vars
-- [ ] Video viewable from a @vng.com.vn account
-- [ ] Wallet has credit (runtime keeps burning through voting — check portal)
-- [ ] Keep everything running + public until voting closes 03/07 11:00
+## Submission checklist
+- [ ] Remove `.env` and tokens from any shared ZIP.
+- [ ] Rotate any token that was previously shared.
+- [ ] Re-seed synthetic Atlassian workspace if needed.
+- [ ] Set `ALLOW_WRITES=true` only for the demo workspace.
+- [ ] Run `python tests/test_offline.py`.
+- [ ] Verify `daily volume` routes to analyst and `draft my standup` routes to standup.
+- [ ] Verify `weekly meeting summary` drafts a meeting readout.
+- [ ] Verify Confluence publishing only when writes are intentionally enabled.

@@ -1,0 +1,17 @@
+{"prompt":"daily volume in May","expected_intent":"analyst","must_not":"standup"}
+{"prompt":"show daily volume","expected_intent":"analyst","must_not":"standup"}
+{"prompt":"draft my daily standup","expected_intent":"standup"}
+{"prompt":"daily approval volume by channel","expected_intent":"analyst"}
+{"prompt":"weekly volume in May","expected_intent":"analyst","must_not":"weekly"}
+{"prompt":"prepare weekly meeting summary","expected_intent":"weekly"}
+{"prompt":"publish weekly meeting summary to Confluence","expected_intent":"weekly"}
+{"prompt":"show me the funnel metrics","expected_intent":"metrics"}
+{"prompt":"rank the target misses by value at risk","expected_intent":"metrics"}
+{"prompt":"what is critical or off track?","expected_intent":"oversight"}
+{"prompt":"who is working on what?","expected_intent":"oversight"}
+{"prompt":"what is on my plate?","expected_intent":"briefing"}
+{"prompt":"what did we decide about submission?","expected_intent":"knowledge"}
+{"prompt":"flag the approval drop","expected_intent":"flag"}
+{"prompt":"create a ticket to improve submission rate","expected_intent":"create"}
+{"prompt":"assign KAN-23 to Mai","expected_intent":"assign"}
+{"prompt":"ai dang lam gi co gi tre khong","expected_intent":"oversight"}
