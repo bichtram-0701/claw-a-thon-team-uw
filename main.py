@@ -107,7 +107,7 @@ ROUTES = [
       "new initiative", "open a ticket", "file a ticket", "log a ticket",
       "tao ticket", "tạo ticket", "tao moi", "them ticket"}, "create"),
     ({"assign ", "re-assign", "reassign ", "giao cho", "gan cho", "gán cho"}, "assign"),
-    ({"standup", "stand-up", "stand up", "daily"}, "standup"),
+    ({"standup", "stand-up", "stand up"}, "standup"),
     ({"decide", "decision", "decided", "document", "wiki", "confluence", "wrote",
       "quyết định", "quyet dinh", "tài liệu", "tai lieu", "biên bản", "bien ban"}, "knowledge"),
     ({"plate", "my task", "my issue", "my initiative", "assigned to me", "what should i",
@@ -135,32 +135,41 @@ VALID = {"create", "assign", "flag", "analyst", "metrics", "oversight", "briefin
 
 
 def route(message: str) -> str:
+    """Model-first routing: let the LLM understand the request. Keyword matching
+    is only a fallback for when the model is unavailable (offline / tests)."""
+    return rp_classify(message) or _keyword_route(message)
+
+
+def _keyword_route(message: str) -> str:
     msg = message.lower()
     for keywords, intent in ROUTES:
         if any(k in msg for k in keywords):
             return intent
-    return rp_classify(message) or "help"
+    return "help"
 
 
 def rp_classify(message: str) -> str | None:
     out = rp.llm_chat(
-        "Classify the user's message about a lending-funnel initiative tracker into exactly "
-        "one word from: create, assign, oversight, briefing, sprint, knowledge, standup, help. "
-        "create = make a NEW initiative/ticket; assign = set the owner of an EXISTING ticket; "
-        "flag = a significant month-over-month metric DROP should be flagged and an investigation "
-        "opened for the stage owner; "
-        "analyst = an open-ended slice/aggregation of the application data (by day, week, "
-        "product, channel, drop reason — anything needing a custom breakdown); "
-        "metrics = funnel PERFORMANCE numbers/conversion rates per month (traffic, submission, "
-        "approval, disbursement, ticket size), including comparing months; "
-        "oversight = the lead's view of all initiatives: who owns what, what's critical, what's "
-        "on/off track, funnel overview; briefing = the user's OWN tasks/priorities; "
-        "sprint = simple status mix / workload of the whole team; knowledge = past decisions, "
-        "documentation, meeting notes; standup = draft a standup update; help = anything else. "
+        "You route messages for a lending-funnel assistant. Classify the user's message into "
+        "EXACTLY one of these words: create, assign, flag, analyst, metrics, oversight, briefing, "
+        "sprint, knowledge, standup, help.\n"
+        "- create = make a NEW initiative/ticket\n"
+        "- assign = set the owner of an EXISTING ticket\n"
+        "- flag = a metric dropped / is off — flag it and open an investigation for the owner\n"
+        "- analyst = ANY ad-hoc data question / query / custom breakdown of the application data "
+        "(by day, week, product, channel, drop reason, volume, counts — 'can you do queries', "
+        "'daily volume', 'break down by X')\n"
+        "- metrics = the standard monthly funnel performance table / conversion rates, comparing months\n"
+        "- oversight = the lead's view of all initiatives: who owns what, what's critical, on/off track\n"
+        "- briefing = the user's OWN tasks/priorities\n"
+        "- sprint = simple status mix / workload of the whole team\n"
+        "- knowledge = past decisions, documentation, meeting notes (Confluence)\n"
+        "- standup = draft a stand-up update\n"
+        "- help = greetings, capability questions about the assistant itself, or anything else\n"
         "Reply with the single word only.",
-        message, max_tokens=64)
+        message, max_tokens=16)
     if out:
-        word = out.strip().lower().split()[0].strip(".,!")
+        word = out.strip().lower().split()[0].strip(".,!\"'`")
         if word in VALID:
             return word
     return None
@@ -318,10 +327,11 @@ def _handle(payload: dict) -> dict:
                           "what did we decide about submission? · draft my standup"}
         answer = (
             "Hi! I'm Funnel Watchtower (Team UW). I track the loan funnel (Traffic → Submission → "
-            "Approval → Disbursement) across Jira + Confluence. Ask me for the **funnel metrics**, "
-            "the **funnel overview** (who owns what, what's critical or off track), to **create** "
-            "or **assign** an initiative, a past **decision**, or your **plate**. "
-            "Tiếng Việt cũng được nhé!"
+            "Approval → Disbursement) across Jira + Confluence. I can: show the **funnel metrics** "
+            "(vs target), answer **ad-hoc data queries** (e.g. \"daily volume in May\", \"by drop "
+            "reason\", \"by product\"), **flag** a drop and open an investigation for the owner, give "
+            "the **funnel overview** (who owns what, what's off track), **create**/**assign** an "
+            "initiative, recall a past **decision**, or show your **plate**. Tiếng Việt cũng được nhé!"
         )
 
     # LLM narration with intent-specific instructions (deterministic JSON is the truth)
