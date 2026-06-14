@@ -31,17 +31,71 @@ def _preferred_project_key() -> str | None:
 
 
 def _scope_jql(jql: str) -> str:
-    """Scope broad Jira searches to JIRA_PROJECT_KEY when configured."""
+    """Scope broad Jira searches to JIRA_PROJECT_KEY when configured.
+
+    JQL ORDER BY must stay outside the scoped predicate. The older version
+    produced invalid JQL like::
+
+        project = "UW" AND (statusCategory != Done ORDER BY due ASC)
+
+    which broke oversight/weekly reads and made investigation dedupe silently
+    fail. Keep it as::
+
+        project = "UW" AND (statusCategory != Done) ORDER BY due ASC
+    """
+    jql = (jql or "").strip()
     key = _preferred_project_key()
-    if not key:
+    if not key or not jql:
         return jql
-    if re.search(r"\bproject\s*=", jql or "", re.IGNORECASE):
+    if re.search(r"\bproject\s*=", jql, re.IGNORECASE):
         return jql
-    return f'project = "{key}" AND ({jql})'
+
+    m = re.search(r"\border\s+by\b", jql, re.IGNORECASE)
+    if m:
+        predicate = jql[:m.start()].strip()
+        order_by = jql[m.start():].strip()
+    else:
+        predicate = jql
+        order_by = ""
+
+    scoped = f'project = "{key}"'
+    if predicate:
+        scoped += f" AND ({predicate})"
+    if order_by:
+        scoped += " " + order_by
+    return scoped
 
 
 def configured() -> bool:
     return bool(SITE and EMAIL and TOKEN)
+
+
+def issue_url(key: str | None) -> str | None:
+    """Browser URL for a Jira issue key when ATLASSIAN_SITE is configured."""
+    if not key or not SITE:
+        return None
+    return f"{SITE}/browse/{key}"
+
+
+def issue_markdown(key: str | None) -> str:
+    """Markdown link for a Jira issue key, falling back to the plain key."""
+    if not key:
+        return ""
+    url = issue_url(key)
+    return f"[{key}]({url})" if url else str(key)
+
+
+def link_issue_keys(text: str | None) -> str:
+    """Link bare Jira keys in bot answers without touching existing URLs/links."""
+    if not text or not SITE:
+        return text or ""
+
+    def repl(m):
+        key = m.group(1)
+        return issue_markdown(key)
+
+    # Do not rewrite keys already inside Markdown links or /browse/ URLs.
+    return re.sub(r"(?<![\w/\[])([A-Z][A-Z0-9]+-\d+)(?![\w\)])", repl, str(text))
 
 
 def _client() -> httpx.Client:

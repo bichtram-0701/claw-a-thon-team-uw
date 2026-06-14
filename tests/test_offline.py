@@ -42,7 +42,8 @@ fake.RequestContext = object
 sys.modules["greennode_agentbase"] = fake
 
 os.environ.update(ATLASSIAN_SITE="https://x.atlassian.net",
-                  ATLASSIAN_EMAIL="x@y.z", ATLASSIAN_TOKEN="t" * 192, ALLOW_WRITES="true")
+                  ATLASSIAN_EMAIL="x@y.z", ATLASSIAN_TOKEN="t" * 192,
+                  ALLOW_WRITES="true", JIRA_PROJECT_KEY="UW")
 os.environ.pop("LLM_API_KEY", None)
 os.environ.pop("LLM_BASE_URL", None)
 
@@ -138,6 +139,16 @@ check("by_epic present (not by_stage)", "by_epic" in md and "by_stage" not in md
 check("by_epic has Submission", "Submission" in md["by_epic"])
 check("by_epic has Data & Platform", "Data & Platform" in md["by_epic"])
 check("Completion in_progress=0", md["by_epic"]["Completion"]["in_progress"] == 0)
+
+print("jira jql scoping + links:")
+scoped = jc._scope_jql("statusCategory != Done ORDER BY due ASC")
+check("project scope keeps ORDER BY outside parentheses", scoped == 'project = "UW" AND (statusCategory != Done) ORDER BY due ASC')
+scoped2 = jc._scope_jql('statusCategory != Done AND labels = "blocked" ORDER BY due ASC')
+check("complex scope keeps ORDER BY outside parentheses", scoped2 == 'project = "UW" AND (statusCategory != Done AND labels = "blocked") ORDER BY due ASC')
+linked = jc.link_issue_keys("Opened UW-159 and https://x.atlassian.net/browse/UW-160 and [UW-161](x).")
+check("bare issue linked", "[UW-159](https://x.atlassian.net/browse/UW-159)" in linked)
+check("URL issue not double-linked", "browse/[UW-160]" not in linked)
+check("markdown issue not double-linked", "[[UW-161]" not in linked)
 
 print("epic parsing (real jira_client only):")
 if hasattr(jc, "_epic_from_parent"):

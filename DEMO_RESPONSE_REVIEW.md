@@ -69,3 +69,21 @@ Fix:
 - Current demo data is row-level and smaller: 4,650 rows total across six months.
 - May 2026 now reconciles to `Traffic 800 -> Submission 216 -> Approval 24 -> Completion 23`.
 - Daily and monthly metrics aggregate from the same CSV source of truth.
+
+## v6 review: Jira links + UW project JQL scoping
+
+Observed in saved runtime export:
+- `flag the drops and assign owners to investigate` created `UW-159` and `UW-160`, but the answer only showed bare issue keys rather than clickable links.
+- Follow-up Jira/Confluence paths (`what is critical or off track right now?`, `what does blocked mean here...`, `weekly meeting summary`, `publish weekly...`) returned the generic error message.
+- The metrics response also showed `Unassigned` / `no blocked/overdue work detected`, which indicated broad Jira reads were failing and being swallowed by the metrics fallback.
+
+Root cause:
+- After switching the Jira project key to `UW`, `_scope_jql()` wrapped the whole JQL string, including `ORDER BY`, inside parentheses. That produced invalid JQL such as:
+  `project = "UW" AND (statusCategory != Done ORDER BY due ASC)`.
+- Because broad Jira reads failed, oversight/weekly threw errors, metrics lost owner/execution-risk context, and investigation dedupe could not find existing open investigations.
+- The flag handler only printed bare keys (`UW-159`) while the create handler appended a URL, so flag-created investigations did not look clickable in chat.
+
+Fix:
+- `_scope_jql()` now splits out `ORDER BY` and emits valid scoped JQL: `project = "UW" AND (statusCategory != Done) ORDER BY due ASC`.
+- Added regression tests for JQL scoping with `ORDER BY`.
+- Added Markdown linkification for bare Jira keys in successful bot answers, while avoiding keys already inside URLs or Markdown links.

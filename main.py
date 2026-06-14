@@ -255,9 +255,10 @@ def _metrics_result(route_info: dict | None = None) -> dict:
         try:
             open_issues = jc.all_open_issues()
             owners = bf.stage_owners_from_issues(open_issues)
-        except Exception:  # noqa: BLE001
+        except Exception as e:  # noqa: BLE001
             open_issues = []
             owners = {}
+            result["jira_context_error"] = type(e).__name__ + ": " + str(e)[:180]
     result["impact_ranking"] = im.rank_stage_risks(open_issues, owners)
     if route_info is not None:
         result["route"] = route_info
@@ -284,7 +285,14 @@ def _render_metrics_answer(result: dict, lang: str) -> str:
             f"score {top.get('score')}. Say `flag it` to open or update the investigation.\n\n"
             f"**Impact ranking**\n\n{im.render_ranking(result.get('impact_ranking'))}\n\n"
         )
-    return heads_up + (headline + "\n\n" if headline else "") + fm.render_markdown()
+    jira_warn = ""
+    if result.get("jira_context_error"):
+        jira_warn = (
+            "> Note: I could compute funnel metrics, but Jira context could not be read, "
+            "so owners/blockers may be incomplete. "
+            f"Debug: `{result.get('jira_context_error')}`\n\n"
+        )
+    return jira_warn + heads_up + (headline + "\n\n" if headline else "") + fm.render_markdown()
 
 
 def _handle_weekly(message: str, lang: str, route_info: dict) -> dict:
@@ -479,6 +487,8 @@ def _handle_write(intent: str, message: str, route_info: dict) -> dict:
 
 
 def _respond(intent: str, answer, result: dict) -> dict:
+    if isinstance(answer, str):
+        answer = jc.link_issue_keys(answer)
     return {
         "status": "success",
         "intent": intent,
