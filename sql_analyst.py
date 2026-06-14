@@ -50,6 +50,19 @@ _FORBIDDEN = re.compile(
     re.IGNORECASE)
 
 
+def _cell(v):
+    """Make a DuckDB value JSON-serializable (dates -> ISO, Decimal -> float)."""
+    from datetime import date, datetime
+    from decimal import Decimal
+    if isinstance(v, (date, datetime)):
+        return v.isoformat()
+    if isinstance(v, Decimal):
+        return float(v)
+    if isinstance(v, bytes):
+        return v.decode("utf-8", "replace")
+    return v
+
+
 def configured() -> bool:
     try:
         import duckdb  # noqa: F401
@@ -76,7 +89,7 @@ def run_sql(sql: str, limit: int = 200) -> dict:
         con = _con()
         cur = con.execute(s)
         cols = [d[0] for d in cur.description]
-        rows = [list(r) for r in cur.fetchmany(limit)]
+        rows = [[_cell(v) for v in r] for r in cur.fetchmany(limit)]
         con.close()
         return {"columns": cols, "rows": rows}
     except Exception as e:  # noqa: BLE001

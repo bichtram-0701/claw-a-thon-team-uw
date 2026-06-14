@@ -75,7 +75,7 @@ function add(cls, html) {
   chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
   return d;
 }
-const esc = s => s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 add("bot", marked.parse("Hi! I'm **Funnel Watchtower** — I track the loan funnel " +
   "(Traffic → Submission → Approval → Disbursement) across Jira + Confluence. Ask for the " +
@@ -98,12 +98,15 @@ form.addEventListener("submit", async e => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: q })
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     const secs = ((Date.now() - t0) / 1000).toFixed(1);
     wait.remove();
-    const text = data.answer || "```json\n" + JSON.stringify(data.result, null, 2) + "\n```";
-    const meta = `<div class="meta">${esc(data.intent || data.status)} · ${secs}s · v${esc(data.version || "?")}</div>`;
-    add("bot", meta + marked.parse(text));
+    // be defensive: an unexpected/error response should still render, not crash
+    const text = data.answer || data.error ||
+      ("```json\n" + JSON.stringify(data, null, 2) + "\n```");
+    const label = data.intent || data.status || (res.ok ? "agent" : "error " + res.status);
+    const meta = `<div class="meta">${esc(label)} · ${secs}s · v${esc(data.version || "?")}</div>`;
+    add(res.ok ? "bot" : "bot error", meta + marked.parse(String(text)));
   } catch (err) {
     wait.remove();
     add("bot error", "Could not reach the agent (" + esc(err.message) + "). " +
