@@ -306,8 +306,17 @@ def template_sql(question: str) -> tuple[str | None, str | None]:
     amounts = _amount_expr()
 
     # Drop reason questions should explain the relevant loss stage, not include successful rows.
-    if "drop reason" in q or "by drop" in q or "reason breakdown" in q:
-        if any(k in q for k in ["all", "overall", "every stage", "all stages"]):
+    # Examples: "break May down by drop reason", "break May approval drop down by reason".
+    asks_reason_breakdown = (
+        "drop reason" in q
+        or "by drop" in q
+        or "reason breakdown" in q
+        or "by reason" in q
+        or "down by reason" in q
+        or ("reason" in q and any(k in q for k in ["break", "breakdown", "break down"]) and any(k in q for k in ["drop", "dropped", "leak", "loss"]))
+    )
+    if asks_reason_breakdown:
+        if any(k in q for k in ["all", "overall", "every stage", "all stages", "by transition"]):
             return _all_drop_reason_sql(where), "all_drop_reason_breakdown"
         stage = _detect_drop_stage(q)
         return _drop_reason_sql(where, stage), f"{stage}_drop_reason_breakdown"

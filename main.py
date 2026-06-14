@@ -49,8 +49,22 @@ async def _serve_chat(request):
 
 app.router.routes.append(Route("/", _serve_chat, methods=["GET"]))
 
+
+async def _version(request):
+    return JSONResponse({
+        "app_version": APP_VERSION,
+        "build_version": BUILD_VERSION,
+        "jira_project_key": os.environ.get("JIRA_PROJECT_KEY", ""),
+        "allow_writes": ALLOW_WRITES,
+    })
+
+
+app.router.routes.append(Route("/version", _version, methods=["GET"]))
+
 JIRA_EVENT_TOKEN = os.environ.get("JIRA_EVENT_TOKEN", "")
 ALLOW_WRITES = os.environ.get("ALLOW_WRITES", "true").lower() in ("1", "true", "yes")
+APP_VERSION = os.environ.get("APP_VERSION", "demo-v10")
+BUILD_VERSION = os.environ.get("GIT_SHA", "dev")[:7]
 
 STAGE_TO_EPIC = {
     "traffic": "Traffic",
@@ -217,6 +231,8 @@ def _handle(payload: dict) -> dict:
     elif intent == "oversight":
         result = bf.manager_digest()
         result["route"] = route_info
+        if _is_unassigned_work_question(message):
+            answer = _render_unassigned_work_answer(result)
     elif intent == "briefing":
         result = bf.my_briefing()
         result["route"] = route_info
@@ -283,6 +299,18 @@ def _analyst_intro(result: dict) -> str:
         return "**Traffic → Submission drop breakdown.** The table below explains traffic rows that did not submit."
     if template == "completion_drop_reason_breakdown" and rows:
         return "**Approval → Completion drop breakdown.** The table below explains approved rows that did not complete."
+    if template == "daily_volume" and rows:
+        try:
+            cols = result.get("columns") or []
+            idx = {c: i for i, c in enumerate(cols)}
+            apps = sum(int(r[idx["applications"]] or 0) for r in rows)
+            submitted = sum(int(r[idx["submitted"]] or 0) for r in rows)
+            approved = sum(int(r[idx["approved"]] or 0) for r in rows)
+            completed = sum(int(r[idx["completed"]] or 0) for r in rows)
+            return (f"**Daily funnel volume.** Totals reconcile to the monthly funnel: "
+                    f"{apps} Traffic, {submitted} Submission, {approved} Approval, {completed} Completion.")
+        except Exception:  # noqa: BLE001
+            return "**Daily funnel volume.** Counts are grouped by entry date and include all funnel stages."
     return ""
 
 
@@ -337,6 +365,55 @@ def _render_metrics_answer(result: dict, lang: str) -> str:
 def _is_top_risk_question(message: str) -> bool:
     q = message.lower()
     return any(k in q for k in ["top risk", "top recovery", "recovery priority", "why is approval", "why approval is"])
+
+
+def _is_unassigned_work_question(message: str) -> bool:
+    q = message.lower()
+    return any(k in q for k in [
+        "unassigned", "without assignee", "no assignee", "not assigned",
+        "without owner", "no owner", "owner unassigned", "assignee unassigned",
+    ]) and any(k in q for k in ["task", "tasks", "issue", "issues", "ticket", "tickets", "open", "work"])
+
+
+def _fmt_issue_line(issue: dict) -> str:
+    key = issue.get("key") or "(no key)"
+    summary = issue.get("summary") or "(no summary)"
+    stage = issue.get("stage") or issue.get("epic") or "unsorted"
+    status = issue.get("status") or "unknown status"
+    due = issue.get("due") or "no due date"
+    assignee = issue.get("assignee") or "Unassigned"
+    owner = issue.get("owner") or "Unassigned"
+    details = []
+    if owner != "Unassigned" and owner != assignee:
+        details.append(f"owner {owner}")
+    details.extend([f"assignee {assignee}", f"stage {stage}", f"status {status}", f"due {due}"])
+    return f"- {key}: {summary} — " + ", ".join(details)
+
+
+def _render_unassigned_work_answer(result: dict) -> str:
+    owner_items = result.get("owner_unassigned_open") or []
+    assignee_items = result.get("assignee_unassigned_open") or []
+    # The old LLM answer only had aggregate by_owner counts. Keep both lists so
+    # users can distinguish Watchtower's owner mapping from raw Jira assignee.
+    items = owner_items or assignee_items
+    basis = "Watchtower owner mapping" if owner_items else "real Jira assignee"
+    if not items:
+        return "I do not see any open UW issues without an owner or Jira assignee right now."
+    lines = [
+        f"These are the **{len(items)} open issue(s)** without a {basis}:",
+        "",
+    ]
+    for issue in items[:25]:
+        lines.append(_fmt_issue_line(issue))
+    if len(items) > 25:
+        lines.append(f"- …and {len(items) - 25} more.")
+    if owner_items and assignee_items and len(owner_items) != len(assignee_items):
+        lines += [
+            "",
+            f"Note: **{len(owner_items)}** are unassigned by Watchtower owner mapping; **{len(assignee_items)}** have no real Jira assignee. "
+            "Watchtower treats an `owner-*` label or Jira assignee as the owner signal.",
+        ]
+    return "\n".join(lines)
 
 
 def _render_top_risk_answer(result: dict) -> str:
@@ -750,7 +827,8 @@ def _respond(intent: str, answer, result: dict) -> dict:
         "intent": intent,
         "answer": answer,
         "result": result,
-        "version": os.environ.get("GIT_SHA", "dev")[:7],
+        "version": BUILD_VERSION,
+        "app_version": APP_VERSION,
         "disclaimer": "Synthetic workspace data — Claw-a-thon 2026 demo.",
         "timestamp": datetime.now().isoformat(),
     }

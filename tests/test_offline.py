@@ -118,6 +118,8 @@ check("why approval drop->analyst", m.route("why did approval drop?") == "analys
 check("weekly summary->weekly", m.route("summarize everything for weekly meeting") == "weekly")
 check("teams reminder->teams", m.route("send off-track reminder to Teams") == "teams")
 check("usage guide->help", m.route("how to use this chat") == "help")
+check("blocked semantics->oversight", m.route("what does blocked mean here and what is it blocking?") == "oversight")
+check("unassigned work->oversight", m.route("what are those 9 open tasks without assignee") == "oversight")
 check("gibberish->help", m.route("zzz qwerty") == "help")
 
 print("handler:")
@@ -138,11 +140,26 @@ check("needs_attention UW-1&UW-3", {i["key"] for i in md["needs_attention_now"]}
 check("blocked context retained", next(i for i in md["needs_attention_now"] if i["key"] == "UW-1")["blocked_by"] == "certificate approval")
 check("off_track=2", md["totals"]["off_track"] == 2)
 check("due_soon in totals", "due_soon" in md["totals"])
+check("unassigned fields present", "owner_unassigned_open" in md and "assignee_unassigned_open" in md)
 check("Nam off_track=1", md["by_owner"]["Nam"]["off_track"] == 1)
 check("by_epic present (not by_stage)", "by_epic" in md and "by_stage" not in md)
 check("by_epic has Submission", "Submission" in md["by_epic"])
 check("by_epic has Data & Platform", "Data & Platform" in md["by_epic"])
 check("Completion in_progress=0", md["by_epic"]["Completion"]["in_progress"] == 0)
+ua = m._render_unassigned_work_answer({"owner_unassigned_open": [
+    {"key": "UW-6", "summary": "Untriaged funnel monitor", "status": "To Do", "assignee": "Unassigned", "owner": "Unassigned", "stage": "crosscut", "due": None}
+]})
+check("unassigned answer lists key", "UW-6" in ua and "Untriaged funnel monitor" in ua)
+_old_all = jc.all_open_issues
+jc.all_open_issues = lambda: list(_ISSUES) + [{
+    "key": "UW-6", "summary": "Untriaged funnel monitor", "status": "To Do",
+    "assignee": "Unassigned", "owner": "Unassigned", "stage": "crosscut",
+    "epic": "Data & Platform", "due": None, "labels": ["stage-crosscut"],
+    "type": "Task", "blocked_by": None, "blocks": None,
+}]
+ru = m.handler({"message": "what are those open tasks without assignee"}, None)
+check("unassigned handler lists details", ru.get("intent") == "oversight" and "UW-6" in ru.get("answer", "") and "Untriaged funnel monitor" in ru.get("answer", ""))
+jc.all_open_issues = _old_all
 
 print("jira jql scoping + links:")
 scoped = jc._scope_jql("statusCategory != Done ORDER BY due ASC")
@@ -257,7 +274,12 @@ check("impact ranking present", bool(rmet["result"].get("impact_ranking", {}).ge
 check("approval value at risk", any(x.get("stage") == "approval" and x.get("estimated_value_at_risk_vnd") for x in rmet["result"].get("impact_ranking", {}).get("ranking", [])))
 
 print("analyst routing (SQL slices):")
+import sql_analyst as sa
 check("by drop reason -> analyst", m.route("break May down by drop reason") == "analyst")
+check("approval drop down by reason -> analyst", m.route("break May approval drop down by reason") == "analyst")
+sql_dr, tmpl_dr = sa.template_sql("break May approval drop down by reason")
+check("approval drop by reason uses drop template", tmpl_dr == "approval_drop_reason_breakdown")
+check("approval drop by reason SQL scopes dropped submitted rows", "WHERE stage_rank = 2" in sql_dr and "stage_drop_total" in sql_dr)
 check("by product -> analyst", m.route("show May by product") == "analyst")
 check("plain metrics stays metrics", m.route("show me the funnel metrics") == "metrics")
 check("explicit MoM comparison -> metrics", m.route("can you do MoM comparison between March and April and see what's critical?") == "metrics")
@@ -275,11 +297,22 @@ check("weekly intent", w.get("intent") == "weekly")
 check("weekly answer agenda", "agenda" in w.get("answer", "").lower())
 check("weekly confluence context", "recent_confluence_pages" in w.get("result", {}))
 check("weekly blocked context", "blocked by certificate approval" in w.get("answer", ""))
+filtered_pages = bf._filter_context_pages([
+    {"title": "Weekly Funnel Watchtower Summary - 2026-06-14", "body": "self"},
+    {"title": "Decision log - Funnel", "body": "decision"},
+])
+check("weekly context excludes self-generated pages", [p["title"] for p in filtered_pages] == ["Decision log - Funnel"])
 
 print("teams reminder:")
 teams = m.handler({"message": "send off-track reminder to Teams"}, None)
 check("teams intent", teams.get("intent") == "teams")
 check("teams previews when webhook missing", "did not post" in teams.get("answer", "") and "UW-1" in teams.get("answer", ""))
+
+print("chat UI version:")
+with open(os.path.join(ROOT, "chat.html"), encoding="utf-8") as fh:
+    chat_html = fh.read()
+check("chat header has UI version", "UI v10" in chat_html)
+check("chat JS has one UI_VERSION const", chat_html.count("const UI_VERSION") == 1)
 
 print("confluence markdown conversion:")
 storage = cf.markdown_to_storage("""# Weekly Brief

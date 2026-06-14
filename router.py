@@ -46,6 +46,7 @@ ROUTES: list[tuple[set[str], str]] = [
       "prioritize", "rank"}, "metrics"),
     ({"oversight", "overview", "funnel", "digest", "who is working", "who's working", "who owns",
       "ownership", "on track", "off track", "off-track", "critical", "at risk", "behind", "slipping",
+      "unassigned", "without assignee", "no assignee", "not assigned", "without owner", "no owner",
       "manager", "lead", "report", "status of"},
      "oversight"),
     ({"sprint", "team", "pulse", "progress", "stuck", "blocked", "workload", "overdue"},
@@ -119,7 +120,13 @@ def _validate(intent: str, message: str, fallback: str) -> tuple[str, str]:
     diagnostic_signal = any(k in msg for k in ["why", "root cause", "diagnose", "diagnostic", "driver", "contribution", "what caused"]) and any(k in msg for k in ["drop", "dropped", "down", "fell", "below", "miss"]) and any(k in msg for k in ["submission", "approval", "completion", "traffic"])
     create_signal = any(k in msg for k in ["create", "add ticket", "new ticket", "open a ticket", "file a ticket", "log a ticket", "new initiative"])
     assign_signal = any(k in msg for k in ["assign ", "reassign", "re-assign", "giao", "gan"])
+    blocker_followup = (
+        ("blocked" in msg or "blocking" in msg)
+        and any(k in msg for k in ["what does", "mean", "meaning", "what is it blocking", "what does it block", "blocks", "blocked by", "why blocked"])
+    )
 
+    if intent == "help" and blocker_followup:
+        return "oversight", "corrected help->oversight because the message asks about blocker context"
     if intent == "standup" and not standup_signal and analyst_signal:
         return "analyst", "corrected standup->analyst because the message asks for volume/breakdown"
     if intent == "metrics" and diagnostic_signal:
@@ -142,13 +149,41 @@ def _explicit_help_signal(message: str) -> bool:
         "instructions", "prompt examples", "demo prompts", "what can you do"
     ])
 
+
+def _explicit_blocker_explanation_signal(message: str) -> bool:
+    """Route blocker semantics to Jira execution context, not the generic usage guide."""
+    msg = message.lower()
+    if "blocked" not in msg and "blocking" not in msg:
+        return False
+    return any(k in msg for k in [
+        "what does blocked mean", "what is blocked", "what's blocked",
+        "what is it blocking", "what's it blocking", "what does it block",
+        "what is blocking", "blocked mean", "blocker context", "blocking?",
+    ])
+
+
+def _explicit_unassigned_signal(message: str) -> bool:
+    """Route requests for unassigned work to Jira execution context."""
+    msg = message.lower()
+    return any(k in msg for k in [
+        "unassigned", "without assignee", "no assignee", "not assigned",
+        "without owner", "no owner", "owner unassigned", "assignee unassigned",
+    ]) and any(k in msg for k in ["task", "tasks", "issue", "issues", "ticket", "tickets", "open", "work"])
+
+
 def route_result(message: str) -> RouteResult:
     fallback = keyword_route(message)
+    if _explicit_unassigned_signal(message):
+        return RouteResult("oversight", "keyword", 1.0, fallback, "explicit unassigned-work prompt")
+    if _explicit_blocker_explanation_signal(message):
+        return RouteResult("oversight", "keyword", 1.0, fallback, "explicit blocker explanation prompt")
     if _explicit_help_signal(message):
         return RouteResult("help", "keyword", 1.0, fallback, "explicit usage/help prompt")
     llm_intent, confidence, reason = _llm_route(message)
     if llm_intent and confidence >= 0.45:
         validated, correction = _validate(llm_intent, message, fallback)
+        if validated == "help" and fallback != "help":
+            return RouteResult(fallback, "llm+guard", confidence, fallback, "corrected help->fallback for workflow-specific prompt")
         return RouteResult(validated, "llm" if not correction else "llm+guard", confidence, fallback, correction or reason)
     return RouteResult(fallback, "keyword", 1.0 if fallback != "help" else 0.0, fallback, reason)
 

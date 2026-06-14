@@ -100,3 +100,38 @@ Fix:
 - Moved `show daily volume in May` to the backup validation area because it returns a long 31-row table and is not necessary for the 2-3 minute pitch.
 - Added explicit month-comparison handling for prompts such as `compare April and May performance`; those now answer the requested months instead of defaulting to the latest May view.
 - Updated `DEMO_PROMPTS.md`, `HOW_TO_USE_WATCHTOWER.md`, `PITCH.md`, and `SUBMISSION.md` to match the new demo order.
+
+## v9 review: UI version + answer bugs from v8 export
+
+Observed in the v8 saved chatbot export:
+- The page itself did not show a visible UI/build version, only each bot response returned a backend hash such as `v7a1b54c`.
+- `break May approval drop down by reason` routed to the diagnostic contribution table instead of the drop-reason reconciliation table.
+- `what does blocked mean here and what is it blocking?` routed to the help/usage guide instead of the Jira blocker explanation.
+- The welcome text said the last two chips were for month comparison and usage guidance, but the chip order had more optional prompts at the end.
+- Weekly meeting context could include previously generated Watchtower weekly summary pages, causing recursive/noisy Confluence context.
+
+Fix:
+- Added a visible `UI v10` badge in the chat header and footer. The backend/agent version still appears in each response meta line.
+- Added a router guard so blocker-semantics prompts route to `oversight`, not `help`.
+- Added SQL-template matching for `by reason` / `down by reason`, so `break May approval drop down by reason` uses `approval_drop_reason_breakdown` and reconciles the 192 submitted-but-not-approved rows.
+- Updated the intro copy to say optional prompts cover Teams, MoM comparison, daily validation, and usage guidance.
+- Strengthened Confluence context filtering to exclude self-generated Watchtower weekly summary pages from future weekly briefs.
+
+## v9 review fixes
+
+Observed in the v8 saved chat export:
+
+- `break May approval drop down by reason` routed to the diagnostic contribution template instead of the drop-reason reconciliation table. Fixed by recognizing `down by reason` / `by reason` phrasing as a drop-reason request and routing it to `approval_drop_reason_breakdown`.
+- `what does blocked mean here and what is it blocking?` sometimes routed to the generic help guide. Fixed with an explicit blocker-follow-up guard that routes this prompt to the Jira oversight context.
+- Weekly summaries could include a previously generated Watchtower weekly page as Confluence context, creating recursive/noisy context. Fixed by filtering self-generated weekly summary/readout pages from Confluence context.
+- The chat page did not make the UI/demo version visible enough. Added `UI v10` in the header/footer while keeping the served agent build hash in each response meta and the `/version` endpoint.
+
+## v10 review: unassigned task follow-up
+
+Observed issue: when the user asked `what are those 9 open tasks without assignee`, the answer said the JSON only contained an aggregate `by_owner.Unassigned` count and could not list the individual issue keys. That was not the desired behavior for a manager follow-up.
+
+Fix:
+- `manager_digest()` now includes `owner_unassigned_open` and `assignee_unassigned_open` detail lists, not only aggregate counts.
+- Router now treats `unassigned`, `without assignee`, `no assignee`, `without owner`, and similar phrases as `oversight` prompts.
+- Added a deterministic renderer for unassigned-work questions so the bot lists issue keys, summaries, stage, status, due date, owner, and assignee instead of asking the LLM to infer from aggregate JSON.
+- Added regression coverage for the route and renderer.
