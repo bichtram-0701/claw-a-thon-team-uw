@@ -27,11 +27,12 @@ Try:
 
 ```text
 show me the funnel metrics
-rank the target misses by value at risk
-show daily volume in May
-break May down by drop reason
+why is approval the top risk?
+break May approval drop down by reason
 flag the drops and assign owners to investigate
 what is critical or off track right now?
+what does blocked mean here and what is it blocking?
+post off-track blockers to Teams
 weekly meeting summary
 publish weekly meeting summary to Confluence
 ```

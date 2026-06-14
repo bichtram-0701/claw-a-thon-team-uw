@@ -6,6 +6,7 @@ keys, owners, write guards, Jira idempotency, and Confluence weekly summaries.
 """
 from __future__ import annotations
 
+import calendar
 import json
 import os
 import re
@@ -143,7 +144,7 @@ NARRATE_SYS = {
 
 
 def _needs_atlassian(intent: str) -> bool:
-    return intent in {"create", "assign", "flag", "oversight", "briefing", "sprint", "knowledge", "standup", "weekly"}
+    return intent in {"create", "assign", "flag", "oversight", "briefing", "sprint", "knowledge", "standup", "weekly", "teams"}
 
 
 @app.entrypoint
@@ -177,6 +178,8 @@ def _handle(payload: dict) -> dict:
         return _handle_write(intent, message, route_info)
     if intent == "flag":
         return _handle_flag(message, route_info)
+    if intent == "teams":
+        return _handle_teams(message, route_info)
     if intent == "weekly":
         return _handle_weekly(message, lang, route_info)
 
@@ -193,13 +196,24 @@ def _handle(payload: dict) -> dict:
                           "daily volume in May, May applications by product, or by drop reason.")
             else:
                 answer = sa.to_markdown(result)
+                intro = _analyst_intro(result)
+                if intro:
+                    answer = intro + "\n\n" + answer
                 if result.get("source") == "template":
                     answer = f"_Template: {result.get('template')}_\n\n" + answer
                 if result.get("sql"):
                     answer += "\n\n_SQL:_ `" + result["sql"] + "`"
     elif intent == "metrics":
-        result = _metrics_result(route_info)
-        answer = _render_metrics_answer(result, lang)
+        cmp_months = _comparison_months_from_message(message)
+        if cmp_months:
+            result = _month_comparison_result(cmp_months, route_info)
+            answer = _render_month_comparison_answer(result)
+        else:
+            result = _metrics_result(route_info)
+            if _is_top_risk_question(message):
+                answer = _render_top_risk_answer(result)
+            else:
+                answer = _render_metrics_answer(result, lang)
     elif intent == "oversight":
         result = bf.manager_digest()
         result["route"] = route_info
@@ -221,12 +235,14 @@ def _handle(payload: dict) -> dict:
         answer = (
             "Hi, I am Funnel Watchtower. I track the business funnel, rank target misses by value at risk, "
             "connect them to Jira ownership, answer safe SQL-style breakdowns, summarize Confluence decisions, "
-            "draft weekly meeting briefs, and create or update Jira recovery work.\n\n"
-            "Best prompt pattern: **action + stage/metric + time period**. Examples: `show daily volume in May`, "
-            "`break May drop reasons by transition`, `why did approval drop?`, `flag the approval drop`, "
-            "or `publish weekly meeting summary to Confluence`.\n\n"
+            "draft weekly meeting briefs, post Jira digests to Teams, and create or update Jira recovery work.\n\n"
+            "Best prompt pattern: **action + stage/metric + time period**. Examples: `show me the funnel metrics`, "
+            "`why is approval the top risk?`, `break May approval drop down by reason`, "
+            "`flag the drops and assign owners to investigate`, `post off-track blockers to Teams`, "
+            "`weekly meeting summary`, or `publish weekly meeting summary to Confluence`.\n\n"
             "Funnel stages: **Traffic → Submission → Approval → Completion**. If you ask only for `volume`, I default "
-            "to all funnel-stage counts. If you ask only for `drop reason`, I highlight the highest-risk transition."
+            "to all funnel-stage counts. If you ask only for `drop reason`, I highlight the highest-risk transition. "
+            "For month-over-month, ask `compare April and May performance`; the standard metrics table also includes MoM Abs and MoM Pct columns."
         )
 
     if answer is None:
@@ -245,6 +261,29 @@ def _handle(payload: dict) -> dict:
         answer = out or json.dumps(result, ensure_ascii=False, indent=2)
 
     return _respond(intent, answer, result)
+
+
+def _analyst_intro(result: dict) -> str:
+    template = result.get("template") or ""
+    rows = result.get("rows") or []
+    if template.endswith("_diagnostic_contribution"):
+        stage = template.replace("_diagnostic_contribution", "").title()
+        return (f"**{stage} diagnostic view.** This is contribution analysis, not causal proof. "
+                "It compares pass/drop rates by channel and product type for the selected month.")
+    if template == "approval_drop_reason_breakdown" and rows:
+        try:
+            start = rows[0][3]
+            passed = rows[0][4]
+            dropped = rows[0][5]
+            return (f"**Submission → Approval reconciliation:** {start} submitted, {passed} approved, "
+                    f"so {dropped} dropped before Approval. The table below explains those dropped rows only.")
+        except Exception:  # noqa: BLE001
+            return "**Submission → Approval drop breakdown.** The table below explains submitted rows that did not reach Approval."
+    if template == "submission_drop_reason_breakdown" and rows:
+        return "**Traffic → Submission drop breakdown.** The table below explains traffic rows that did not submit."
+    if template == "completion_drop_reason_breakdown" and rows:
+        return "**Approval → Completion drop breakdown.** The table below explains approved rows that did not complete."
+    return ""
 
 
 def _metrics_result(route_info: dict | None = None) -> dict:
@@ -295,6 +334,138 @@ def _render_metrics_answer(result: dict, lang: str) -> str:
     return jira_warn + heads_up + (headline + "\n\n" if headline else "") + fm.render_markdown()
 
 
+def _is_top_risk_question(message: str) -> bool:
+    q = message.lower()
+    return any(k in q for k in ["top risk", "top recovery", "recovery priority", "why is approval", "why approval is"])
+
+
+def _render_top_risk_answer(result: dict) -> str:
+    ranking = (result.get("impact_ranking") or {}).get("ranking") or []
+    if not ranking:
+        return "I do not have enough impact-ranking data to identify a top funnel risk right now."
+    top = ranking[0]
+    stage = str(top.get("stage", "unknown")).title()
+    owner = top.get("owner") or "Unassigned"
+    reasons = top.get("reasons") or []
+    signal = "; ".join(reasons) if reasons else "target gap / MoM movement"
+    risk = top.get("value_at_risk_display") or im.fmt_vnd(top.get("estimated_value_at_risk_vnd"))
+    er = top.get("execution_risk") or {}
+    execution = ", ".join(er.get("reasons", [])) if isinstance(er, dict) else str(er)
+    execution = execution or "no Jira execution risk detected"
+    score = top.get("score")
+    lines = [
+        f"**{stage} is the top risk** because it combines the largest business impact with a material funnel signal.",
+        "",
+        f"- **Signal:** {signal}",
+        f"- **Estimated value at risk:** {risk}",
+        f"- **Owner:** {owner}",
+        f"- **Execution context:** {execution}",
+    ]
+    if score is not None:
+        lines.append(f"- **Ranking score:** {score}")
+    lines += [
+        "",
+        "This is an impact ranking, not a causal claim. Use `break May approval drop down by reason` or `why did approval drop?` for diagnostic evidence.",
+    ]
+    return "\n".join(lines)
+
+
+_MONTH_WORDS = {name.lower(): idx for idx, name in enumerate(calendar.month_name) if name}
+_MONTH_WORDS.update({name.lower(): idx for idx, name in enumerate(calendar.month_abbr) if name})
+
+
+def _comparison_months_from_message(message: str) -> list[str] | None:
+    """Return two YYYY-MM strings for explicit month-comparison prompts.
+
+    The regular metrics answer is latest-month oriented. This guard prevents a
+    prompt like "compare March and April" from incorrectly answering with May.
+    """
+    q = message.lower()
+    if not any(k in q for k in ["compare", "comparison", "mom", "month over month", "month-over-month", " vs ", " versus ", "between"]):
+        return None
+    year_m = re.search(r"\b(20\d{2})\b", q)
+    default_year = int(year_m.group(1)) if year_m else 2026
+    found: list[tuple[int, str]] = []
+    for m in re.finditer(r"\b(20\d{2})-(\d{1,2})\b", q):
+        y, mo = int(m.group(1)), int(m.group(2))
+        if 1 <= mo <= 12:
+            found.append((m.start(), f"{y}-{mo:02d}"))
+    for name, num in _MONTH_WORDS.items():
+        for m in re.finditer(rf"\b{re.escape(name)}\b", q):
+            found.append((m.start(), f"{default_year}-{num:02d}"))
+    ordered: list[str] = []
+    for _, month in sorted(found, key=lambda x: x[0]):
+        if month not in ordered:
+            ordered.append(month)
+    if len(ordered) >= 2:
+        return ordered[:2]
+    return None
+
+
+def _month_comparison_result(months: list[str], route_info: dict | None = None) -> dict:
+    rows_by_month = {r["month"]: r for r in fm.rows()}
+    available = sorted(rows_by_month)
+    selected = [m for m in months if m in rows_by_month]
+    result = {"requested_months": months, "available_months": available, "route": route_info or {}}
+    if len(selected) < 2:
+        result["error"] = "Requested months are not both available in the demo dataset."
+        return result
+    prev, curr = rows_by_month[selected[0]], rows_by_month[selected[1]]
+    targets = fm.targets()
+    rate_defs = [
+        ("submission_rate_pct", "Submission", "submission_rate_pct"),
+        ("approval_rate_pct", "Approval", "approval_rate_pct"),
+        ("completion_rate_pct", "Completion", "completion_rate_pct"),
+        ("e2e_rate_pct", "Traffic E2E", "e2e_rate_pct"),
+    ]
+    rates = []
+    critical = []
+    for key, label, target_key in rate_defs:
+        a, b = prev.get(key), curr.get(key)
+        delta = round((b or 0) - (a or 0), 1) if a is not None and b is not None else None
+        target = targets.get(target_key)
+        status = ""
+        if target is not None and b is not None and b < target:
+            status = f"below {target}% target"
+            critical.append({"metric": label, "current_pct": b, "target_pct": target, "delta_pp": delta, "reason": status})
+        elif target is not None and b is not None:
+            status = f"meets {target}% target"
+        rates.append({"metric": label, "from_pct": a, "to_pct": b, "delta_pp": delta, "target_pct": target, "status": status})
+    volumes = []
+    for key, label in [("traffic", "Traffic"), ("submission", "Submission"), ("approval", "Approval"), ("completion", "Completion")]:
+        a, b = prev.get(key), curr.get(key)
+        volumes.append({"metric": label, "from": a, "to": b, "delta": (b or 0) - (a or 0)})
+    result.update({"from_month": selected[0], "to_month": selected[1], "from": prev, "to": curr,
+                   "rates": rates, "volumes": volumes, "critical": critical, "targets": targets})
+    return result
+
+
+def _render_month_comparison_answer(result: dict) -> str:
+    if result.get("error"):
+        avail = ", ".join(result.get("available_months", []))
+        return f"I couldn't compare those months: {result['error']} Available months: {avail}."
+    fm0, fm1 = result["from_month"], result["to_month"]
+    lines = [f"**MoM comparison: {fm0} → {fm1}**", ""]
+    lines += ["**Conversion-rate changes**", "", "| Metric | " + fm0 + " | " + fm1 + " | Change | Target status |", "|---|---:|---:|---:|---|"]
+    for r in result["rates"]:
+        lines.append(f"| {r['metric']} | {r['from_pct']}% | {r['to_pct']}% | {r['delta_pp']:+.1f}pp | {r['status']} |")
+    lines += ["", "**Volume changes**", "", "| Metric | " + fm0 + " | " + fm1 + " | Change |", "|---|---:|---:|---:|"]
+    for v in result["volumes"]:
+        lines.append(f"| {v['metric']} | {v['from']:,} | {v['to']:,} | {v['delta']:+,} |")
+    crit = result.get("critical") or []
+    lines += ["", "**Critical readout**"]
+    if crit:
+        # Lead with non-E2E stage misses before aggregate E2E.
+        ordered = sorted(crit, key=lambda x: 1 if x["metric"] == "Traffic E2E" else 0)
+        for c in ordered:
+            lines.append(f"- **{c['metric']}** is {c['current_pct']}% vs {c['target_pct']}% target ({c['delta_pp']:+.1f}pp vs {fm0}).")
+    else:
+        lines.append("- No compared rate is below its configured target in the target month.")
+    lines.append("- This comparison answers the requested months only; use `show me the funnel metrics` for the latest May risk ranking.")
+    return "\n".join(lines)
+
+
+
 def _handle_weekly(message: str, lang: str, route_info: dict) -> dict:
     pack = bf.weekly_meeting_pack()
     pack["route"] = route_info
@@ -303,22 +474,107 @@ def _handle_weekly(message: str, lang: str, route_info: dict) -> dict:
     # Use the deterministic weekly summary as the canonical meeting artifact.
     # This keeps Confluence pages stable and prevents the LLM from changing
     # formatting, issue counts, or value-at-risk wording between runs.
-    answer = bf.render_weekly_summary(pack)
+    page_body = bf.render_weekly_summary(pack)
     result = dict(pack)
     if publish:
         if not ALLOW_WRITES:
-            answer += "\n\n(Writes are off, so I drafted the weekly summary but did not publish it to Confluence.)"
+            answer = "I drafted the weekly summary, but writes are off so I did not publish it to Confluence."
             result["published"] = False
             result["publish_error"] = "ALLOW_WRITES=false"
         else:
-            page = cf.upsert_page(cf.weekly_title(pack.get("as_of")), answer)
+            page = cf.upsert_page(cf.weekly_title(pack.get("as_of")), page_body)
             result["confluence_page"] = page
             result["published"] = bool(page.get("id"))
             if page.get("url"):
-                answer += f"\n\nPublished to Confluence: {page['url']}"
+                answer = (
+                    f"Published/updated the weekly summary in Confluence: {page['url']}\n\n"
+                    "Included: impact-ranked risks, Jira blockers, recently completed work, "
+                    "Confluence context, and the recommended weekly agenda."
+                )
             else:
-                answer += f"\n\nCould not publish to Confluence ({page.get('error', 'unknown error')})."
+                answer = f"Could not publish to Confluence ({page.get('error', 'unknown error')})."
+    else:
+        answer = page_body
     return _respond("weekly", answer, result)
+
+
+def _handle_teams(message: str, route_info: dict) -> dict:
+    """Interactive Jira -> Teams digest.
+
+    Prompt examples:
+    - post off-track blockers to Teams
+    - send blocked work to Teams
+    - send overdue tasks to Teams
+    - send due-soon tasks to Teams
+    """
+    q = message.lower()
+    mode = "off-track"
+    title = "Funnel Watchtower: off-track work"
+    empty = "No blocked or overdue open items right now."
+    accent = "Attention"
+
+    try:
+        if "due" in q and "soon" in q:
+            mode = "due-soon"
+            issues = jc.due_tomorrow_issues()
+            title = "Funnel Watchtower: due-soon work"
+            empty = "No due-soon open items right now."
+            accent = "Warning"
+            digest = {"route": route_info, "source": "jira_due_tomorrow"}
+        elif "overdue" in q:
+            mode = "overdue"
+            issues = jc.overdue_issues()
+            title = "Funnel Watchtower: overdue work"
+            empty = "No overdue open items right now."
+            digest = {"route": route_info, "source": "jira_overdue"}
+        elif "blocked" in q:
+            mode = "blocked"
+            issues = jc.blocked_issues()
+            title = "Funnel Watchtower: blocked work"
+            empty = "No blocked open items right now."
+            digest = {"route": route_info, "source": "jira_blocked"}
+        else:
+            digest = bf.manager_digest()
+            digest["route"] = route_info
+            issues = digest.get("needs_attention_now") or []
+    except Exception as e:  # noqa: BLE001
+        issues = []
+        digest = {"route": route_info, "jira_error": type(e).__name__ + ": " + str(e)[:180]}
+
+    sent = False
+    reason = None
+    if not ALLOW_WRITES:
+        reason = "ALLOW_WRITES=false"
+    elif not tc.configured():
+        reason = "TEAMS_WEBHOOK_URL is not configured"
+    else:
+        sent = tc.digest_card(title, issues, empty_msg=empty, accent=accent)
+        if not sent:
+            reason = "Teams webhook call returned false"
+
+    lines = []
+    if sent:
+        lines.append(f"Posted {len(issues)} {mode} item(s) to Teams.")
+    else:
+        lines.append(f"I prepared the {mode} Teams reminder but did not post it ({reason}).")
+    if digest.get("jira_error"):
+        lines.append(f"Jira preview was unavailable: `{digest['jira_error']}`")
+    elif issues:
+        lines.append("")
+        lines.append("Preview:")
+        for it in issues[:8]:
+            key = it.get("key")
+            owner = it.get("owner") or it.get("assignee") or "Unassigned"
+            due = it.get("due") or "no due date"
+            status = it.get("status") or "unknown status"
+            lines.append(f"- {key}: {it.get('summary')} — owner {owner}, status {status}, due {due}")
+            blocked_by = it.get("blocked_by")
+            blocks = it.get("blocks")
+            if blocked_by or blocks:
+                lines.append(f"  - Blocker context: blocked by {blocked_by or 'unspecified'}; blocks {blocks or 'unspecified'}")
+    else:
+        lines.append(empty)
+    return _respond("teams", "\n".join(lines), {"mode": mode, "sent": sent, "reason": reason, "issues": issues, "teams_configured": tc.configured(), **digest})
 
 
 def _handle_flag(message: str, route_info: dict) -> dict:

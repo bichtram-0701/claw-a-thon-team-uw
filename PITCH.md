@@ -105,19 +105,23 @@ No, and it should not claim to. Root-cause drilldowns are contribution analysis:
 ## Demo flow
 
 1. Ask: `show me the funnel metrics`.
-   - It shows the latest conversion table and the top value-at-risk priority.
-2. Ask: `why did approval drop?`.
-   - It runs a deterministic contribution-analysis template and shows the SQL.
-3. Ask: `break May down by drop reason`.
+   - It shows the latest conversion table, MoM columns, and the top value-at-risk priority.
+2. Ask: `why is approval the top risk?`.
+   - It explains the ranking: target gap, MoM deterioration, and value at risk.
+3. Ask: `break May approval drop down by reason`.
    - It reconciles the 192 submitted-but-not-approved rows by drop reason.
-4. Ask: `show daily volume in May`.
-   - It shows daily rows that sum back to the monthly funnel totals.
-5. Ask: `flag the drops and assign owners to investigate`.
+4. Ask: `flag the drops and assign owners to investigate`.
    - It creates or updates one investigation per stage, with a structured contract.
-6. Ask: `weekly meeting summary`.
+5. Ask: `what is critical or off track right now?`.
+   - It connects the metric risk to Jira blockers, owners, and overdue work.
+6. Ask: `what does blocked mean here and what is it blocking?`.
+   - It explains blocker semantics and the dependency behind each blocked task.
+7. Ask: `post off-track blockers to Teams`.
+   - It posts the blocked/overdue Jira digest to the configured Teams channel.
+8. Ask: `weekly meeting summary`.
    - It drafts the weekly readout: executive summary, risks, blockers, Confluence context, agenda.
-7. Ask: `publish weekly meeting summary to Confluence`.
-   - With writes enabled, it creates or updates the Confluence weekly page.
+9. Ask: `publish weekly meeting summary to Confluence`.
+   - It creates or updates the weekly meeting page.
 
 ## Final positioning
 

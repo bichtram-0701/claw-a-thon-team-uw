@@ -41,7 +41,7 @@ For analyst answers:
 
 - Prefer `source=template` for supported breakdowns.
 - `show daily volume in May` and `can you give me the number day over day in May` should return daily rows whose totals reconcile to monthly metrics.
-- `break May down by drop reason` should explain the Submission -> Approval loss: May submitted 216, approved 24, stage drop 192.
+- `break May approval drop down by reason` should explain the Submission -> Approval loss: May submitted 216, approved 24, stage drop 192.
 - Show the SQL.
 - Reject or avoid non-read SQL.
 

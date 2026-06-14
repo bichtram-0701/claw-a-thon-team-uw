@@ -46,6 +46,7 @@ os.environ.update(ATLASSIAN_SITE="https://x.atlassian.net",
                   ALLOW_WRITES="true", JIRA_PROJECT_KEY="UW")
 os.environ.pop("LLM_API_KEY", None)
 os.environ.pop("LLM_BASE_URL", None)
+os.environ.pop("TEAMS_WEBHOOK_URL", None)
 
 import jira_client as jc
 import confluence_client as cf
@@ -115,12 +116,15 @@ check("daily volume->analyst", m.route("show daily volume in May") == "analyst")
 check("day-over-day number->analyst", m.route("can you give me the number day over day in May") == "analyst")
 check("why approval drop->analyst", m.route("why did approval drop?") == "analyst")
 check("weekly summary->weekly", m.route("summarize everything for weekly meeting") == "weekly")
+check("teams reminder->teams", m.route("send off-track reminder to Teams") == "teams")
+check("usage guide->help", m.route("how to use this chat") == "help")
 check("gibberish->help", m.route("zzz qwerty") == "help")
 
 print("handler:")
 for q, intent in [("funnel overview", "oversight"), ("what's on my plate?", "briefing"),
                   ("how is the sprint going?", "sprint"), ("what did we decide?", "knowledge"),
-                  ("draft my standup", "standup"), ("summarize everything for weekly meeting", "weekly"), ("hello", "help")]:
+                  ("draft my standup", "standup"), ("summarize everything for weekly meeting", "weekly"),
+                  ("send off-track reminder to Teams", "teams"), ("hello", "help")]:
     r = m.handler({"message": q}, None)
     check(intent + ":success", r.get("status") == "success")
     check(intent + ":intent", r.get("intent") == intent)
@@ -245,6 +249,10 @@ print("metrics surfaces drop + target gap:")
 rmet = m.handler({"message": "show me the funnel metrics"}, None)
 check("metrics intent", rmet.get("intent") == "metrics")
 check("metrics answer mentions target", "target" in rmet.get("answer", "").lower())
+check("metrics answer includes MoM columns", "MoM Abs" in rmet.get("answer", "") and "MoM Pct" in rmet.get("answer", ""))
+rtop = m.handler({"message": "why is approval the top risk?"}, None)
+check("top-risk question intent", rtop.get("intent") == "metrics")
+check("top-risk answer concise", "Approval is the top risk" in rtop.get("answer", ""))
 check("impact ranking present", bool(rmet["result"].get("impact_ranking", {}).get("ranking")))
 check("approval value at risk", any(x.get("stage") == "approval" and x.get("estimated_value_at_risk_vnd") for x in rmet["result"].get("impact_ranking", {}).get("ranking", [])))
 
@@ -252,6 +260,14 @@ print("analyst routing (SQL slices):")
 check("by drop reason -> analyst", m.route("break May down by drop reason") == "analyst")
 check("by product -> analyst", m.route("show May by product") == "analyst")
 check("plain metrics stays metrics", m.route("show me the funnel metrics") == "metrics")
+check("explicit MoM comparison -> metrics", m.route("can you do MoM comparison between March and April and see what's critical?") == "metrics")
+
+print("explicit month comparison:")
+cmp = m.handler({"message": "can you do MoM comparison between March and April and see what's critical?"}, None)
+check("comparison intent", cmp.get("intent") == "metrics")
+check("comparison uses requested months", "2026-03 → 2026-04" in cmp.get("answer", ""))
+check("comparison does not answer latest May only", "This comparison answers the requested months only" in cmp.get("answer", ""))
+check("comparison flags submission target", "Submission" in cmp.get("answer", "") and "28.0%" in cmp.get("answer", "") and "30.0% target" in cmp.get("answer", ""))
 
 print("weekly meeting pack:")
 w = m.handler({"message": "summarize everything for weekly meeting"}, None)
@@ -259,6 +275,11 @@ check("weekly intent", w.get("intent") == "weekly")
 check("weekly answer agenda", "agenda" in w.get("answer", "").lower())
 check("weekly confluence context", "recent_confluence_pages" in w.get("result", {}))
 check("weekly blocked context", "blocked by certificate approval" in w.get("answer", ""))
+
+print("teams reminder:")
+teams = m.handler({"message": "send off-track reminder to Teams"}, None)
+check("teams intent", teams.get("intent") == "teams")
+check("teams previews when webhook missing", "did not post" in teams.get("answer", "") and "UW-1" in teams.get("answer", ""))
 
 print("confluence markdown conversion:")
 storage = cf.markdown_to_storage("""# Weekly Brief

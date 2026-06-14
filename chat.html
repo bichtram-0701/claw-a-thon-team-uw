@@ -23,6 +23,7 @@
   .msg h1,.msg h2,.msg h3 { margin: 8px 0 4px; font-size: 1.05em; } .msg ul { margin: 4px 0 4px 18px; }
   .msg pre,.msg code { background:#0d1117; border-radius:4px; padding:1px 5px; font-size: 13px; overflow-x:auto; }
   .msg table { border-collapse: collapse; margin: 6px 0; } .msg td,.msg th { border:1px solid var(--border); padding:3px 8px; font-size:13px; }
+  #chips-note { color: var(--dim); font-size: 12px; padding: 0 20px 6px; }
   #chips { display: flex; gap: 8px; padding: 0 20px 10px; flex-wrap: wrap; }
   .chip { background: var(--panel); border: 1px solid var(--border); color: var(--dim); padding: 5px 12px;
           border-radius: 999px; font-size: 12.5px; cursor: pointer; }
@@ -44,16 +45,20 @@
 
 <div id="chat"></div>
 
+<div id="chips-note">Main demo order: detect → diagnose → reconcile → act → execution context → weekly readout. Optional validation prompts are at the end.</div>
 <div id="chips">
   <span class="chip">show me the funnel metrics</span>
-  <span class="chip">why did approval drop?</span>
-  <span class="chip">break May down by drop reason</span>
-  <span class="chip">show daily volume in May</span>
+  <span class="chip">why is approval the top risk?</span>
+  <span class="chip">break May approval drop down by reason</span>
   <span class="chip">flag the drops and assign owners to investigate</span>
   <span class="chip">what is critical or off track right now?</span>
   <span class="chip">what does blocked mean here and what is it blocking?</span>
   <span class="chip">weekly meeting summary</span>
   <span class="chip">publish weekly meeting summary to Confluence</span>
+  <span class="chip">post off-track blockers to Teams</span>
+  <span class="chip">compare April and May performance</span>
+  <span class="chip">show daily volume in May</span>
+  <span class="chip">how should I ask questions?</span>
 </div>
 
 <form id="form">
@@ -80,10 +85,10 @@ function add(cls, html) {
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 add("bot", marked.parse("Hi! I'm **Funnel Watchtower** — I track the demo funnel " +
-  "(Traffic → Submission → Approval → Completion) across Jira + Confluence. Ask for the " +
-  "**funnel metrics** and value at risk, the **overview** of who owns what / what's critical " +
-  "or off track, safe SQL breakdowns, **weekly Confluence summaries**, **create** or **assign** an initiative, " +
-  "a past **decision**, or your own **plate**. Ask `how should I ask questions?` for the usage guide, or try the demo prompts below 👇"));
+  "(Traffic → Submission → Approval → Completion) across Jira + Confluence. Ask for " +
+  "**funnel metrics** with MoM columns, why a stage is the **top risk**, safe drop-reason breakdowns, " +
+  "Jira recovery actions, **Teams reminders**, and **weekly Confluence summaries**. " +
+  "The chips are ordered for the main demo flow; the last two are backup prompts for month comparison and usage guidance."));
 
 document.querySelectorAll(".chip").forEach(c =>
   c.addEventListener("click", () => { input.value = c.textContent; form.requestSubmit(); }));

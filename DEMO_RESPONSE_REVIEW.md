@@ -87,3 +87,16 @@ Fix:
 - `_scope_jql()` now splits out `ORDER BY` and emits valid scoped JQL: `project = "UW" AND (statusCategory != Done) ORDER BY due ASC`.
 - Added regression tests for JQL scoping with `ORDER BY`.
 - Added Markdown linkification for bare Jira keys in successful bot answers, while avoiding keys already inside URLs or Markdown links.
+
+## v7 review: demo order + explicit month comparison
+
+Observed in saved runtime export:
+- The conversation transcript mixed real demo steps with debugging/exploratory prompts such as `break April down by drop reason`, `how to use this chat`, repeated `weekly meeting summary`, and a later `can you do MoM comparison between March and April...`.
+- The visible chip order put the long daily-volume table before the execution-context and weekly-readout steps.
+- The explicit March/April comparison prompt routed to the generic latest-month metrics answer and incorrectly answered with the May risk ranking.
+
+Fix:
+- Reordered the chat suggestions around the main narrative: detect -> diagnose -> execution context -> blocked semantics -> act -> weekly readout -> optional Confluence publish.
+- Moved `show daily volume in May` to the backup validation area because it returns a long 31-row table and is not necessary for the 2-3 minute pitch.
+- Added explicit month-comparison handling for prompts such as `compare April and May performance`; those now answer the requested months instead of defaulting to the latest May view.
+- Updated `DEMO_PROMPTS.md`, `HOW_TO_USE_WATCHTOWER.md`, `PITCH.md`, and `SUBMISSION.md` to match the new demo order.

@@ -35,18 +35,17 @@ See `DEMO_PROMPTS.md` for the recommended demo prompts and exact expected output
 
 ```text
 show me the funnel metrics
-what is the top business risk?
-rank the target misses by value at risk
-break May down by drop reason
-show daily volume in May
-why did approval drop?
+why is approval the top risk?
+break May approval drop down by reason
 flag the drops and assign owners to investigate
 what is critical or off track right now?
-who is working on what?
-what did we decide about submission?
-draft my standup
+what does blocked mean here and what is it blocking?
+post off-track blockers to Teams
 weekly meeting summary
 publish weekly meeting summary to Confluence
+compare April and May performance
+show daily volume in May
+how should I ask questions?
 ```
 
 ## Core value
@@ -158,7 +157,7 @@ All data is synthetic and generated to reconcile across daily SQL and monthly me
 - `scripts/generate_synthetic_funnel.py`: deterministic generator for the row-level fixture.
 - `scripts/seed_atlassian.py`: creates synthetic Jira initiatives and Confluence pages with fictional partner names.
 
-For example, May 2026 reconciles as Traffic 800 -> Submission 216 -> Approval 24 -> Completion 23. The Submission -> Approval drop is 192 rows, and `break May down by drop reason` explains those rows instead of mixing them with successful completions.
+For example, May 2026 reconciles as Traffic 800 -> Submission 216 -> Approval 24 -> Completion 23. The Submission -> Approval drop is 192 rows, and `break May approval drop down by reason` explains those rows instead of mixing them with successful completions.
 
 No company systems, real customers, or real partner names are used.
 

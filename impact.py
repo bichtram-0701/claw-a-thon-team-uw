@@ -151,11 +151,13 @@ def execution_risk(stage: str, issues: list[dict] | None = None) -> dict:
 
 def _recommend(stage: str, owner: str | None, var: dict, exec_risk: dict) -> str:
     who = f" with {owner}" if owner else ""
+    label = stage.title()
+    article = "an" if label[:1].lower() in {"a", "e", "i", "o", "u"} else "a"
     if exec_risk["blocked"] or exec_risk["overdue"]:
-        return f"Escalate {stage} recovery{who}; unblock/refresh the overdue initiative and open one investigation if none exists."
+        return f"Escalate {label} recovery{who}; unblock/refresh the overdue initiative and open one investigation if none exists."
     if var.get("value_at_risk_vnd"):
-        return f"Open/update a {stage} investigation{who} with diagnostic evidence and an expected lift contract."
-    return f"Monitor {stage}; no material value-at-risk estimate from current targets."
+        return f"Open/update {article} {label} investigation{who} with diagnostic evidence and an expected lift contract."
+    return f"Monitor {label}; no material value-at-risk estimate from current targets."
 
 
 def _signals(item: dict) -> list[str]:

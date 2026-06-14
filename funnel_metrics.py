@@ -222,29 +222,78 @@ def _m(v):
     return f"{v / 1e6:.1f}M"
 
 
+def _signed_int(v: int | float | None) -> str:
+    if v is None:
+        return ""
+    try:
+        v = int(round(v))
+    except Exception:  # noqa: BLE001
+        return str(v)
+    return f"{v:+,}"
+
+
+def _signed_amount(v: int | float | None) -> str:
+    if v is None:
+        return ""
+    sign = "+" if v >= 0 else "-"
+    return sign + _b(abs(v))
+
+
+def _signed_m(v: int | float | None) -> str:
+    if v is None:
+        return ""
+    sign = "+" if v >= 0 else "-"
+    return sign + _m(abs(v))
+
+
+def _mom_pct(curr: float | int | None, prev: float | int | None) -> str:
+    if prev in (None, 0) or curr is None:
+        return ""
+    return f"{(100 * (curr - prev) / prev):+.0f}%"
+
+
+def _mom_pp(curr: float | None, prev: float | None) -> str:
+    if curr is None or prev is None:
+        return ""
+    return f"{(curr - prev):+.1f}pp"
+
+
 def render_markdown() -> str:
-    """Two tables (volumes, then rates) with months as columns — like the LM deck."""
+    """Two LM-style tables with months as columns plus latest MoM columns."""
     r = rows()
     months = [x["month"] for x in r]
-    head = "| Metric | " + " | ".join(months) + " |"
-    sep = "|" + "---|" * (len(months) + 1)
+    latest = r[-1]
+    prev = r[-2] if len(r) >= 2 else None
 
-    def line(label, vals):
-        return "| " + label + " | " + " | ".join(vals) + " |"
+    head = "| Metric | " + " | ".join(months) + " | MoM Abs | MoM Pct |"
+    sep = "|---" * (len(months) + 3) + "|"
 
-    vol = [head, sep,
-           line("Traffic", [f"{x['traffic']:,}" for x in r]),
-           line("Submission", [f"{x['submission']:,}" for x in r]),
-           line("Approval", [f"{x['approval']:,}" for x in r]),
-           line("Completion", [f"{x['completion']:,}" for x in r]),
-           line("Completion value (VND)", [_b(x["completion_amount_vnd"]) for x in r]),
-           line("Avg outcome value (VND)", [_m(x["avg_ticket_vnd"]) for x in r])]
+    def line(label, vals, mom_abs="", mom_pct=""):
+        return "| " + label + " | " + " | ".join(vals) + f" | {mom_abs} | {mom_pct} |"
 
-    rate = [head.replace("Metric", "Rate"), sep,
-            line("Submission (Sub/Traffic)", [f"{x['submission_rate_pct']}%" for x in r]),
-            line("Approval (Appr/Sub)", [f"{x['approval_rate_pct']}%" for x in r]),
-            line("Completion (Comp/Appr)", [f"{x['completion_rate_pct']}%" for x in r]),
-            line("Traffic E2E (Comp/Traffic)", [f"{x['e2e_rate_pct']}%" for x in r])]
+    def delta(key):
+        if not prev:
+            return None
+        return latest.get(key, 0) - prev.get(key, 0)
+
+    vol = [
+        head, sep,
+        line("Traffic (1)", [f"{x['traffic']:,}" for x in r], _signed_int(delta("traffic")), _mom_pct(latest.get("traffic"), prev.get("traffic") if prev else None)),
+        line("Submission (2)", [f"{x['submission']:,}" for x in r], _signed_int(delta("submission")), _mom_pct(latest.get("submission"), prev.get("submission") if prev else None)),
+        line("Approval (3)", [f"{x['approval']:,}" for x in r], _signed_int(delta("approval")), _mom_pct(latest.get("approval"), prev.get("approval") if prev else None)),
+        line("Completion (4)", [f"{x['completion']:,}" for x in r], _signed_int(delta("completion")), _mom_pct(latest.get("completion"), prev.get("completion") if prev else None)),
+        line("Completion Amount", [_b(x["completion_amount_vnd"]) for x in r], _signed_amount(delta("completion_amount_vnd")), _mom_pct(latest.get("completion_amount_vnd"), prev.get("completion_amount_vnd") if prev else None)),
+        line("AVG Outcome Value", [_m(x["avg_ticket_vnd"]) for x in r], _signed_m(delta("avg_ticket_vnd")), _mom_pct(latest.get("avg_ticket_vnd"), prev.get("avg_ticket_vnd") if prev else None)),
+    ]
+
+    rate_head = head.replace("Metric", "Rate")
+    rate = [
+        rate_head, sep,
+        line("Submission rate (2)/(1)", [f"{x['submission_rate_pct']}%" for x in r], _mom_pp(latest.get("submission_rate_pct"), prev.get("submission_rate_pct") if prev else None), _mom_pct(latest.get("submission_rate_pct"), prev.get("submission_rate_pct") if prev else None)),
+        line("Approval rate (3)/(2)", [f"{x['approval_rate_pct']}%" for x in r], _mom_pp(latest.get("approval_rate_pct"), prev.get("approval_rate_pct") if prev else None), _mom_pct(latest.get("approval_rate_pct"), prev.get("approval_rate_pct") if prev else None)),
+        line("Completion rate (4)/(3)", [f"{x['completion_rate_pct']}%" for x in r], _mom_pp(latest.get("completion_rate_pct"), prev.get("completion_rate_pct") if prev else None), _mom_pct(latest.get("completion_rate_pct"), prev.get("completion_rate_pct") if prev else None)),
+        line("Traffic E2E (4)/(1)", [f"{x['e2e_rate_pct']}%" for x in r], _mom_pp(latest.get("e2e_rate_pct"), prev.get("e2e_rate_pct") if prev else None), _mom_pct(latest.get("e2e_rate_pct"), prev.get("e2e_rate_pct") if prev else None)),
+    ]
 
     return ("**Funnel — monthly volumes**\n\n" + "\n".join(vol) +
             "\n\n**Conversion rates**\n\n" + "\n".join(rate))

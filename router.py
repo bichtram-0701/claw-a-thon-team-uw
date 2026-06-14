@@ -13,12 +13,15 @@ import report as rp
 
 VALID = {
     "create", "assign", "flag", "analyst", "metrics", "oversight", "briefing",
-    "sprint", "knowledge", "standup", "weekly", "help",
+    "sprint", "knowledge", "standup", "weekly", "teams", "help",
 }
 
 ROUTES: list[tuple[set[str], str]] = [
-    ({"help", "how to use", "how should i ask", "guide", "usage", "instructions",
+    ({"help", "how to use", "how should i ask", "how should i use", "guide", "usage", "instructions",
       "what can you do", "prompt examples", "demo prompts"}, "help"),
+    ({"teams", "microsoft teams", "post to teams", "send to teams", "notify teams",
+      "remind on teams", "remind in teams", "teams reminder", "post off-track blockers to teams", "post off-track", "send the off-track work to teams",
+      "send off-track work to teams", "send overdue", "remind of overdue"}, "teams"),
     ({"weekly", "week in review", "weekly meeting", "meeting summary", "meeting notes",
       "recap everything", "summarize everything", "summarise everything", "post to confluence",
       "save to confluence", "weekly readout", "weekly agenda"}, "weekly"),
@@ -37,9 +40,10 @@ ROUTES: list[tuple[set[str], str]] = [
      "analyst"),
     ({"metric", "conversion", "submission rate", "approval rate", "completion rate", "traffic",
       "ticket size", "funnel performance", "funnel numbers", "funnel table", "performance", "e2e",
-      "throughput", "how is the funnel doing", "compare", "what changed",
+      "throughput", "how is the funnel doing", "compare", "comparison", "what changed",
       "concerning", "drop", "dropped", "month over month", "mom", "vs last month", "anomal",
-      "value at risk", "impact ranking", "business risk", "prioritize", "rank"}, "metrics"),
+      "value at risk", "impact ranking", "business risk", "top risk", "top recovery", "recovery priority",
+      "prioritize", "rank"}, "metrics"),
     ({"oversight", "overview", "funnel", "digest", "who is working", "who's working", "who owns",
       "ownership", "on track", "off track", "off-track", "critical", "at risk", "behind", "slipping",
       "manager", "lead", "report", "status of"},
@@ -76,12 +80,13 @@ def _llm_route(message: str) -> tuple[str | None, float, str]:
     raw = rp.llm_chat(
         "You route messages for Funnel Watchtower, a business-funnel execution assistant. "
         "Return STRICT JSON only with keys: intent, confidence, reason. "
-        "intent must be exactly one of: create, assign, flag, analyst, metrics, oversight, briefing, sprint, knowledge, standup, weekly, help.\n"
+        "intent must be exactly one of: create, assign, flag, analyst, metrics, oversight, briefing, sprint, knowledge, standup, weekly, teams, help.\n"
         "Definitions:\n"
         "- analyst = ad-hoc application data query/breakdown/count/volume by day/week/product/channel/drop reason.\n"
         "- metrics = standard funnel performance, conversion, target miss, value-at-risk/impact ranking.\n"
         "- oversight = manager view of Jira initiatives: ownership, blockers, off-track, critical.\n"
         "- weekly = weekly meeting readout/summary/agenda/recap of everything, optionally posted to Confluence.\n"
+        "- teams = send/post/notify Microsoft Teams with overdue, blocked, off-track, or due-soon Jira work.\n"
         "Important: 'daily volume' or 'daily approval volume' is analyst, not standup. Do not choose standup unless the user explicitly asks for standup or Yesterday/Today/Blockers. Default to English for ambiguous prompts.",
         message,
         max_tokens=220,
@@ -128,8 +133,19 @@ def _validate(intent: str, message: str, fallback: str) -> tuple[str, str]:
     return intent, ""
 
 
+
+
+def _explicit_help_signal(message: str) -> bool:
+    msg = message.lower()
+    return any(k in msg for k in [
+        "how to use", "how should i ask", "how should i use", "usage",
+        "instructions", "prompt examples", "demo prompts", "what can you do"
+    ])
+
 def route_result(message: str) -> RouteResult:
     fallback = keyword_route(message)
+    if _explicit_help_signal(message):
+        return RouteResult("help", "keyword", 1.0, fallback, "explicit usage/help prompt")
     llm_intent, confidence, reason = _llm_route(message)
     if llm_intent and confidence >= 0.45:
         validated, correction = _validate(llm_intent, message, fallback)
