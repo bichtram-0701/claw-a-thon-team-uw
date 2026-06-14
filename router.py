@@ -1,12 +1,19 @@
-"""Semantic intent router for Funnel Watchtower.
+"""Command-aware semantic router for Funnel Watchtower.
 
-LLM-first routing fixes brittle keyword collisions such as "daily volume" being
-mistaken for "standup". Keywords remain as an offline fallback and as validation
-signals for high-risk write intents.
+Reliability rule:
+- Prefixed prompts route deterministically: metrics:, sql:, jira:, confluence:, teams:, help:.
+- Non-prefixed read-only prompts are still supported in warn mode, but the answer
+  gets an interpretation warning.
+- Non-prefixed write prompts are blocked in warn/strict mode and ask the user to
+  resend with the right prefix.
+
+This turns the bot from a free-form chatbot into a workflow router with explicit
+contracts for data, Jira, Confluence, and Teams actions.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, asdict
+import os
 import re
 
 import report as rp
@@ -15,6 +22,18 @@ VALID = {
     "create", "assign", "flag", "analyst", "metrics", "oversight", "briefing",
     "sprint", "knowledge", "standup", "weekly", "teams", "help",
 }
+
+PREFIX_TO_SYSTEM = {
+    "metrics": "metrics",
+    "sql": "analyst",
+    "data": "analyst",
+    "jira": "jira",
+    "confluence": "confluence",
+    "teams": "teams",
+    "help": "help",
+}
+
+COMMAND_PREFIX_RE = re.compile(r"^\s*(metrics|sql|data|jira|confluence|teams|help)\s*:\s*(.*)$", re.IGNORECASE | re.DOTALL)
 
 ROUTES: list[tuple[set[str], str]] = [
     ({"help", "how to use", "how should i ask", "how should i use", "guide", "usage", "instructions",
@@ -45,7 +64,7 @@ ROUTES: list[tuple[set[str], str]] = [
       "value at risk", "impact ranking", "business risk", "top risk", "top recovery", "recovery priority",
       "prioritize", "rank"}, "metrics"),
     ({"oversight", "overview", "funnel", "digest", "who is working", "who's working", "who owns",
-      "ownership", "on track", "off track", "off-track", "critical", "at risk", "behind", "slipping",
+      "ownership", "owner of each epic", "epic owner", "epic owners", "who owns each epic", "who owns every epic", "on track", "off track", "off-track", "critical", "at risk", "behind", "slipping",
       "unassigned", "without assignee", "no assignee", "not assigned", "without owner", "no owner",
       "manager", "lead", "report", "status of"},
      "oversight"),
@@ -61,6 +80,24 @@ class RouteResult:
     confidence: float
     fallback_intent: str
     reason: str = ""
+    prefix: str | None = None
+    stripped_message: str | None = None
+    warning: str | None = None
+    needs_prefix: bool = False
+    needs_clarification: bool = False
+    clarification: str | None = None
+    interpreted_as: str | None = None
+
+
+def routing_mode() -> str:
+    return os.environ.get("ROUTING_MODE", "warn").strip().lower() or "warn"
+
+
+def parse_prefix(message: str) -> tuple[str | None, str]:
+    m = COMMAND_PREFIX_RE.match(message or "")
+    if not m:
+        return None, message
+    return m.group(1).lower(), (m.group(2) or "").strip()
 
 
 def keyword_route(message: str) -> str:
@@ -140,8 +177,6 @@ def _validate(intent: str, message: str, fallback: str) -> tuple[str, str]:
     return intent, ""
 
 
-
-
 def _explicit_help_signal(message: str) -> bool:
     msg = message.lower()
     return any(k in msg for k in [
@@ -151,7 +186,6 @@ def _explicit_help_signal(message: str) -> bool:
 
 
 def _explicit_blocker_explanation_signal(message: str) -> bool:
-    """Route blocker semantics to Jira execution context, not the generic usage guide."""
     msg = message.lower()
     if "blocked" not in msg and "blocking" not in msg:
         return False
@@ -162,8 +196,14 @@ def _explicit_blocker_explanation_signal(message: str) -> bool:
     ])
 
 
+def _explicit_epic_owner_signal(message: str) -> bool:
+    msg = message.lower()
+    return ("epic" in msg or "epics" in msg or "stage" in msg or "stages" in msg) and any(k in msg for k in [
+        "owner", "owners", "owns", "ownership", "who owns", "who's the owner", "who is the owner"
+    ])
+
+
 def _explicit_unassigned_signal(message: str) -> bool:
-    """Route requests for unassigned work to Jira execution context."""
     msg = message.lower()
     return any(k in msg for k in [
         "unassigned", "without assignee", "no assignee", "not assigned",
@@ -171,21 +211,206 @@ def _explicit_unassigned_signal(message: str) -> bool:
     ]) and any(k in msg for k in ["task", "tasks", "issue", "issues", "ticket", "tickets", "open", "work"])
 
 
+def _explicit_create_signal(message: str) -> bool:
+    msg = message.lower()
+    return any(k in msg for k in [
+        "create a ticket", "create ticket", "open a ticket", "open ticket",
+        "file a ticket", "log a ticket", "add a ticket", "new ticket",
+        "create an issue", "open an issue", "create a task", "new task",
+    ])
+
+
+def _explicit_assign_signal(message: str) -> bool:
+    return bool(re.search(r"\bassign\s+[A-Z][A-Z0-9]+-\d+\s+to\s+", message, flags=re.IGNORECASE))
+
+
+def _stage_present(message: str) -> bool:
+    msg = message.lower()
+    return any(k in msg for k in [
+        "traffic", "submission", "submit", "submitted", "approval", "approved", "completion", "completed",
+        "e2e", "end-to-end", "top risk", "top-risk", "current top risk",
+    ])
+
+
+def _needs_clarification(message: str, intent: str) -> str | None:
+    msg = message.lower().strip()
+    if intent in {"create", "assign", "flag", "teams"}:
+        return None
+    ambiguous_drop = any(k in msg for k in ["why did it drop", "why is it down", "what caused the drop", "show drop reasons", "show drop reason", "break down drop reasons", "breakdown drop reasons"])
+    ambiguous_volume = msg in {"show volume", "what volume", "what's this volume", "volume", "daily"}
+    if ambiguous_drop and not _stage_present(msg):
+        return (
+            "Which funnel transition should I diagnose?\n\n"
+            "1. `sql: break May traffic drop down by reason`\n"
+            "2. `sql: break May approval drop down by reason`\n"
+            "3. `sql: break May completion drop down by reason`\n"
+            "4. `metrics: why is the current top risk?`"
+        )
+    if ambiguous_volume:
+        return (
+            "What volume do you want? For exact routing, try one of these:\n\n"
+            "- `sql: show daily volume in May`\n"
+            "- `metrics: show me the funnel metrics`\n"
+            "- `sql: show May volume by channel`"
+        )
+    return None
+
+
+def _publish_to_confluence(message: str) -> bool:
+    msg = message.lower()
+    return any(k in msg for k in ["publish", "post", "save", "create page", "write to confluence", "post to confluence"])
+
+
+def _write_like(intent: str, message: str) -> bool:
+    if intent in {"create", "assign", "flag", "teams"}:
+        return True
+    if intent == "weekly" and _publish_to_confluence(message):
+        return True
+    return False
+
+
+def _prefix_for_intent(intent: str) -> str:
+    if intent in {"analyst"}:
+        return "sql"
+    if intent in {"metrics"}:
+        return "metrics"
+    if intent in {"weekly", "knowledge"}:
+        return "confluence"
+    if intent in {"teams"}:
+        return "teams"
+    if intent in {"create", "assign", "flag", "oversight", "briefing", "sprint", "standup"}:
+        return "jira"
+    return "help"
+
+
+def _route_within_jira(message: str) -> str:
+    msg = message.lower()
+    if _explicit_create_signal(message):
+        return "create"
+    if _explicit_assign_signal(message):
+        return "assign"
+    if any(k in msg for k in ["flag", "investigate", "open investigation", "assign owners to investigate", "recovery action"]):
+        return "flag"
+    if _explicit_blocker_explanation_signal(message) or _explicit_epic_owner_signal(message) or _explicit_unassigned_signal(message):
+        return "oversight"
+    if any(k in msg for k in ["critical", "off track", "off-track", "owner", "who owns", "who is working", "who's working", "overview", "blocked", "blocking", "overdue"]):
+        return "oversight"
+    if any(k in msg for k in ["standup", "stand-up", "stand up"]):
+        return "standup"
+    if any(k in msg for k in ["sprint", "workload", "team pulse"]):
+        return "sprint"
+    if any(k in msg for k in ["my plate", "assigned to me", "my tasks"]):
+        return "briefing"
+    return "oversight"
+
+
+def _route_within_confluence(message: str) -> str:
+    msg = message.lower()
+    if any(k in msg for k in ["weekly", "meeting", "summary", "agenda", "publish", "post", "save", "recap everything", "summarize everything"]):
+        return "weekly"
+    if any(k in msg for k in ["decision", "decide", "document", "wiki", "page", "what did we"]):
+        return "knowledge"
+    return "weekly"
+
+
+def _explicit_prefix_route(prefix: str, message: str, fallback: str) -> RouteResult:
+    p = prefix.lower()
+    if p in {"sql", "data"}:
+        intent = "analyst"
+    elif p == "metrics":
+        intent = "metrics"
+    elif p == "teams":
+        intent = "teams"
+    elif p == "help":
+        intent = "help"
+    elif p == "jira":
+        intent = _route_within_jira(message)
+    elif p == "confluence":
+        intent = _route_within_confluence(message)
+    else:
+        intent = fallback
+    return RouteResult(
+        intent=intent,
+        source="prefix",
+        confidence=1.0,
+        fallback_intent=fallback,
+        reason=f"explicit {prefix}: prefix",
+        prefix=prefix,
+        stripped_message=message,
+        interpreted_as=f"{prefix}: {message}".strip(),
+    )
+
+
+def _apply_no_prefix_policy(result: RouteResult, original: str) -> RouteResult:
+    mode = routing_mode()
+    guessed_prefix = _prefix_for_intent(result.intent)
+    interpreted_as = f"{guessed_prefix}: {original.strip()}".strip()
+    result.interpreted_as = interpreted_as
+    if mode == "natural":
+        return result
+    if mode == "strict":
+        result.intent = "help"
+        result.source = "strict_guard"
+        result.warning = None
+        result.needs_prefix = True
+        result.reason = "ROUTING_MODE=strict requires a command prefix"
+        return result
+    # warn mode
+    clarification = _needs_clarification(original, result.intent)
+    if clarification:
+        result.intent = "help"
+        result.needs_clarification = True
+        result.clarification = clarification
+        result.reason = "ambiguous prompt needs clarification"
+        return result
+    result.warning = (
+        "No command prefix detected. I interpreted this as "
+        f"`{interpreted_as}`. For exact routing, start with one of: "
+        "`metrics:`, `sql:`, `jira:`, `confluence:`, `teams:`, `help:`."
+    )
+    if _write_like(result.intent, original):
+        result.needs_prefix = True
+        result.reason = "write-like prompt requires explicit command prefix"
+    return result
+
+
 def route_result(message: str) -> RouteResult:
-    fallback = keyword_route(message)
-    if _explicit_unassigned_signal(message):
-        return RouteResult("oversight", "keyword", 1.0, fallback, "explicit unassigned-work prompt")
-    if _explicit_blocker_explanation_signal(message):
-        return RouteResult("oversight", "keyword", 1.0, fallback, "explicit blocker explanation prompt")
-    if _explicit_help_signal(message):
-        return RouteResult("help", "keyword", 1.0, fallback, "explicit usage/help prompt")
-    llm_intent, confidence, reason = _llm_route(message)
+    original = message or ""
+    prefix, stripped = parse_prefix(original)
+    fallback = keyword_route(stripped if prefix else original)
+    if prefix:
+        return _explicit_prefix_route(prefix, stripped, fallback)
+
+    if _explicit_create_signal(original):
+        result = RouteResult("create", "keyword", 1.0, fallback, "explicit create-ticket prompt", stripped_message=original)
+        return _apply_no_prefix_policy(result, original)
+    if _explicit_assign_signal(original):
+        result = RouteResult("assign", "keyword", 1.0, fallback, "explicit assign prompt", stripped_message=original)
+        return _apply_no_prefix_policy(result, original)
+    if _explicit_epic_owner_signal(original):
+        result = RouteResult("oversight", "keyword", 1.0, fallback, "explicit epic-owner prompt", stripped_message=original)
+        return _apply_no_prefix_policy(result, original)
+    if _explicit_unassigned_signal(original):
+        result = RouteResult("oversight", "keyword", 1.0, fallback, "explicit unassigned-work prompt", stripped_message=original)
+        return _apply_no_prefix_policy(result, original)
+    if _explicit_blocker_explanation_signal(original):
+        result = RouteResult("oversight", "keyword", 1.0, fallback, "explicit blocker explanation prompt", stripped_message=original)
+        return _apply_no_prefix_policy(result, original)
+    if _explicit_help_signal(original):
+        # Help itself is safe without a prefix; no warning needed.
+        return RouteResult("help", "keyword", 1.0, fallback, "explicit usage/help prompt", stripped_message=original, interpreted_as=f"help: {original.strip()}")
+
+    llm_intent, confidence, reason = _llm_route(original)
     if llm_intent and confidence >= 0.45:
-        validated, correction = _validate(llm_intent, message, fallback)
+        validated, correction = _validate(llm_intent, original, fallback)
         if validated == "help" and fallback != "help":
-            return RouteResult(fallback, "llm+guard", confidence, fallback, "corrected help->fallback for workflow-specific prompt")
-        return RouteResult(validated, "llm" if not correction else "llm+guard", confidence, fallback, correction or reason)
-    return RouteResult(fallback, "keyword", 1.0 if fallback != "help" else 0.0, fallback, reason)
+            result = RouteResult(fallback, "llm+guard", confidence, fallback, "corrected help->fallback for workflow-specific prompt", stripped_message=original)
+        else:
+            result = RouteResult(validated, "llm" if not correction else "llm+guard", confidence, fallback, correction or reason, stripped_message=original)
+        return _apply_no_prefix_policy(result, original)
+
+    result = RouteResult(fallback, "keyword", 1.0 if fallback != "help" else 0.0, fallback, reason, stripped_message=original)
+    return _apply_no_prefix_policy(result, original)
 
 
 def route(message: str) -> str:

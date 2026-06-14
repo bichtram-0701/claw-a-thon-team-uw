@@ -258,9 +258,92 @@ def _mom_pp(curr: float | None, prev: float | None) -> str:
     return f"{(curr - prev):+.1f}pp"
 
 
-def render_markdown() -> str:
-    """Two LM-style tables with months as columns plus latest MoM columns."""
-    r = rows()
+def rows_upto(month: str) -> list[dict]:
+    """Rows up to and including a YYYY-MM month; raises ValueError if not found."""
+    data = rows()
+    if not any(x["month"] == month for x in data):
+        raise ValueError(f"month {month} not available")
+    return [x for x in data if x["month"] <= month]
+
+
+def _target_misses_for_rows(r: list[dict], margin_pp: float = 1.0) -> list[dict]:
+    t = targets()
+    if not t or not r:
+        return []
+    latest = r[-1]
+    out = []
+    for key, stage, label in _RATE_STAGES:
+        tgt, act = t.get(key), latest.get(key)
+        if tgt is None or act is None:
+            continue
+        gap = round(act - tgt, 1)
+        if gap <= -margin_pp:
+            out.append({"stage": stage, "metric": label, "actual_pct": act,
+                        "target_pct": tgt, "gap_pp": gap, "month": latest["month"]})
+    return out
+
+
+def _anomalies_for_rows(r: list[dict], pp: float = DROP_PP, rel: float = DROP_REL) -> list[dict]:
+    if len(r) < 2:
+        return []
+    latest, prev = r[-1], r[-2]
+    out = []
+    for key, stage, label in _RATE_STAGES:
+        a, b = prev.get(key), latest.get(key)
+        if a in (None, 0) or b is None:
+            continue
+        d_pp = round(b - a, 1)
+        d_rel = round(100 * (b - a) / a, 1)
+        if d_pp <= -pp or d_rel <= -rel:
+            out.append({"stage": stage, "metric": label,
+                        "prev_month": prev["month"], "prev_pct": a,
+                        "latest_month": latest["month"], "latest_pct": b,
+                        "delta_pp": d_pp, "delta_pct": d_rel})
+    return out
+
+
+def summary_for_month(month: str) -> dict:
+    """Snapshot as if the requested month were the latest month.
+
+    Used for prompts such as `show funnel metrics in April` so the agent does
+    not answer with the latest May risk ranking.
+    """
+    r = rows_upto(month)
+    latest, prev = (r[-1], r[-2]) if len(r) >= 2 else (r[-1], None)
+
+    def delta(key):
+        if not prev or latest.get(key) is None or prev.get(key) is None:
+            return None
+        return round(latest[key] - prev[key], 1)
+
+    meta = _load()
+    return {
+        "partner": meta.get("partner"),
+        "stages": STAGE_ORDER,
+        "stage_definitions": meta.get("stage_definitions", {}),
+        "latest_month": latest["month"],
+        "latest": latest,
+        "mom_pp": {
+            "submission_rate": delta("submission_rate_pct"),
+            "approval_rate": delta("approval_rate_pct"),
+            "completion_rate": delta("completion_rate_pct"),
+            "e2e_rate": delta("e2e_rate_pct"),
+        },
+        "months": r,
+        "targets": targets(),
+        "target_misses": _target_misses_for_rows(r),
+        "anomalies": _anomalies_for_rows(r),
+        "note": "Month-scoped snapshot. Treat this month as the latest month for risk ranking and MoM calculations.",
+    }
+
+
+def render_markdown(month: str | None = None) -> str:
+    """Two LM-style tables with months as columns plus MoM columns.
+
+    When month is supplied, render the table only up to that month and compute
+    MoM vs the previous visible month.
+    """
+    r = rows_upto(month) if month else rows()
     months = [x["month"] for x in r]
     latest = r[-1]
     prev = r[-2] if len(r) >= 2 else None

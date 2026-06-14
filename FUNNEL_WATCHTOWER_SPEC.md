@@ -30,7 +30,7 @@ The current synthetic demo labels the final outcome as `Completion`, but the wor
 
 The LLM is a replaceable language layer used for:
 
-- semantic intent routing
+- command-prefix routing with semantic fallback
 - bounded JSON extraction
 - concise narration from verified JSON
 - optional fallback SQL generation when no deterministic template matches
@@ -49,7 +49,7 @@ The LLM must not be trusted to compute:
 
 | Module | Responsibility |
 |---|---|
-| `router.py` | LLM-first intent classification with deterministic guards and keyword fallback |
+| `router.py` | Command-prefix routing (`metrics:`, `sql:`, `jira:`, `confluence:`, `teams:`, `help:`) with semantic fallback, warnings, clarification, and write-prefix guards |
 | `funnel_metrics.py` | Monthly funnel metrics, anomalies, target misses |
 | `impact.py` | Value-at-risk and execution-risk ranking |
 | `sql_analyst.py` | Template-first safe SQL analytics and diagnostics |

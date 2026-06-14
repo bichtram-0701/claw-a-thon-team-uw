@@ -15,7 +15,7 @@ Business teams already have dashboards, Jira, Confluence, and chat. But when a f
 The real bottleneck is metric-to-action translation.
 
 ## Solution
-Funnel Watchtower is an execution intelligence agent for owned business funnels. Ask for funnel metrics and it computes conversion, target gaps, month-over-month anomalies, and estimated value at risk. Ask what is off track and it links those risks to Jira owners, blockers, overdue work, and open initiatives. Ask `flag it` and it creates or updates one Jira investigation per stage + metric + month with a structured initiative contract. Ask for a weekly meeting summary and it drafts, and optionally publishes, a Confluence readout with impact-ranked risks, execution follow-up, decisions, and agenda.
+Funnel Watchtower is an execution intelligence agent for owned business funnels. Ask `metrics: show me the funnel metrics` and it computes conversion, target gaps, month-over-month anomalies, and estimated value at risk. Ask `jira: what is critical or off track right now?` and it links those risks to Jira owners, blockers, overdue work, and open initiatives. Ask `jira: flag it` and it creates or updates one Jira investigation per stage + metric + month with a structured initiative contract. Ask `confluence: weekly meeting summary` and it drafts, and optionally publishes, a Confluence readout with impact-ranked risks, execution follow-up, decisions, and agenda.
 
 The LLM handles routing, extraction, and narration only. Python and SQL compute numbers, rankings, SQL templates, Jira writes, duplicate-ticket prevention, and Confluence publishing guards.
 
@@ -26,15 +26,15 @@ Watchtower compresses the manager's operating loop from dashboard -> Jira -> Con
 Try:
 
 ```text
-show me the funnel metrics
-why is approval the top risk?
-break May approval drop down by reason
-flag the drops and assign owners to investigate
-what is critical or off track right now?
-what does blocked mean here and what is it blocking?
-post off-track blockers to Teams
-weekly meeting summary
-publish weekly meeting summary to Confluence
+metrics: show me the funnel metrics
+metrics: why is approval the top risk?
+sql: break May approval drop down by reason
+jira: flag the drops and assign owners to investigate
+jira: what is critical or off track right now?
+jira: what does blocked mean here and what is it blocking?
+teams: post off-track blockers
+confluence: weekly meeting summary
+confluence: publish weekly meeting summary to Confluence
 ```
 
 All demo data is synthetic. The row-level daily fixture is now the source of truth, so daily totals reconcile to the monthly funnel numbers.
@@ -59,5 +59,5 @@ The LLM only routes, extracts bounded fields, and narrates verified JSON. The ma
 - [ ] Run `python tests/test_offline.py`.
 - [ ] Verify `daily volume` and `day over day in May` route to analyst, and `draft my standup` routes to standup.
 - [ ] Verify May daily totals reconcile to Traffic 800 -> Submission 216 -> Approval 24 -> Completion 23.
-- [ ] Verify `weekly meeting summary` drafts a meeting readout.
+- [ ] Verify `confluence: weekly meeting summary` drafts a meeting readout.
 - [ ] Verify Confluence publishing only when writes are intentionally enabled.

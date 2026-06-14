@@ -171,6 +171,7 @@ jobs:
             --arg atlemail "${{ secrets.ATLASSIAN_EMAIL }}" \
             --arg atltoken "${{ secrets.ATLASSIAN_TOKEN }}" \
             --arg allowwrites "${{ vars.ALLOW_WRITES || 'true' }}" \
+            --arg routingmode "${{ vars.ROUTING_MODE || 'warn' }}" \
             --arg jiraproject "${{ vars.JIRA_PROJECT_KEY || 'UW' }}" \
             --arg confspace "${{ vars.CONFLUENCE_SPACE_KEY || '' }}" \
             --arg teamshook "${{ secrets.TEAMS_WEBHOOK_URL }}" \
@@ -180,7 +181,7 @@ jobs:
               environmentVariables: {LLM_API_KEY: $llmkey, LLM_BASE_URL: $llmurl, LLM_MODEL: $llmmodel,
                                      ATLASSIAN_SITE: $atlsite, ATLASSIAN_EMAIL: $atlemail, ATLASSIAN_TOKEN: $atltoken,
                                      JIRA_PROJECT_KEY: $jiraproject, CONFLUENCE_SPACE_KEY: $confspace,
-                                     ALLOW_WRITES: $allowwrites, TEAMS_WEBHOOK_URL: $teamshook,
+                                     ALLOW_WRITES: $allowwrites, ROUTING_MODE: $routingmode, TEAMS_WEBHOOK_URL: $teamshook,
                                      JIRA_EVENT_TOKEN: $jiraevttoken},
               flavorId: $flavor,
               imageAuth: {enabled: true, username: $user, password: $pass},

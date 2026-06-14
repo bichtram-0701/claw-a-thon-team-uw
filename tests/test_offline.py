@@ -121,6 +121,11 @@ check("usage guide->help", m.route("how to use this chat") == "help")
 check("blocked semantics->oversight", m.route("what does blocked mean here and what is it blocking?") == "oversight")
 check("unassigned work->oversight", m.route("what are those 9 open tasks without assignee") == "oversight")
 check("gibberish->help", m.route("zzz qwerty") == "help")
+check("prefix metrics exact", m.route("metrics: show me the funnel metrics") == "metrics")
+check("prefix sql exact", m.route("sql: show daily volume in May") == "analyst")
+check("prefix jira flag exact", m.route("jira: flag the drops and assign owners to investigate") == "flag")
+check("prefix confluence weekly exact", m.route("confluence: weekly meeting summary") == "weekly")
+check("prefix teams exact", m.route("teams: post off-track blockers") == "teams")
 
 print("handler:")
 for q, intent in [("funnel overview", "oversight"), ("what's on my plate?", "briefing"),
@@ -241,7 +246,7 @@ jc.find_assignable_user = lambda q, key=None: ({"accountId": "acc-1", "displayNa
 jc.myself = lambda: {"accountId": "me-1", "displayName": "You"}
 jc.find_epic = lambda name, key=None: "UW-EPIC" if name else None
 
-rc = m.handler({"message": "create a ticket to pre-fill KYC"}, None)
+rc = m.handler({"message": "jira: create a ticket to pre-fill KYC"}, None)
 check("create success", rc.get("status") == "success")
 check("create intent", rc.get("intent") == "create")
 check("created", _cap.get("create") is not None)
@@ -251,7 +256,7 @@ check("assigned to self by default", _cap["create"].get("assignee_id") == "me-1"
 k, o = m.parse_assign("assign UW-23 to Mai")
 check("parse key", k == "UW-23")
 check("parse owner", o == "Mai")
-ra = m.handler({"message": "assign UW-23 to Mai"}, None)
+ra = m.handler({"message": "jira: assign UW-23 to Mai"}, None)
 check("assign intent", ra.get("intent") == "assign")
 check("real assignee", _cap["assign"]["assignee_id"] == "acc-1")
 
@@ -290,6 +295,19 @@ check("comparison intent", cmp.get("intent") == "metrics")
 check("comparison uses requested months", "2026-03 → 2026-04" in cmp.get("answer", ""))
 check("comparison does not answer latest May only", "This comparison answers the requested months only" in cmp.get("answer", ""))
 check("comparison flags submission target", "Submission" in cmp.get("answer", "") and "28.0%" in cmp.get("answer", "") and "30.0% target" in cmp.get("answer", ""))
+rapr = m.handler({"message": "show me the funnel metrics in April"}, None)
+check("April metrics intent", rapr.get("intent") == "metrics")
+check("April metrics cut off May table", "2026-05" not in rapr.get("answer", "") and "2026-04" in rapr.get("answer", ""))
+check("April recovery priority is submission", "Top recovery priority:** Submission" in rapr.get("answer", "") or "top recovery priority: Submission" in rapr.get("answer", ""))
+rapr2 = m.handler({"message": "can you cutoff May and show what's recovery priority in April?"}, None)
+check("April top-risk scoped", "As of **2026-04**" in rapr2.get("answer", "") and "Submission is the top risk" in rapr2.get("answer", ""))
+check("April top-risk does not use May diagnostic suggestion", "break May" not in rapr2.get("answer", ""))
+check("create-ticket mixed intent routes create", m.route("I'd like to investigate traffic drop in May also, create a ticket for this") == "create")
+dbh = m.handler({"message": "how do I query the database?"}, None)
+check("database help includes schema", dbh.get("intent") == "help" and "funnel" in dbh.get("answer", "") and "stage_rank" in dbh.get("answer", ""))
+ep = m.handler({"message": "who's the owner of each epic?"}, None)
+check("epic owner routes oversight", ep.get("intent") == "oversight")
+check("epic owner uses effective owner", "operational owner" in ep.get("answer", "") and "Submission" in ep.get("answer", ""))
 
 print("weekly meeting pack:")
 w = m.handler({"message": "summarize everything for weekly meeting"}, None)
@@ -304,14 +322,14 @@ filtered_pages = bf._filter_context_pages([
 check("weekly context excludes self-generated pages", [p["title"] for p in filtered_pages] == ["Decision log - Funnel"])
 
 print("teams reminder:")
-teams = m.handler({"message": "send off-track reminder to Teams"}, None)
+teams = m.handler({"message": "teams: send off-track reminder"}, None)
 check("teams intent", teams.get("intent") == "teams")
 check("teams previews when webhook missing", "did not post" in teams.get("answer", "") and "UW-1" in teams.get("answer", ""))
 
 print("chat UI version:")
 with open(os.path.join(ROOT, "chat.html"), encoding="utf-8") as fh:
     chat_html = fh.read()
-check("chat header has UI version", "UI v10" in chat_html)
+check("chat header has UI version", "UI v12" in chat_html)
 check("chat JS has one UI_VERSION const", chat_html.count("const UI_VERSION") == 1)
 
 print("confluence markdown conversion:")
@@ -355,11 +373,34 @@ _capf = []
 jc.create_issue = lambda **k: (_capf.append(k) or {"key": "UW-%d" % (len(_capf) + 100), "url": "u"})
 jc.find_assignable_user = lambda q, key=None: {"accountId": "acc-" + q.split()[0].lower(), "displayName": q}
 jc.find_epic = lambda name, key=None: "UW-EPIC"
-rf = m.handler({"message": "flag the drops and assign owners to investigate"}, None)
+rf = m.handler({"message": "jira: flag the drops and assign owners to investigate"}, None)
 check("flag intent", rf.get("intent") == "flag")
 check("flagged approval + submission (deduped)", set(rf["result"]["stages"]) == {"approval", "submission"})
 check("one task per stage (2 total)", len(_capf) == 2)
 check("approval task assigned to its owner", any(c.get("stage") == "approval" and c.get("assignee_id") == "acc-dat" for c in _capf))
+
+print("v10 bug regressions:")
+r_apr = m.handler({"message": "show me the funnel metrics in April"}, None)
+check("April metrics is month-scoped", r_apr.get("intent") == "metrics" and "Month-scoped view: treating 2026-04" in r_apr.get("answer", ""))
+check("April metrics does not lead with May approval risk", "108.1M VND" not in r_apr.get("answer", ""))
+r_cut = m.handler({"message": "can you cutoff May and show what's recovery priority in April?"}, None)
+check("cutoff May uses April", "As of **2026-04**" in r_cut.get("answer", ""))
+check("April top risk is submission", "Submission is the top risk" in r_cut.get("answer", ""))
+check("create-ticket with diagnostic words routes create", m.route("I'd like to investigate traffic drop in May also, create a ticket for this") == "create")
+rd = m.handler({"message": "how do I query the database?"}, None)
+check("database help mentions funnel view", rd.get("intent") == "help" and "`funnel` view" in rd.get("answer", ""))
+reo = m.handler({"message": "who's the owner of each epic?"}, None)
+check("epic owner answer distinguishes operational owner", "operational stage owner" in reo.get("answer", ""))
+
+print("prefix routing guards:")
+np = m.handler({"message": "flag the drops and assign owners to investigate"}, None)
+check("non-prefixed write requires prefix", np.get("result", {}).get("prefix_required") is True and "jira:" in np.get("answer", ""))
+rn = m.handler({"message": "show me the funnel metrics"}, None)
+check("non-prefixed read-only has routing warning", "Routing note" in rn.get("answer", "") and "metrics:" in rn.get("answer", ""))
+rp = m.handler({"message": "metrics: show me the funnel metrics"}, None)
+check("prefixed read-only has no routing warning", "Routing note" not in rp.get("answer", ""))
+clar = m.handler({"message": "why did it drop"}, None)
+check("ambiguous drop asks clarification", clar.get("result", {}).get("clarification_required") is True and "Which funnel transition" in clar.get("answer", ""))
 
 print(f"\n{PASS} passed, {FAIL} failed")
 

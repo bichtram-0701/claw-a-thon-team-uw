@@ -69,6 +69,21 @@ Counting rules:
 - approval drops = COUNT(stage_rank = 2), which equals submitted - approved.
 'May 2026' means entered_dt BETWEEN DATE '2026-05-01' AND DATE '2026-05-31'."""
 
+
+def schema_guide_markdown() -> str:
+    """Short user-facing guide for database-style questions."""
+    return (
+        "You can ask database-style questions using the `funnel` view. I run safe read-only SQL templates first, "
+        "and only use LLM-written SELECTs as a fallback.\n\n"
+        "**Useful columns:** `entity_id`, `entered_dt`, `product_type`, `channel`, `final_stage`, "
+        "`stage_rank`, `drop_transition`, `drop_reason`, `potential_value_vnd`.\n\n"
+        "**Counting rules:** Traffic = `COUNT(*)`; Submission = `COUNT(stage_rank >= 2)`; "
+        "Approval = `COUNT(stage_rank >= 3)`; Completion = `COUNT(stage_rank = 4)`.\n\n"
+        "**Good prompts:** `sql: show daily volume in May`, `sql: break May approval drop down by reason`, "
+        "`show May by product`, `show May by channel`, `why did approval drop?`, or "
+        "`sql: break May drop reasons by transition`."
+    )
+
 _SELECT_ONLY = re.compile(r"^\s*(select|with)\b", re.IGNORECASE)
 _FORBIDDEN = re.compile(
     r"\b(insert|update|delete|drop|create|alter|attach|copy|pragma|install|load|export|call)\b",

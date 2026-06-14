@@ -78,7 +78,7 @@ e2e_rate        = Completion / Traffic
 | `approved` | `approval_to_completion` | `customer_withdrew`, `offer_expired`, `ops_timeout`, `partner_unavailable` |
 | `completed` | blank | blank |
 
-This means `break May down by drop reason` can answer the Submission -> Approval loss directly:
+This means `sql: break May approval drop down by reason` can answer the Submission -> Approval loss directly:
 
 ```text
 May submitted: 216

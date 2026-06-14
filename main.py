@@ -63,7 +63,7 @@ app.router.routes.append(Route("/version", _version, methods=["GET"]))
 
 JIRA_EVENT_TOKEN = os.environ.get("JIRA_EVENT_TOKEN", "")
 ALLOW_WRITES = os.environ.get("ALLOW_WRITES", "true").lower() in ("1", "true", "yes")
-APP_VERSION = os.environ.get("APP_VERSION", "demo-v10")
+APP_VERSION = os.environ.get("APP_VERSION", "demo-v12")
 BUILD_VERSION = os.environ.get("GIT_SHA", "dev")[:7]
 
 STAGE_TO_EPIC = {
@@ -132,6 +132,15 @@ def extract_create_fields(message: str) -> dict:
     fields = rp.extract_json_object(raw)
     if not fields or not fields.get("summary"):
         summary = _CREATE_PREFIX.sub("", message).strip().rstrip("?.!") or message.strip()
+        # If the user writes the create action at the end (`investigate traffic drop..., create a ticket`),
+        # keep the Jira summary focused on the requested investigation rather than the whole sentence.
+        low = message.lower()
+        if "create" in low and "ticket" in low and "investigate" in low:
+            stage = ct.infer_stage(message)
+            month_match = re.search(r"\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\b", low)
+            month_txt = (" in " + month_match.group(1).title()) if month_match else ""
+            if stage:
+                summary = f"Investigate {stage.title()} drop{month_txt}"
         fields = {"summary": summary, "stage": ct.infer_stage(message), "owner": None,
                   "due": None, "confidence": "low", "evidence": [message]}
     return ct.validate_create_fields(fields, message)
@@ -161,6 +170,34 @@ def _needs_atlassian(intent: str) -> bool:
     return intent in {"create", "assign", "flag", "oversight", "briefing", "sprint", "knowledge", "standup", "weekly", "teams"}
 
 
+def _prefix_required_answer(rr, original_message: str) -> str:
+    interpreted = rr.interpreted_as or original_message.strip()
+    prefix = rr.prefix or (interpreted.split(":", 1)[0] if ":" in interpreted else "jira")
+    if rr.source == "strict_guard":
+        return (
+            "⚠️ **Command prefix required.** Start your message with one of: "
+            "`metrics:`, `sql:`, `jira:`, `confluence:`, `teams:`, `help:`.\n\n"
+            f"Suggested rewrite: `{interpreted}`"
+        )
+    if rr.intent in {"create", "assign", "flag"}:
+        system = "Jira"
+        prefix = "jira"
+    elif rr.intent == "teams":
+        system = "Teams"
+        prefix = "teams"
+    elif rr.intent == "weekly":
+        system = "Confluence"
+        prefix = "confluence"
+    else:
+        system = "external"
+    return (
+        f"⚠️ This looks like a **{system} write/action**. For safety, I did not execute it without an explicit prefix.\n\n"
+        f"Please resend as: `{interpreted}`\n\n"
+        "Read-only questions can still be answered without a prefix, but I will show an interpretation warning. "
+        "For exact routing, use `metrics:`, `sql:`, `jira:`, `confluence:`, `teams:`, or `help:`."
+    )
+
+
 @app.entrypoint
 def handler(payload: dict, context: RequestContext) -> dict:
     try:
@@ -177,11 +214,19 @@ def handler(payload: dict, context: RequestContext) -> dict:
 
 
 def _handle(payload: dict) -> dict:
-    message = str(payload.get("message", ""))
+    original_message = str(payload.get("message", ""))
     lang = payload.get("language", "en")
-    rr = rt.route_result(message)
+    rr = rt.route_result(original_message)
     intent = rr.intent
+    message = rr.stripped_message or original_message
     route_info = rr.__dict__
+
+    if rr.needs_clarification:
+        return _respond("help", rr.clarification or "Please clarify the funnel stage, month, or target system.",
+                        {"route": route_info, "clarification_required": True})
+    if rr.needs_prefix:
+        return _respond(intent, _prefix_required_answer(rr, original_message),
+                        {"route": route_info, "prefix_required": True})
 
     if _needs_atlassian(intent) and not jc.configured():
         return _respond(intent,
@@ -223,16 +268,26 @@ def _handle(payload: dict) -> dict:
             result = _month_comparison_result(cmp_months, route_info)
             answer = _render_month_comparison_answer(result)
         else:
-            result = _metrics_result(route_info)
-            if _is_top_risk_question(message):
-                answer = _render_top_risk_answer(result)
+            scoped_month = _scoped_metric_month_from_message(message)
+            if scoped_month:
+                result = _metrics_result(route_info, month=scoped_month)
+                if _is_top_risk_question(message) or _is_recovery_priority_question(message):
+                    answer = _render_top_risk_answer(result, month=scoped_month)
+                else:
+                    answer = _render_metrics_answer(result, lang, month=scoped_month)
             else:
-                answer = _render_metrics_answer(result, lang)
+                result = _metrics_result(route_info)
+                if _is_top_risk_question(message):
+                    answer = _render_top_risk_answer(result)
+                else:
+                    answer = _render_metrics_answer(result, lang)
     elif intent == "oversight":
         result = bf.manager_digest()
         result["route"] = route_info
         if _is_unassigned_work_question(message):
             answer = _render_unassigned_work_answer(result)
+        elif _is_epic_owner_question(message):
+            answer = _render_epic_owner_answer(result)
     elif intent == "briefing":
         result = bf.my_briefing()
         result["route"] = route_info
@@ -247,19 +302,24 @@ def _handle(payload: dict) -> dict:
         result["route"] = route_info
     else:
         result = {"route": route_info,
-                  "hint": "Try: funnel metrics, value at risk, daily volume in May, funnel overview, flag it, weekly meeting summary, create a ticket, assign UW-12 to Mai, or draft my standup."}
-        answer = (
+                  "hint": "Try: metrics: show me the funnel metrics, sql: show daily volume in May, jira: what is critical or off track, jira: flag it, confluence: weekly meeting summary, jira: create a ticket, or help: how should I ask questions."}
+        if _is_database_help_question(message):
+            answer = sa.schema_guide_markdown()
+        else:
+            answer = (
             "Hi, I am Funnel Watchtower. I track the business funnel, rank target misses by value at risk, "
             "connect them to Jira ownership, answer safe SQL-style breakdowns, summarize Confluence decisions, "
             "draft weekly meeting briefs, post Jira digests to Teams, and create or update Jira recovery work.\n\n"
-            "Best prompt pattern: **action + stage/metric + time period**. Examples: `show me the funnel metrics`, "
-            "`why is approval the top risk?`, `break May approval drop down by reason`, "
-            "`flag the drops and assign owners to investigate`, `post off-track blockers to Teams`, "
-            "`weekly meeting summary`, or `publish weekly meeting summary to Confluence`.\n\n"
-            "Funnel stages: **Traffic → Submission → Approval → Completion**. If you ask only for `volume`, I default "
-            "to all funnel-stage counts. If you ask only for `drop reason`, I highlight the highest-risk transition. "
-            "For month-over-month, ask `compare April and May performance`; the standard metrics table also includes MoM Abs and MoM Pct columns."
-        )
+            "Best prompt pattern: **prefix + action + stage/metric + time period**. Prefixes give exact routing: "
+            "`metrics:`, `sql:`, `jira:`, `confluence:`, `teams:`, and `help:`.\n\n"
+            "Examples: `metrics: show me the funnel metrics`, `metrics: why is approval the top risk?`, "
+            "`sql: break May approval drop down by reason`, `jira: flag the drops and assign owners to investigate`, "
+            "`teams: post off-track blockers`, `confluence: weekly meeting summary`, or "
+            "`confluence: publish weekly meeting summary to Confluence`.\n\n"
+            "Funnel stages: **Traffic → Submission → Approval → Completion**. If you ask a read-only question without a prefix, "
+            "I will try to answer but show how I interpreted the route. For write actions to Jira, Teams, or Confluence, "
+            "I require the explicit prefix. For month-over-month, ask `metrics: compare April and May performance`."
+            )
 
     if answer is None:
         sys_extra = NARRATE_SYS.get(intent, "")
@@ -314,8 +374,8 @@ def _analyst_intro(result: dict) -> str:
     return ""
 
 
-def _metrics_result(route_info: dict | None = None) -> dict:
-    result = fm.summary()
+def _metrics_result(route_info: dict | None = None, month: str | None = None) -> dict:
+    result = fm.summary_for_month(month) if month else fm.summary()
     open_issues = []
     owners = {}
     if jc.configured():
@@ -326,13 +386,16 @@ def _metrics_result(route_info: dict | None = None) -> dict:
             open_issues = []
             owners = {}
             result["jira_context_error"] = type(e).__name__ + ": " + str(e)[:180]
-    result["impact_ranking"] = im.rank_stage_risks(open_issues, owners)
+    result["impact_ranking"] = (
+        im.rank_stage_risks_for_month(month, open_issues, owners) if month
+        else im.rank_stage_risks(open_issues, owners)
+    )
     if route_info is not None:
         result["route"] = route_info
     return result
 
 
-def _render_metrics_answer(result: dict, lang: str) -> str:
+def _render_metrics_answer(result: dict, lang: str, month: str | None = None) -> str:
     lang_hint = "Reply in Vietnamese." if lang == "vi" else "Reply in English."
     headline = rp.llm_chat(
         "You are Funnel Watchtower. In 1-2 sentences give the lead the headline trend from this funnel data. "
@@ -349,7 +412,7 @@ def _render_metrics_answer(result: dict, lang: str) -> str:
         heads_up = (
             f"> ⚠ **Top recovery priority:** {top['stage'].title()} — "
             f"estimated value at risk {im.fmt_vnd(top.get('estimated_value_at_risk_vnd'))}; "
-            f"score {top.get('score')}. Say `flag it` to open or update the investigation.\n\n"
+            f"score {top.get('score')}. Say `jira: flag it` to open or update the investigation.\n\n"
             f"**Impact ranking**\n\n{im.render_ranking(result.get('impact_ranking'))}\n\n"
         )
     jira_warn = ""
@@ -359,12 +422,50 @@ def _render_metrics_answer(result: dict, lang: str) -> str:
             "so owners/blockers may be incomplete. "
             f"Debug: `{result.get('jira_context_error')}`\n\n"
         )
-    return jira_warn + heads_up + (headline + "\n\n" if headline else "") + fm.render_markdown()
+    scope_note = f"> Month-scoped view: treating {month} as the latest visible month; later months are excluded.\n\n" if month else ""
+    return jira_warn + scope_note + heads_up + (headline + "\n\n" if headline else "") + fm.render_markdown(month)
 
 
 def _is_top_risk_question(message: str) -> bool:
     q = message.lower()
     return any(k in q for k in ["top risk", "top recovery", "recovery priority", "why is approval", "why approval is"])
+
+
+def _is_recovery_priority_question(message: str) -> bool:
+    q = message.lower()
+    return any(k in q for k in ["recovery priority", "priority", "prioritize", "prioritise", "top recovery", "what should we do first"])
+
+
+def _is_database_help_question(message: str) -> bool:
+    q = message.lower()
+    return any(k in q for k in ["query the database", "query database", "database", "schema", "what table", "sql", "duckdb"])
+
+
+def _scoped_metric_month_from_message(message: str) -> str | None:
+    """Return a YYYY-MM for month-scoped metric/risk prompts that are not comparisons."""
+    q = message.lower()
+    if _comparison_months_from_message(message):
+        return None
+    # Metrics prompts that ask to exclude/cut off the latest month should use the
+    # final named month as the requested as-of month.
+    year_m = re.search(r"\b(20\d{2})\b", q)
+    default_year = int(year_m.group(1)) if year_m else 2026
+    found: list[tuple[int, str]] = []
+    for m in re.finditer(r"\b(20\d{2})-(\d{1,2})\b", q):
+        y, mo = int(m.group(1)), int(m.group(2))
+        if 1 <= mo <= 12:
+            found.append((m.start(), f"{y}-{mo:02d}"))
+    for name, num in _MONTH_WORDS.items():
+        for m in re.finditer(rf"\b{re.escape(name)}\b", q):
+            found.append((m.start(), f"{default_year}-{num:02d}"))
+    if not found:
+        return None
+    ordered = [month for _, month in sorted(found, key=lambda x: x[0])]
+    # Avoid changing generic latest-month prompts unless the user explicitly
+    # asks for metrics/risk as of a named month.
+    if any(k in q for k in ["in ", "as of", "cutoff", "cut off", "exclude", "without", "before", "up to", "through"]):
+        return ordered[-1]
+    return ordered[-1] if len(set(ordered)) == 1 else None
 
 
 def _is_unassigned_work_question(message: str) -> bool:
@@ -373,6 +474,39 @@ def _is_unassigned_work_question(message: str) -> bool:
         "unassigned", "without assignee", "no assignee", "not assigned",
         "without owner", "no owner", "owner unassigned", "assignee unassigned",
     ]) and any(k in q for k in ["task", "tasks", "issue", "issues", "ticket", "tickets", "open", "work"])
+
+
+def _is_epic_owner_question(message: str) -> bool:
+    q = message.lower()
+    return ("owner" in q or "owns" in q) and any(k in q for k in ["epic", "epics", "stage", "stages"])
+
+
+def _render_epic_owner_answer(result: dict) -> str:
+    stage_owners = result.get("stage_owners") or {}
+    by_epic = result.get("by_epic") or {}
+    stage_labels = [
+        ("traffic", "Traffic"),
+        ("submission", "Submission"),
+        ("approval", "Approval"),
+        ("completion", "Completion"),
+        ("crosscut", "Data & Platform"),
+    ]
+    lines = [
+        "Watchtower separates **Jira Epic assignee** from **operational stage owner**.",
+        "",
+        "The Jira Epic issues may be unassigned, but the **operational stage owner** is inferred from the owner labels / assignees on open work in that stage:",
+        "",
+    ]
+    for stage, label in stage_labels:
+        owner = stage_owners.get(stage) or "Unassigned"
+        open_count = (by_epic.get(label) or {}).get("open")
+        suffix = f" — {open_count} open item(s)" if open_count is not None else ""
+        lines.append(f"- **{label}:** {owner}{suffix}")
+    lines += [
+        "",
+        "So if you ask `who owns Approval`, use the operational owner above. If you want literal Jira Epic assignees, those can still be Unassigned in the demo workspace.",
+    ]
+    return "\n".join(lines)
 
 
 def _fmt_issue_line(issue: dict) -> str:
@@ -416,7 +550,7 @@ def _render_unassigned_work_answer(result: dict) -> str:
     return "\n".join(lines)
 
 
-def _render_top_risk_answer(result: dict) -> str:
+def _render_top_risk_answer(result: dict, month: str | None = None) -> str:
     ranking = (result.get("impact_ranking") or {}).get("ranking") or []
     if not ranking:
         return "I do not have enough impact-ranking data to identify a top funnel risk right now."
@@ -430,8 +564,9 @@ def _render_top_risk_answer(result: dict) -> str:
     execution = ", ".join(er.get("reasons", [])) if isinstance(er, dict) else str(er)
     execution = execution or "no Jira execution risk detected"
     score = top.get("score")
+    prefix = f"As of **{month}**, " if month else ""
     lines = [
-        f"**{stage} is the top risk** because it combines the largest business impact with a material funnel signal.",
+        f"{prefix}**{stage} is the top risk** because it combines the largest business impact with a material funnel signal.",
         "",
         f"- **Signal:** {signal}",
         f"- **Estimated value at risk:** {risk}",
@@ -440,15 +575,27 @@ def _render_top_risk_answer(result: dict) -> str:
     ]
     if score is not None:
         lines.append(f"- **Ranking score:** {score}")
+    diag_month = _month_name_for_prompt(month) if month else "May"
+    stage_prompt = stage.lower()
     lines += [
         "",
-        "This is an impact ranking, not a causal claim. Use `break May approval drop down by reason` or `why did approval drop?` for diagnostic evidence.",
+        f"This is an impact ranking, not a causal claim. Use `sql: break {diag_month} {stage_prompt} drop down by reason` or `sql: why did {stage_prompt} drop?` for diagnostic evidence.",
     ]
     return "\n".join(lines)
 
 
 _MONTH_WORDS = {name.lower(): idx for idx, name in enumerate(calendar.month_name) if name}
 _MONTH_WORDS.update({name.lower(): idx for idx, name in enumerate(calendar.month_abbr) if name})
+
+
+def _month_name_for_prompt(month: str | None) -> str:
+    if not month:
+        return "May"
+    try:
+        mo = int(str(month).split("-", 1)[1])
+        return calendar.month_name[mo]
+    except Exception:  # noqa: BLE001
+        return str(month)
 
 
 def _comparison_months_from_message(message: str) -> list[str] | None:
@@ -821,6 +968,10 @@ def _handle_write(intent: str, message: str, route_info: dict) -> dict:
 
 def _respond(intent: str, answer, result: dict) -> dict:
     if isinstance(answer, str):
+        route = result.get("route") if isinstance(result, dict) else None
+        warning = (route or {}).get("warning") if isinstance(route, dict) else None
+        if warning and not result.get("prefix_required") and not result.get("clarification_required"):
+            answer = f"> ⚠️ **Routing note:** {warning}\n\n" + answer
         answer = jc.link_issue_keys(answer)
     return {
         "status": "success",

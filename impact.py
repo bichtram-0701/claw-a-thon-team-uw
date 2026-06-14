@@ -173,10 +173,13 @@ def _signals(item: dict) -> list[str]:
     return reasons
 
 
-def rank_stage_problems(open_issues: list[dict] | None = None,
-                        owners: dict | None = None) -> list[dict]:
-    """Rank problematic stages by value at risk, trend severity and execution risk."""
-    summary = fm.summary()
+def _rank_stage_problems_from_summary(summary: dict, open_issues: list[dict] | None = None,
+                                      owners: dict | None = None) -> list[dict]:
+    """Rank stages using an explicit metric summary.
+
+    This lets April-specific prompts use April as the latest month instead of
+    leaking the current May risk ranking.
+    """
     latest = summary["latest"]
     targets = summary.get("targets", {})
     anomalies_by_stage = {a["stage"]: a for a in summary.get("anomalies", [])}
@@ -213,6 +216,18 @@ def rank_stage_problems(open_issues: list[dict] | None = None,
     for idx, item in enumerate(ranked, 1):
         item["rank"] = idx
     return ranked
+
+
+def rank_stage_problems(open_issues: list[dict] | None = None,
+                        owners: dict | None = None) -> list[dict]:
+    """Rank problematic stages by value at risk, trend severity and execution risk."""
+    return _rank_stage_problems_from_summary(fm.summary(), open_issues, owners)
+
+
+def rank_stage_problems_for_month(month: str, open_issues: list[dict] | None = None,
+                                  owners: dict | None = None) -> list[dict]:
+    """Rank problematic stages as of a requested YYYY-MM month."""
+    return _rank_stage_problems_from_summary(fm.summary_for_month(month), open_issues, owners)
 
 
 def render_markdown(ranked: list[dict] | None = None) -> str:
@@ -275,6 +290,19 @@ def rank_stage_risks(open_issues: list[dict] | None = None, owners: dict | None 
         "top_problem": ranked[0] if ranked else None,
         "markdown": render_markdown(ranked),
         "formula_note": FORMULA_NOTE,
+    }
+
+
+def rank_stage_risks_for_month(month: str, open_issues: list[dict] | None = None,
+                               owners: dict | None = None) -> dict:
+    ranked = rank_stage_problems_for_month(month, open_issues=open_issues, owners=owners)
+    return {
+        "ranking": ranked,
+        "top": ranked[0] if ranked else None,
+        "top_problem": ranked[0] if ranked else None,
+        "markdown": render_markdown(ranked),
+        "formula_note": FORMULA_NOTE,
+        "latest_month": month,
     }
 
 

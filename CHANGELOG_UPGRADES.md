@@ -6,7 +6,7 @@
 - Added LLM-first but validated `router.py`; keywords are now fallback only.
 - Added `contracts.py` validation helpers for initiative and investigation
   contracts.
-- Updated `main.py` so metrics answers show the top recovery priority and `flag it`
+- Updated `main.py` so metrics answers show the top recovery priority and `jira: flag it`
   uses impact ranking and Jira idempotency.
 - Updated `sql_analyst.py` to use safe templates before LLM SQL fallback.
 - Updated `jira_client.py` with comments, richer descriptions, extra labels, and

@@ -62,22 +62,22 @@ Recommended action
 Use this story order:
 
 ```text
-1. show me the funnel metrics
-2. why is approval the top risk?
-3. break May approval drop down by reason
-4. flag the drops and assign owners to investigate
-5. what is critical or off track right now?
-6. what does blocked mean here and what is it blocking?
-7. post off-track blockers to Teams
-8. weekly meeting summary
-9. publish weekly meeting summary to Confluence
+1. metrics: show me the funnel metrics
+2. metrics: why is approval the top risk?
+3. sql: break May approval drop down by reason
+4. jira: flag the drops and assign owners to investigate
+5. jira: what is critical or off track right now?
+6. jira: what does blocked mean here and what is it blocking?
+7. teams: post off-track blockers
+8. confluence: weekly meeting summary
+9. confluence: publish weekly meeting summary to Confluence
 ```
 
 Optional backup prompts:
 
 ```text
-compare April and May performance
-show daily volume in May
+metrics: compare April and May performance
+sql: show daily volume in May
 how should I ask questions?
 ```
 
@@ -91,7 +91,7 @@ Use this line:
 
 ```text
 User question
-  -> LLM-first intent router
+  -> command-prefix router + semantic fallback
   -> deterministic tools
      - funnel metrics
      - value-at-risk ranking

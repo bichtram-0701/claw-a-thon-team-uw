@@ -111,7 +111,7 @@ Observed in the v8 saved chatbot export:
 - Weekly meeting context could include previously generated Watchtower weekly summary pages, causing recursive/noisy Confluence context.
 
 Fix:
-- Added a visible `UI v10` badge in the chat header and footer. The backend/agent version still appears in each response meta line.
+- Added a visible `UI v11` badge in the chat header and footer. The backend/agent version still appears in each response meta line.
 - Added a router guard so blocker-semantics prompts route to `oversight`, not `help`.
 - Added SQL-template matching for `by reason` / `down by reason`, so `break May approval drop down by reason` uses `approval_drop_reason_breakdown` and reconciles the 192 submitted-but-not-approved rows.
 - Updated the intro copy to say optional prompts cover Teams, MoM comparison, daily validation, and usage guidance.
@@ -124,7 +124,7 @@ Observed in the v8 saved chat export:
 - `break May approval drop down by reason` routed to the diagnostic contribution template instead of the drop-reason reconciliation table. Fixed by recognizing `down by reason` / `by reason` phrasing as a drop-reason request and routing it to `approval_drop_reason_breakdown`.
 - `what does blocked mean here and what is it blocking?` sometimes routed to the generic help guide. Fixed with an explicit blocker-follow-up guard that routes this prompt to the Jira oversight context.
 - Weekly summaries could include a previously generated Watchtower weekly page as Confluence context, creating recursive/noisy context. Fixed by filtering self-generated weekly summary/readout pages from Confluence context.
-- The chat page did not make the UI/demo version visible enough. Added `UI v10` in the header/footer while keeping the served agent build hash in each response meta and the `/version` endpoint.
+- The chat page did not make the UI/demo version visible enough. Added `UI v11` in the header/footer while keeping the served agent build hash in each response meta and the `/version` endpoint.
 
 ## v10 review: unassigned task follow-up
 
@@ -135,3 +135,26 @@ Fix:
 - Router now treats `unassigned`, `without assignee`, `no assignee`, `without owner`, and similar phrases as `oversight` prompts.
 - Added a deterministic renderer for unassigned-work questions so the bot lists issue keys, summaries, stage, status, due date, owner, and assignee instead of asking the LLM to infer from aggregate JSON.
 - Added regression coverage for the route and renderer.
+
+## v10 saved-chat review -> v11 fixes
+
+Observed in `Funnel Watchtower - Team UW_v10(1).html`:
+
+1. `show me the funnel metrics in April` still answered with the latest May recovery priority and showed May as the latest month. Fixed by adding month-scoped metrics rendering and MoM cut-off tables.
+2. `can you cutoff May and show what's recovery priority in April?` still answered with May Approval risk. Fixed by treating the final named month as the requested as-of month for non-comparison metrics/risk prompts.
+3. `I'd like to investigate traffic drop in May also, create a ticket for this` routed to analyst SQL instead of Jira creation. Fixed by adding an explicit create-ticket routing guard before analyst/flag handling.
+4. `how do I query the database?` returned the generic usage guide. Fixed by adding a database/schema guide for `funnel`, columns, counting rules, and safe SQL behavior.
+5. `who's the owner of each epic?` answered only with raw Jira Epic assignee data, making all Epics look unowned. Fixed by returning both semantics: Jira Epic assignee can be unassigned, while Watchtower's operational stage owner is inferred from open work owner labels/assignees.
+
+## v11 saved-chat review -> v12 reliability layer
+
+The remaining class of issues was not one specific answer; it was ambiguity in mapping user language to workflows. v12 adds a command-prefix layer:
+
+- `metrics:` for funnel metrics, MoM, top risk, and value at risk.
+- `sql:` for deterministic DuckDB templates and drilldowns.
+- `jira:` for ownership, blockers, off-track work, and Jira write actions.
+- `confluence:` for weekly summaries and Confluence publishing.
+- `teams:` for Teams reminders.
+- `help:` for usage/database guidance.
+
+In `ROUTING_MODE=warn`, non-prefixed read-only prompts still answer but include a routing warning. Non-prefixed write actions are blocked and ask the user to resend with the explicit prefix. Ambiguous prompts such as `why did it drop?` ask for clarification instead of guessing the stage or transition.

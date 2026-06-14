@@ -40,37 +40,37 @@
 </head>
 <body>
 <header>
-  <h1>🛰️ Funnel <span>Watchtower</span> <small class="version-badge">UI v10</small></h1>
+  <h1>🛰️ Funnel <span>Watchtower</span> <small class="version-badge">UI v12</small></h1>
   <p>Team UW — Claw-a-thon 2026 · Business-funnel initiative tracker · Jira + Confluence · synthetic workspace · agent version shown per response</p>
 </header>
 
 <div id="chat"></div>
 
-<div id="chips-note">Main demo order: detect → diagnose → reconcile → act → execution context → weekly readout. Optional validation prompts are at the end.</div>
+<div id="chips-note">Main demo order with exact routing prefixes: detect → diagnose → reconcile → act → execution context → weekly readout. Optional validation prompts are at the end.</div>
 <div id="chips">
-  <span class="chip">show me the funnel metrics</span>
-  <span class="chip">why is approval the top risk?</span>
-  <span class="chip">break May approval drop down by reason</span>
-  <span class="chip">flag the drops and assign owners to investigate</span>
-  <span class="chip">what is critical or off track right now?</span>
-  <span class="chip">what does blocked mean here and what is it blocking?</span>
-  <span class="chip">weekly meeting summary</span>
-  <span class="chip">publish weekly meeting summary to Confluence</span>
-  <span class="chip">post off-track blockers to Teams</span>
-  <span class="chip">compare April and May performance</span>
-  <span class="chip">show daily volume in May</span>
-  <span class="chip">how should I ask questions?</span>
+  <span class="chip">metrics: show me the funnel metrics</span>
+  <span class="chip">metrics: why is approval the top risk?</span>
+  <span class="chip">sql: break May approval drop down by reason</span>
+  <span class="chip">jira: flag the drops and assign owners to investigate</span>
+  <span class="chip">jira: what is critical or off track right now?</span>
+  <span class="chip">jira: what does blocked mean here and what is it blocking?</span>
+  <span class="chip">confluence: weekly meeting summary</span>
+  <span class="chip">confluence: publish weekly meeting summary to Confluence</span>
+  <span class="chip">teams: post off-track blockers</span>
+  <span class="chip">metrics: compare April and May performance</span>
+  <span class="chip">sql: show daily volume in May</span>
+  <span class="chip">help: how should I ask questions?</span>
 </div>
 
 <form id="form">
   <input id="input" placeholder="Ask about the funnel: who owns what, what's critical, what's on track…" autocomplete="off" autofocus>
   <button id="send">Send</button>
 </form>
-<footer>UI v10 · Synthetic workspace data — no company systems, no real personal data. Powered by GreenNode AgentBase + MaaS.</footer>
+<footer>UI v12 · Synthetic workspace data — no company systems, no real personal data. Powered by GreenNode AgentBase + MaaS.</footer>
 
 <script>
 // Same-origin when served by the agent itself; absolute URL when opened as a local file.
-const UI_VERSION = "v10";
+const UI_VERSION = "v12";
 const ENDPOINT = location.protocol.startsWith("http")
   ? "/invocations"
   : "https://endpoint-2f37c067-4516-4483-ba07-2199f07abb90.agentbase-runtime.aiplatform.vngcloud.vn/invocations";
@@ -87,10 +87,10 @@ function add(cls, html) {
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 add("bot", marked.parse("Hi! I'm **Funnel Watchtower** — I track the demo funnel " +
-  "(Traffic → Submission → Approval → Completion) across Jira + Confluence. Ask for " +
-  "**funnel metrics** with MoM columns, why a stage is the **top risk**, safe drop-reason breakdowns, " +
-  "Jira recovery actions, **Teams reminders**, and **weekly Confluence summaries**. " +
-  "The chips are ordered for the main demo flow; optional prompts at the end cover Teams, MoM comparison, daily validation, and usage guidance."));
+  "(Traffic → Submission → Approval → Completion) across Jira + Confluence. Use prefixes for exact routing: " +
+  "`metrics:`, `sql:`, `jira:`, `confluence:`, `teams:`, or `help:`. " +
+  "Read-only prompts without a prefix still work with a routing warning; write actions require the prefix. " +
+  "The chips are ordered for the main demo flow."));
 
 document.querySelectorAll(".chip").forEach(c =>
   c.addEventListener("click", () => { input.value = c.textContent; form.requestSubmit(); }));
