@@ -10,6 +10,7 @@ import calendar
 import json
 import os
 import re
+import time
 from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
@@ -108,6 +109,19 @@ def _default_owner_note(stage: str | None, owner: str | None, real_assignee: str
     return f"No assignee was mentioned; defaulting to **{who}**, the **{label}** stage owner from the Epic → task structure."
 
 
+# Real-time dedup state (single replica): issue key -> (updated_stamp, monotonic)
+_RECENT_EVENTS: dict = {}
+_DEDUP_WINDOW_SEC = 90      # collapse duplicate rule firings for the same change
+_CREATE_GRACE_SEC = 60      # created ~= updated within this -> treat as a new task
+
+
+def _parse_iso(s):
+    try:
+        return datetime.fromisoformat(s) if s else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
 async def _jira_event(request):
     if JIRA_EVENT_TOKEN and request.query_params.get("token") != JIRA_EVENT_TOKEN:
         return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
@@ -121,10 +135,26 @@ async def _jira_event(request):
     try:
         full = jc.get_issue_full(key)
         event = str(payload.get("event") or "").lower()
+        # Dedupe near-simultaneous events: a single create/edit can trigger both
+        # the "created" and "field value changed" automation rules (and Jira may
+        # fire several field changes at once). Same issue + same `updated` stamp
+        # within the window -> notify once. (Single replica -> in-memory is fine.)
+        sig = str(full.get("updated"))
+        now = time.monotonic()
+        prev = _RECENT_EVENTS.get(key)
+        _RECENT_EVENTS[key] = (sig, now)
+        if len(_RECENT_EVENTS) > 2000:
+            for k in [k for k, (_, t) in _RECENT_EVENTS.items() if now - t > _DEDUP_WINDOW_SEC]:
+                _RECENT_EVENTS.pop(k, None)
+        if prev and prev[0] == sig and (now - prev[1]) < _DEDUP_WINDOW_SEC:
+            return JSONResponse({"ok": True, "key": key, "deduped": True, "sent": False})
+
+        # A freshly created task (created ~= updated) is always a "new task",
+        # regardless of which rule fired first -> correct header + no dup.
+        cu, uu = _parse_iso(full.get("created")), _parse_iso(full.get("updated"))
+        just_created = bool(cu and uu and (uu - cu).total_seconds() < _CREATE_GRACE_SEC)
         changes = jc.get_latest_changes(key)
-        # created event (or no change history) -> full "new task" card;
-        # otherwise the change diff card.
-        if event == "created" or (event != "updated" and not changes):
+        if event == "created" or just_created:
             sent = tc.issue_card(full, header="New task created")
             kind = "created"
         else:
