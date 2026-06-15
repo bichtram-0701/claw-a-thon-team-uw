@@ -185,6 +185,11 @@ _CREATE_PREFIX = re.compile(
     r"^\s*(please\s+)?(create|add|open|file|log|make|new)\b[^:]*?(ticket|initiative|task|issue)?\s*[:\-]?\s*",
     re.IGNORECASE,
 )
+# Explicit assignee in a create message, e.g. "assignee = bichtram", "assigned to Mai".
+_OWNER_RE = re.compile(
+    r"\b(?:assignee|assigned to|assign to|giao cho|gan cho|gán cho)\b\s*[:=]?\s*([A-Za-z][\w.'-]*)",
+    re.IGNORECASE,
+)
 
 
 def _today_vn() -> str:
@@ -198,7 +203,9 @@ def extract_create_fields(message: str) -> dict:
     raw = rp.llm_chat(
         "Extract a Jira initiative from the user's message as STRICT JSON only. Keys: "
         "summary (short imperative string), stage (traffic/submission/approval/completion/crosscut/null), "
-        "owner (person name or null), due (YYYY-MM-DD or null), confidence (low/medium/high or null), "
+        "owner (the person to assign the task to — look for 'assignee', 'assigned to', "
+        "'assign to', 'owner', 'giao cho'; the person's name, else null), "
+        "due (YYYY-MM-DD or null), confidence (low/medium/high or null), "
         "target_lift_pp (number or null), evidence (array of short strings or null). "
         f"Today's date is {today} (Asia/Bangkok). Resolve relative due dates against it: "
         "'today'->today's date, 'tomorrow'->+1 day, 'next week'->+7 days, 'end of week'->coming Friday, "
@@ -224,6 +231,12 @@ def extract_create_fields(message: str) -> dict:
                 summary = f"Investigate {stage.title()} drop{month_txt}"
         fields = {"summary": summary, "stage": ct.infer_stage(message), "owner": None,
                   "due": None, "confidence": "low", "evidence": [message]}
+    # Regex fallback: catch "assignee = X" / "assigned to X" / "giao cho X" when
+    # the LLM missed the owner, so explicit assignees are never dropped.
+    if not fields.get("owner"):
+        m = _OWNER_RE.search(message)
+        if m:
+            fields["owner"] = m.group(1).strip()
     return ct.validate_create_fields(fields, message)
 
 
