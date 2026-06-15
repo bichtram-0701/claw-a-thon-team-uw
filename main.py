@@ -155,7 +155,11 @@ async def _jira_event(request):
         uu = _parse_iso(full.get("updated_ts") or full.get("updated"))
         just_created = bool(cu and uu and (uu - cu).total_seconds() < _CREATE_GRACE_SEC)
         changes = jc.get_latest_changes(key)
-        if event == "created" or just_created:
+        # Respect an explicit event from the automation rule: "updated" is always
+        # a change card (even moments after creation) so edits aren't mislabelled
+        # as "New task created". Only fall back to the just-created heuristic when
+        # the caller did not say (manual/poll).
+        if event == "created" or (event != "updated" and just_created):
             sent = tc.issue_card(full, header="New task created")
             kind = "created"
         else:
