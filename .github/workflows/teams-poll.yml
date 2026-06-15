@@ -14,7 +14,8 @@ name: Teams poll (Jira changes)
 
 on:
   schedule:
-    - cron: "*/2 * * * *"
+    # GitHub's effective minimum is ~5 min; "*/2" gets coalesced/dropped.
+    - cron: "*/5 * * * *"
   workflow_dispatch: {}
 
 concurrency:
@@ -31,6 +32,9 @@ jobs:
       ATLASSIAN_TOKEN: ${{ secrets.ATLASSIAN_TOKEN }}
       TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
       POLL_STATE_FILE: .poll_state/state.json
+      # Wide look-back so changes are never lost if GitHub delays a run.
+      # Dedupe (per-issue seen state) prevents repeat notifications.
+      POLL_WINDOW_MIN: "720"
     steps:
       - uses: actions/checkout@v4
 
