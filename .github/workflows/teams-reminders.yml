@@ -34,6 +34,7 @@ jobs:
       ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
       ATLASSIAN_TOKEN: ${{ secrets.ATLASSIAN_TOKEN }}
       TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+      TEAMS_WEBHOOK_ALERT: ${{ secrets.TEAMS_WEBHOOK_ALERT }}
       STALE_DAYS: ${{ vars.STALE_DAYS || '7' }}
     steps:
       - uses: actions/checkout@v4
