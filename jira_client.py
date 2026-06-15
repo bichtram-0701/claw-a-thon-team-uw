@@ -226,14 +226,22 @@ def _adf_doc(text: str | None) -> dict | None:
 
 def get_issue_full(key: str) -> dict:
     """All panel fields of one issue, normalized for a Teams card."""
+    fid = _stale_field_id()
+    fields = FULL_FIELDS + ("," + fid if fid else "")
     with _client() as c:
-        r = c.get(f"{SITE}/rest/api/3/issue/{key}", params={"fields": FULL_FIELDS})
+        r = c.get(f"{SITE}/rest/api/3/issue/{key}", params={"fields": fields})
         r.raise_for_status()
         f = r.json().get("fields", {})
     parent = f.get("parent") or {}
     pf = parent.get("fields") or {}
     description = _adf_text(f.get("description")).strip() or None
     blocked_by, blocks = _blocker_context(f.get("summary"), description)
+    stale_after = None
+    if fid and f.get(fid) not in (None, ""):
+        try:
+            stale_after = int(float(f.get(fid)))
+        except (TypeError, ValueError):
+            stale_after = f.get(fid)
     return {
         "key": key,
         "url": f"{SITE}/browse/{key}",
@@ -246,6 +254,7 @@ def get_issue_full(key: str) -> dict:
         "parent": (f"{parent.get('key')} ({pf.get('summary')})" if parent.get("key") else None),
         "due": f.get("duedate"),
         "labels": f.get("labels") or [],
+        "stale_after": stale_after,
         "created": (f.get("created") or "")[:10] or None,
         "updated": (f.get("updated") or "")[:10] or None,
         "description": description,
