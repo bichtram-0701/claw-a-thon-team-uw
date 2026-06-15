@@ -190,6 +190,28 @@ _OWNER_RE = re.compile(
     r"\b(?:assignee|assigned to|assign to|giao cho|gan cho|gán cho)\b\s*[:=]?\s*([A-Za-z][\w.'-]*)",
     re.IGNORECASE,
 )
+# Explicit due in a create message, e.g. "due today", "due tomorrow",
+# "due in 3 days", "due 2026-06-20".
+_DUE_RE = re.compile(
+    r"\bdue\b\s*[:=]?\s*(today|tomorrow|in\s+\d+\s+days?|\d{4}-\d{2}-\d{2})",
+    re.IGNORECASE,
+)
+
+
+def _parse_due(message: str) -> str | None:
+    m = _DUE_RE.search(message)
+    if not m:
+        return None
+    val = m.group(1).strip().lower()
+    base = datetime.fromisoformat(_today_vn())
+    if val == "today":
+        return base.date().isoformat()
+    if val == "tomorrow":
+        return (base + timedelta(days=1)).date().isoformat()
+    if val.startswith("in"):
+        n = int(re.search(r"\d+", val).group())
+        return (base + timedelta(days=n)).date().isoformat()
+    return val  # already YYYY-MM-DD
 
 
 def _today_vn() -> str:
@@ -237,6 +259,16 @@ def extract_create_fields(message: str) -> dict:
         m = _OWNER_RE.search(message)
         if m:
             fields["owner"] = m.group(1).strip()
+    if not fields.get("due"):
+        d = _parse_due(message)
+        if d:
+            fields["due"] = d
+    # Keep the summary clean: drop trailing ", assignee = ...", ", due ..." clauses.
+    s = fields.get("summary")
+    if s:
+        fields["summary"] = re.split(
+            r"[,;]?\s*(?:assignee|assigned to|assign to|due|owner|giao cho)\b",
+            s, maxsplit=1, flags=re.IGNORECASE)[0].strip(" ,;:-") or s
     return ct.validate_create_fields(fields, message)
 
 
