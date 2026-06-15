@@ -391,10 +391,9 @@ def _handle(payload: dict) -> dict:
                 intro = _analyst_intro(result)
                 if intro:
                     answer = intro + "\n\n" + answer
-                wants_audit = any(k in message.lower() for k in ("show sql", "audit", "debug", "template"))
-                if result.get("source") == "template" and wants_audit:
+                if result.get("source") == "template":
                     answer = f"**Template:** `{result.get('template')}`\n\n" + answer
-                if result.get("sql") and wants_audit:
+                if result.get("sql"):
                     sql_txt = result["sql"].strip()
                     answer += "\n\n<details><summary>Audit SQL</summary>\n\n```sql\n" + sql_txt + "\n```\n</details>"
     elif intent == "metrics":

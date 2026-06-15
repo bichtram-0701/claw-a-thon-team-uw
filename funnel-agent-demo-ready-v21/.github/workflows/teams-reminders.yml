@@ -1,0 +1,67 @@
+# Scheduled Jira -> Teams reminders. Team UW, Claw-a-thon 2026.
+#
+# Runs scripts/jira_reminders.py on a GitHub runner (it can reach both
+# Atlassian Cloud and the Teams webhook). Posts digest cards to the team channel.
+#
+# Schedules (GitHub cron is UTC; Asia/Ho_Chi_Minh = UTC+7):
+#   02:00 UTC = 09:00 VN  -> overdue + stale tasks
+#   10:00 UTC = 17:00 VN  -> tasks due tomorrow
+#
+# Required repo secrets: ATLASSIAN_SITE, ATLASSIAN_EMAIL, ATLASSIAN_TOKEN,
+#                        TEAMS_WEBHOOK_URL
+# Optional repo variable: STALE_DAYS (default 3)
+
+name: Teams reminders
+
+on:
+  schedule:
+    - cron: "0 2 * * 1-5"    # 09:00 VN — overdue
+    - cron: "0 10 * * 1-5"   # 17:00 VN — due tomorrow
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Which reminder(s) to send"
+        type: choice
+        default: all
+        options: [all, overdue, due-soon, stale]
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ATLASSIAN_SITE: ${{ secrets.ATLASSIAN_SITE }}
+      ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
+      ATLASSIAN_TOKEN: ${{ secrets.ATLASSIAN_TOKEN }}
+      TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+      TEAMS_WEBHOOK_ALERT: ${{ secrets.TEAMS_WEBHOOK_ALERT }}
+      STALE_DAYS: ${{ vars.STALE_DAYS || '7' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install --quiet httpx
+
+      - name: Pick modes
+        id: pick
+        run: |
+          case "${{ github.event.schedule }}" in
+            "0 2 * * 1-5")  MODES="overdue" ;;
+            "0 10 * * 1-5") MODES="due-soon" ;;
+            *) # manual run
+               case "${{ github.event.inputs.mode }}" in
+                 overdue)  MODES="overdue" ;;
+                 due-soon) MODES="due-soon" ;;
+                 stale)    MODES="stale" ;;
+                 *)        MODES="overdue due-soon" ;;
+               esac ;;
+          esac
+          echo "modes=$MODES" >> "$GITHUB_OUTPUT"
+          echo "Running modes: $MODES"
+
+      - name: Send reminders
+        run: python scripts/jira_reminders.py ${{ steps.pick.outputs.modes }}

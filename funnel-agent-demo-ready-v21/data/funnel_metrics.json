@@ -1,0 +1,73 @@
+{
+  "_comment": "100% synthetic funnel performance data for Funnel Agent. Targets and fallback monthly totals only; normal monthly metrics are aggregated from data/funnel_synthetic.csv so daily and monthly views reconcile. No real customers, real partners, or production data.",
+  "partner": "Synthetic demo funnel",
+  "currency": "VND",
+  "stages": [
+    "traffic",
+    "submission",
+    "approval",
+    "completion"
+  ],
+  "targets": {
+    "submission_rate_pct": 30.0,
+    "approval_rate_pct": 15.0,
+    "completion_rate_pct": 96.0,
+    "e2e_rate_pct": 4.5
+  },
+  "stage_definitions": {
+    "traffic": "Distinct synthetic users/entities that enter the funnel. Some stop here and never submit to the demo system.",
+    "submission": "Users/entities that successfully submit the request/application to the demo system.",
+    "approval": "Submitted users/entities approved by the demo system.",
+    "completion": "Approved users/entities that disburse in the demo."
+  },
+  "months": [
+    {
+      "month": "2025-12",
+      "traffic": 750,
+      "submission": 240,
+      "approval": 34,
+      "completion": 33,
+      "completion_amount_vnd": 412500000
+    },
+    {
+      "month": "2026-01",
+      "traffic": 780,
+      "submission": 273,
+      "approval": 41,
+      "completion": 39,
+      "completion_amount_vnd": 460200000
+    },
+    {
+      "month": "2026-02",
+      "traffic": 650,
+      "submission": 156,
+      "approval": 28,
+      "completion": 27,
+      "completion_amount_vnd": 310500000
+    },
+    {
+      "month": "2026-03",
+      "traffic": 820,
+      "submission": 246,
+      "approval": 32,
+      "completion": 31,
+      "completion_amount_vnd": 353400000
+    },
+    {
+      "month": "2026-04",
+      "traffic": 850,
+      "submission": 238,
+      "approval": 36,
+      "completion": 35,
+      "completion_amount_vnd": 430500000
+    },
+    {
+      "month": "2026-05",
+      "traffic": 800,
+      "submission": 216,
+      "approval": 24,
+      "completion": 23,
+      "completion_amount_vnd": 308200000
+    }
+  ]
+}
