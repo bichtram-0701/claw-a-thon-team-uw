@@ -42,7 +42,6 @@ ISSUE_FIELD_ORDER = [
     ("Status", "status"),
     ("Assignee", "assignee"),
     ("Due date", "due"),
-    ("Start date", "start"),
 ]
 
 # Changelog fields to never show on a change card (Jira noise / internal).
@@ -61,12 +60,6 @@ def issue_card(issue: dict, header: str = "Jira task") -> bool:
             body.append(text_block(f"{label}: None", bold=True, color="Attention"))
         else:
             body.append(text_block(f"{label}: {v}"))
-    desc = issue.get("description")
-    first = desc.splitlines()[0].strip() if desc else None  # first line only — keep card compact
-    if first:
-        body.append(text_block(f"Description: {first}"))
-    else:
-        body.append(text_block("Description: None", bold=True, color="Attention"))
     return send_card(f"{header} — {issue.get('key')}", body, url=issue.get("url"))
 
 
