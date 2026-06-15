@@ -104,7 +104,7 @@ No, and it should not claim to. Root-cause drilldowns are contribution analysis:
 
 ## Demo flow
 
-1. Ask: `metrics: show me the funnel metrics`.
+1. Ask: `/metrics show me the funnel metrics`.
    - It shows the latest conversion table, MoM columns, and the top value-at-risk priority.
 2. Ask: `why is approval the top risk?`.
    - It explains the ranking: target gap, MoM deterioration, and value at risk.
@@ -116,13 +116,13 @@ No, and it should not claim to. Root-cause drilldowns are contribution analysis:
    - It connects the metric risk to Jira blockers, owners, and overdue work.
 6. Ask: `what does blocked mean here and what is it blocking?`.
    - It explains blocker semantics and the dependency behind each blocked task.
-7. Ask: `teams: post off-track blockers`.
+7. Ask: `/teams post off-track blockers`.
    - It posts the blocked/overdue Jira digest to the configured Teams channel.
-8. Ask: `confluence: weekly meeting summary`.
+8. Ask: `/confluence weekly meeting summary`.
    - It drafts the weekly readout: executive summary, risks, blockers, Confluence context, agenda.
-9. Ask: `confluence: publish weekly meeting summary to Confluence`.
+9. Ask: `/confluence publish weekly meeting summary to Confluence`.
    - It creates or updates the weekly meeting page.
 
 ## Final positioning
 
-**Funnel Watchtower is not another dashboard and not just a chatbot. It is an execution layer for owned business metrics: it detects drift, ranks what matters, assigns ownership, and keeps the recovery loop moving.**
+**Funnel Watchtower is not another dashboard and not just a chatbot. It is an execution layer for owned business /metrics it detects drift, ranks what matters, assigns ownership, and keeps the recovery loop moving.**

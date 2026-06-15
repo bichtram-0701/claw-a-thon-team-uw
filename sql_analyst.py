@@ -79,9 +79,9 @@ def schema_guide_markdown() -> str:
         "`stage_rank`, `drop_transition`, `drop_reason`, `potential_value_vnd`.\n\n"
         "**Counting rules:** Traffic = `COUNT(*)`; Submission = `COUNT(stage_rank >= 2)`; "
         "Approval = `COUNT(stage_rank >= 3)`; Completion = `COUNT(stage_rank = 4)`.\n\n"
-        "**Good prompts:** `sql: show daily volume in May`, `sql: break May approval drop down by reason`, "
+        "**Good prompts:** `/query show daily volume in May`, `/query break May approval drop down by reason`, "
         "`show May by product`, `show May by channel`, `why did approval drop?`, or "
-        "`sql: break May drop reasons by transition`."
+        "`/query break May drop reasons by transition`."
     )
 
 _SELECT_ONLY = re.compile(r"^\s*(select|with)\b", re.IGNORECASE)

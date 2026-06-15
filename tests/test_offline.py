@@ -121,11 +121,11 @@ check("usage guide->help", m.route("how to use this chat") == "help")
 check("blocked semantics->oversight", m.route("what does blocked mean here and what is it blocking?") == "oversight")
 check("unassigned work->oversight", m.route("what are those 9 open tasks without assignee") == "oversight")
 check("gibberish->help", m.route("zzz qwerty") == "help")
-check("prefix metrics exact", m.route("metrics: show me the funnel metrics") == "metrics")
-check("prefix sql exact", m.route("sql: show daily volume in May") == "analyst")
-check("prefix jira flag exact", m.route("jira: flag the drops and assign owners to investigate") == "flag")
-check("prefix confluence weekly exact", m.route("confluence: weekly meeting summary") == "weekly")
-check("prefix teams exact", m.route("teams: post off-track blockers") == "teams")
+check("slash metrics exact", m.route("/metrics show me the funnel metrics") == "metrics")
+check("slash query exact", m.route("/query show daily volume in May") == "analyst")
+check("slash jira flag exact", m.route("/jira flag the drops and assign owners to investigate") == "flag")
+check("slash confluence weekly exact", m.route("/confluence weekly meeting summary") == "weekly")
+check("slash teams exact", m.route("/teams post off-track blockers") == "teams")
 
 print("handler:")
 for q, intent in [("funnel overview", "oversight"), ("what's on my plate?", "briefing"),
@@ -197,7 +197,7 @@ check("open_total=5", sp["open_total"] == 5)
 check("In Review counted", sp["by_status"].get("In Review") == 1)
 check("workload Rino=2", sp["workload_by_owner"].get("Rino") == 2)
 
-print("metrics:")
+print("/metrics")
 import csv
 from collections import defaultdict
 import funnel_metrics as fm
@@ -235,7 +235,7 @@ rm = m.handler({"message": "show me the funnel metrics"}, None)
 check("metrics intent", rm.get("intent") == "metrics")
 check("metrics table", "Traffic" in rm.get("answer", ""))
 
-print("write (create under Epic + assign-to-self):")
+print("write (create under Epic + stage-owner default):")
 _cap = {}
 jc.create_issue = lambda **k: (_cap.update(create=k) or {"key": "UW-99", "url": "u", "labels": []})
 jc.assign_issue = lambda key, assignee_id=None, owner=None: (
@@ -246,17 +246,17 @@ jc.find_assignable_user = lambda q, key=None: ({"accountId": "acc-1", "displayNa
 jc.myself = lambda: {"accountId": "me-1", "displayName": "You"}
 jc.find_epic = lambda name, key=None: "UW-EPIC" if name else None
 
-rc = m.handler({"message": "jira: create a ticket to pre-fill KYC"}, None)
+rc = m.handler({"message": "/jira create a ticket to pre-fill KYC"}, None)
 check("create success", rc.get("status") == "success")
 check("create intent", rc.get("intent") == "create")
 check("created", _cap.get("create") is not None)
 check("no priority arg", "priority" not in _cap.get("create", {}))
-check("assigned to self by default", _cap["create"].get("assignee_id") == "me-1")
+check("defaulted to stage owner when no assignee named", _cap["create"].get("owner") in {"Linh", "Mai"} and _cap["create"].get("assignee_id") != "me-1")
 
 k, o = m.parse_assign("assign UW-23 to Mai")
 check("parse key", k == "UW-23")
 check("parse owner", o == "Mai")
-ra = m.handler({"message": "jira: assign UW-23 to Mai"}, None)
+ra = m.handler({"message": "/jira assign UW-23 to Mai"}, None)
 check("assign intent", ra.get("intent") == "assign")
 check("real assignee", _cap["assign"]["assignee_id"] == "acc-1")
 
@@ -322,14 +322,14 @@ filtered_pages = bf._filter_context_pages([
 check("weekly context excludes self-generated pages", [p["title"] for p in filtered_pages] == ["Decision log - Funnel"])
 
 print("teams reminder:")
-teams = m.handler({"message": "teams: send off-track reminder"}, None)
+teams = m.handler({"message": "/teams send off-track reminder"}, None)
 check("teams intent", teams.get("intent") == "teams")
 check("teams previews when webhook missing", "did not post" in teams.get("answer", "") and "UW-1" in teams.get("answer", ""))
 
 print("chat UI version:")
 with open(os.path.join(ROOT, "chat.html"), encoding="utf-8") as fh:
     chat_html = fh.read()
-check("chat header has UI version", "UI v12" in chat_html)
+check("chat header has UI version", "UI v13" in chat_html)
 check("chat JS has one UI_VERSION const", chat_html.count("const UI_VERSION") == 1)
 
 print("confluence markdown conversion:")
@@ -373,7 +373,7 @@ _capf = []
 jc.create_issue = lambda **k: (_capf.append(k) or {"key": "UW-%d" % (len(_capf) + 100), "url": "u"})
 jc.find_assignable_user = lambda q, key=None: {"accountId": "acc-" + q.split()[0].lower(), "displayName": q}
 jc.find_epic = lambda name, key=None: "UW-EPIC"
-rf = m.handler({"message": "jira: flag the drops and assign owners to investigate"}, None)
+rf = m.handler({"message": "/jira flag the drops and assign owners to investigate"}, None)
 check("flag intent", rf.get("intent") == "flag")
 check("flagged approval + submission (deduped)", set(rf["result"]["stages"]) == {"approval", "submission"})
 check("one task per stage (2 total)", len(_capf) == 2)
@@ -394,10 +394,10 @@ check("epic owner answer distinguishes operational owner", "operational stage ow
 
 print("prefix routing guards:")
 np = m.handler({"message": "flag the drops and assign owners to investigate"}, None)
-check("non-prefixed write requires prefix", np.get("result", {}).get("prefix_required") is True and "jira:" in np.get("answer", ""))
+check("non-prefixed write requires prefix", np.get("result", {}).get("prefix_required") is True and "/jira" in np.get("answer", ""))
 rn = m.handler({"message": "show me the funnel metrics"}, None)
-check("non-prefixed read-only has routing warning", "Routing note" in rn.get("answer", "") and "metrics:" in rn.get("answer", ""))
-rp = m.handler({"message": "metrics: show me the funnel metrics"}, None)
+check("non-prefixed read-only has routing warning", "Routing note" in rn.get("answer", "") and "/metrics" in rn.get("answer", ""))
+rp = m.handler({"message": "/metrics show me the funnel metrics"}, None)
 check("prefixed read-only has no routing warning", "Routing note" not in rp.get("answer", ""))
 clar = m.handler({"message": "why did it drop"}, None)
 check("ambiguous drop asks clarification", clar.get("result", {}).get("clarification_required") is True and "Which funnel transition" in clar.get("answer", ""))

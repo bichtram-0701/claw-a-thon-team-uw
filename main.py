@@ -63,7 +63,7 @@ app.router.routes.append(Route("/version", _version, methods=["GET"]))
 
 JIRA_EVENT_TOKEN = os.environ.get("JIRA_EVENT_TOKEN", "")
 ALLOW_WRITES = os.environ.get("ALLOW_WRITES", "true").lower() in ("1", "true", "yes")
-APP_VERSION = os.environ.get("APP_VERSION", "demo-v12")
+APP_VERSION = os.environ.get("APP_VERSION", "demo-v13")
 BUILD_VERSION = os.environ.get("GIT_SHA", "dev")[:7]
 
 STAGE_TO_EPIC = {
@@ -73,6 +73,39 @@ STAGE_TO_EPIC = {
     "completion": "Completion",
     "crosscut": "Data & Platform",
 }
+
+
+def _default_owner_for_stage(stage: str | None) -> str | None:
+    """Return the operational stage owner used as the default Jira assignee.
+
+    Demo convention: each funnel Epic represents a stage. Open tasks under that
+    stage reveal the operational owner. If a Jira write does not name an owner,
+    Watchtower defaults to this stage owner rather than leaving the task
+    unassigned or assigning everything to the token owner. Environment variables
+    can override the demo inference, e.g. DEFAULT_STAGE_OWNER_APPROVAL=bichtram.
+    """
+    st = (stage or "").strip().lower()
+    if not st:
+        return None
+    env_name = "DEFAULT_STAGE_OWNER_" + st.upper().replace("-", "_")
+    owner = os.environ.get(env_name) or os.environ.get("DEFAULT_OWNER_" + st.upper().replace("-", "_"))
+    if owner:
+        return owner.strip()
+    try:
+        inferred = bf.stage_owners().get(st)
+        if inferred and inferred != "Unassigned":
+            return inferred
+    except Exception:  # noqa: BLE001
+        return None
+    return None
+
+
+def _default_owner_note(stage: str | None, owner: str | None, real_assignee: str | None = None) -> str:
+    if not stage or not owner:
+        return ""
+    label = STAGE_TO_EPIC.get(stage, stage.title())
+    who = real_assignee or owner
+    return f"No assignee was mentioned; defaulting to **{who}**, the **{label}** stage owner from the Epic → task structure."
 
 
 async def _jira_event(request):
@@ -193,7 +226,7 @@ def _prefix_required_answer(rr, original_message: str) -> str:
     if rr.source == "strict_guard":
         return (
             "⚠️ **Command prefix required.** Start your message with one of: "
-            "`metrics:`, `sql:`, `jira:`, `confluence:`, `teams:`, `help:`.\n\n"
+            "`/metrics`, `/query`, `/jira`, `/confluence`, `/teams`, `/help`.\n\n"
             f"Suggested rewrite: `{interpreted}`"
         )
     if rr.intent in {"create", "assign", "flag"}:
@@ -208,10 +241,10 @@ def _prefix_required_answer(rr, original_message: str) -> str:
     else:
         system = "external"
     return (
-        f"⚠️ This looks like a **{system} write/action**. For safety, I did not execute it without an explicit prefix.\n\n"
+        f"⚠️ This looks like a **{system} write/action**. For safety, I did not execute it without an explicit slash command.\n\n"
         f"Please resend as: `{interpreted}`\n\n"
-        "Read-only questions can still be answered without a prefix, but I will show an interpretation warning. "
-        "For exact routing, use `metrics:`, `sql:`, `jira:`, `confluence:`, `teams:`, or `help:`."
+        "Read-only questions can still be answered without a slash command, but I will show an interpretation warning. "
+        "For exact routing, use `/metrics`, `/query`, `/jira`, `/confluence`, `/teams`, or `/help`."
     )
 
 
@@ -319,23 +352,27 @@ def _handle(payload: dict) -> dict:
         result["route"] = route_info
     else:
         result = {"route": route_info,
-                  "hint": "Try: metrics: show me the funnel metrics, sql: show daily volume in May, jira: what is critical or off track, jira: flag it, confluence: weekly meeting summary, jira: create a ticket, or help: how should I ask questions."}
-        if _is_database_help_question(message):
+                  "hint": "Try: /metrics show me the funnel metrics, /query show daily volume in May, /jira what is critical or off track, /jira flag it, /confluence weekly meeting summary, /jira create a ticket, or /help how should I ask questions."}
+        if _is_database_help_question(message) and not _is_command_help_question(message):
             answer = sa.schema_guide_markdown()
         else:
             answer = (
-            "Hi, I am Funnel Watchtower. I track the business funnel, rank target misses by value at risk, "
-            "connect them to Jira ownership, answer safe SQL-style breakdowns, summarize Confluence decisions, "
-            "draft weekly meeting briefs, post Jira digests to Teams, and create or update Jira recovery work.\n\n"
-            "Best prompt pattern: **prefix + action + stage/metric + time period**. Prefixes give exact routing: "
-            "`metrics:`, `sql:`, `jira:`, `confluence:`, `teams:`, and `help:`.\n\n"
-            "Examples: `metrics: show me the funnel metrics`, `metrics: why is approval the top risk?`, "
-            "`sql: break May approval drop down by reason`, `jira: flag the drops and assign owners to investigate`, "
-            "`teams: post off-track blockers`, `confluence: weekly meeting summary`, or "
-            "`confluence: publish weekly meeting summary to Confluence`.\n\n"
-            "Funnel stages: **Traffic → Submission → Approval → Completion**. If you ask a read-only question without a prefix, "
-            "I will try to answer but show how I interpreted the route. For write actions to Jira, Teams, or Confluence, "
-            "I require the explicit prefix. For month-over-month, ask `metrics: compare April and May performance`."
+                "Hi, I am Funnel Watchtower. I track the business funnel, rank target misses by value at risk, "
+                "connect them to Jira ownership, answer safe query-style breakdowns, summarize Confluence decisions, "
+                "draft weekly meeting briefs, post Jira digests to Teams, and create or update Jira recovery work.\n\n"
+                "Best prompt pattern: **slash command + action + stage/metric + time period**. Slash commands give exact routing: "
+                "`/metrics`, `/query`, `/jira`, `/confluence`, `/teams`, and `/help`.\n\n"
+                "Use `/metrics` for business KPI readouts: funnel health, MoM comparison, top risk, and value at risk. "
+                "Use `/query` for row-level data drilldowns: daily volume, drop reasons, channel/product breakdowns, and safe SQL templates.\n\n"
+                "Examples: `/metrics show me the funnel metrics`, `/metrics why is approval the top risk?`, "
+                "`/query break May approval drop down by reason`, `/jira flag the drops and assign owners to investigate`, "
+                "`/teams post off-track blockers`, `/confluence weekly meeting summary`, or "
+                "`/confluence publish weekly meeting summary to Confluence`.\n\n"
+                "Funnel stages: **Traffic → Submission → Approval → Completion**. Jira work follows an "
+                "**Epic → stage owner → task assignee** structure: when a Jira write does not name an assignee, "
+                "Watchtower defaults to that stage's operational owner. Read-only questions without a slash command "
+                "still work with an interpretation warning; writes require the explicit command. "
+                "For month-over-month, ask `/metrics compare April and May performance`."
             )
 
     if answer is None:
@@ -429,7 +466,7 @@ def _render_metrics_answer(result: dict, lang: str, month: str | None = None) ->
         heads_up = (
             f"> ⚠ **Top recovery priority:** {top['stage'].title()} — "
             f"estimated value at risk {im.fmt_vnd(top.get('estimated_value_at_risk_vnd'))}; "
-            f"score {top.get('score')}. Say `jira: flag it` to open or update the investigation.\n\n"
+            f"score {top.get('score')}. Say `/jira flag it` to open or update the investigation.\n\n"
             f"**Impact ranking**\n\n{im.render_ranking(result.get('impact_ranking'))}\n\n"
         )
     jira_warn = ""
@@ -453,9 +490,18 @@ def _is_recovery_priority_question(message: str) -> bool:
     return any(k in q for k in ["recovery priority", "priority", "prioritize", "prioritise", "top recovery", "what should we do first"])
 
 
+def _is_command_help_question(message: str) -> bool:
+    q = message.lower()
+    return any(k in q for k in [
+        "difference between metrics", "metrics and sql", "metrics vs sql",
+        "metrics and query", "metrics vs query", "what is /metrics", "what is /query",
+        "what is metrics", "what is query", "slash command", "prefix",
+    ])
+
+
 def _is_database_help_question(message: str) -> bool:
     q = message.lower()
-    return any(k in q for k in ["query the database", "query database", "database", "schema", "what table", "sql", "duckdb"])
+    return any(k in q for k in ["query the database", "query database", "database", "schema", "what table", "duckdb", "how do i query"])
 
 
 def _scoped_metric_month_from_message(message: str) -> str | None:
@@ -509,9 +555,14 @@ def _render_epic_owner_answer(result: dict) -> str:
         ("crosscut", "Data & Platform"),
     ]
     lines = [
-        "Watchtower separates **Jira Epic assignee** from **operational stage owner**.",
+        "Watchtower uses an **Epic → stage owner → task assignee** structure.",
         "",
-        "The Jira Epic issues may be unassigned, but the **operational stage owner** is inferred from the owner labels / assignees on open work in that stage:",
+        "- Each funnel stage has a Jira Epic: Traffic, Submission, Approval, Completion, and Data & Platform.",
+        "- The Jira Epic issue itself may be unassigned.",
+        "- The **operational stage owner** is inferred from owner labels / assignees on open work under that stage.",
+        "- When `/jira create ...` or `/jira flag ...` does not name an assignee, Watchtower defaults to the operational stage owner instead of leaving the task unassigned.",
+        "",
+        "Current operational stage owners:",
         "",
     ]
     for stage, label in stage_labels:
@@ -522,6 +573,7 @@ def _render_epic_owner_answer(result: dict) -> str:
     lines += [
         "",
         "So if you ask `who owns Approval`, use the operational owner above. If you want literal Jira Epic assignees, those can still be Unassigned in the demo workspace.",
+        "Demo tip: show this before the Jira write step so viewers understand why Watchtower can default the assignee safely.",
     ]
     return "\n".join(lines)
 
@@ -596,7 +648,7 @@ def _render_top_risk_answer(result: dict, month: str | None = None) -> str:
     stage_prompt = stage.lower()
     lines += [
         "",
-        f"This is an impact ranking, not a causal claim. Use `sql: break {diag_month} {stage_prompt} drop down by reason` or `sql: why did {stage_prompt} drop?` for diagnostic evidence.",
+        f"This is an impact ranking, not a causal claim. Use `/query break {diag_month} {stage_prompt} drop down by reason` or `/query why did {stage_prompt} drop?` for diagnostic evidence.",
     ]
     return "\n".join(lines)
 
@@ -845,7 +897,9 @@ def _handle_flag(message: str, route_info: dict) -> dict:
     for stage in sorted(reasons, key=lambda s: ranked_by_stage.get(s, {}).get("rank", 99)):
         why = reasons[stage]
         risk = ranked_by_stage.get(stage, {})
-        owner = owners.get(stage) or risk.get("owner")
+        owner = owners.get(stage) or risk.get("owner") or _default_owner_for_stage(stage)
+        if owner == "Unassigned":
+            owner = _default_owner_for_stage(stage)
         diagnostic = sa.diagnostic_findings(stage + " drop") if sa.configured() else {}
         contract = im.investigation_contract(stage, why, owner, risk, diagnostic)
         description = ct.contract_markdown(contract, title="Investigation contract")
@@ -862,13 +916,17 @@ def _handle_flag(message: str, route_info: dict) -> dict:
 
         if ALLOW_WRITES:
             assignee_id = None
+            assignee_display = None
+            assignment_note = ""
             if owner:
                 try:
                     user = jc.find_assignable_user(owner)
                     if user:
                         assignee_id = user["accountId"]
+                        assignee_display = user.get("displayName")
                 except Exception:  # noqa: BLE001
                     assignee_id = None
+                assignment_note = _default_owner_note(stage, owner, assignee_display)
             existing = None
             try:
                 existing = jc.find_open_investigation(stage, metric=metric, month=str(month))
@@ -879,8 +937,15 @@ def _handle_flag(message: str, route_info: dict) -> dict:
                     jc.comment_issue(existing["key"], "Funnel Watchtower refreshed this investigation.\n\n" + description)
                 except Exception:  # noqa: BLE001
                     pass
+                if owner:
+                    try:
+                        jc.assign_issue(existing["key"], assignee_id=assignee_id, owner=owner)
+                    except Exception:  # noqa: BLE001
+                        pass
                 line += f" → updated existing {existing['key']}"
-                actions.append({"stage": stage, "action": "updated", "key": existing["key"], "contract": contract})
+                if assignment_note:
+                    line += f"; {assignment_note}"
+                actions.append({"stage": stage, "action": "updated", "key": existing["key"], "contract": contract, "default_owner": owner, "assignee_id": assignee_id})
             else:
                 epic_name = STAGE_TO_EPIC.get(stage)
                 try:
@@ -888,12 +953,14 @@ def _handle_flag(message: str, route_info: dict) -> dict:
                 except Exception:  # noqa: BLE001
                     epic_key = None
                 title = f"Investigate {stage.title()}: " + "; ".join(why)
-                res = jc.create_issue(summary=title, stage=stage, owner=None, due=None,
+                res = jc.create_issue(summary=title, stage=stage, owner=owner, due=None,
                                       assignee_id=assignee_id, epic_key=epic_key,
                                       labels_extra=labels_extra, description=description)
                 if res.get("key"):
-                    line += f" → opened {res['key']}" + (f" for {owner}" if owner else "")
-                    actions.append({"stage": stage, "action": "created", "key": res["key"], "contract": contract})
+                    line += f" → opened {res['key']}"
+                    if assignment_note:
+                        line += f"; {assignment_note}"
+                    actions.append({"stage": stage, "action": "created", "key": res["key"], "contract": contract, "default_owner": owner, "assignee_id": assignee_id})
                 else:
                     line += " (could not open task)"
                     actions.append({"stage": stage, "action": "error", "error": res.get("error"), "contract": contract})
@@ -931,23 +998,35 @@ def _handle_write(intent: str, message: str, route_info: dict) -> dict:
 
     if intent == "create":
         f = extract_create_fields(message)
-        owner = f.get("owner")
+        stage = f.get("stage")
+        explicit_owner = f.get("owner")
+        owner = explicit_owner or _default_owner_for_stage(stage)
+        if owner and not f.get("owner"):
+            f["owner"] = owner
+            f.setdefault("evidence", [])
+            if isinstance(f["evidence"], list):
+                f["evidence"].append("No assignee was mentioned; Watchtower defaulted to the operational stage owner.")
         assignee_id = None
         assign_note = ""
         if owner:
             user = jc.find_assignable_user(owner)
             if user:
                 assignee_id = user["accountId"]
-                assign_note = f"assigned to {user['displayName']}"
+                if explicit_owner:
+                    assign_note = f"assigned to {user['displayName']}"
+                else:
+                    assign_note = _default_owner_note(stage, owner, user.get("displayName"))
             else:
-                assign_note = f"tagged {jc.owner_label(owner)}"
+                if explicit_owner:
+                    assign_note = f"tagged {jc.owner_label(owner)}"
+                else:
+                    assign_note = _default_owner_note(stage, owner) + f" Owner label `{jc.owner_label(owner)}` stamped because Jira did not return a matching assignable user."
         else:
             me = jc.myself()
             if me:
                 assignee_id = me["accountId"]
-                assign_note = f"assigned to you ({me['displayName']})"
+                assign_note = f"No stage owner could be inferred; assigned to you ({me['displayName']})"
 
-        stage = f.get("stage")
         epic_name = STAGE_TO_EPIC.get(stage) if stage else None
         epic_key = jc.find_epic(epic_name) if epic_name else None
         description = ct.contract_markdown(f, title="Initiative contract")

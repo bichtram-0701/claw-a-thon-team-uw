@@ -1,7 +1,8 @@
 """Command-aware semantic router for Funnel Watchtower.
 
 Reliability rule:
-- Prefixed prompts route deterministically: metrics:, sql:, jira:, confluence:, teams:, help:.
+- Slash-command prompts route deterministically: /metrics, /query, /jira, /confluence, /teams, /help.
+- Legacy colon prefixes (metrics:, sql:, jira:, confluence:, teams:, help:) are still accepted as aliases.
 - Non-prefixed read-only prompts are still supported in warn mode, but the answer
   gets an interpretation warning.
 - Non-prefixed write prompts are blocked in warn/strict mode and ask the user to
@@ -25,6 +26,7 @@ VALID = {
 
 PREFIX_TO_SYSTEM = {
     "metrics": "metrics",
+    "query": "analyst",
     "sql": "analyst",
     "data": "analyst",
     "jira": "jira",
@@ -33,11 +35,19 @@ PREFIX_TO_SYSTEM = {
     "help": "help",
 }
 
-COMMAND_PREFIX_RE = re.compile(r"^\s*(metrics|sql|data|jira|confluence|teams|help)\s*:\s*(.*)$", re.IGNORECASE | re.DOTALL)
+# Preferred user syntax is slash-command style. Colon prefixes are accepted as
+# backwards-compatible aliases so old demo prompts do not break.
+COMMAND_PREFIX_RE = re.compile(
+    r"^\s*(?:/(metrics|query|sql|data|jira|confluence|teams|help)|"
+    r"(metrics|query|sql|data|jira|confluence|teams|help)\s*:)\s*(.*)$",
+    re.IGNORECASE | re.DOTALL,
+)
 
 ROUTES: list[tuple[set[str], str]] = [
     ({"help", "how to use", "how should i ask", "how should i use", "guide", "usage", "instructions",
-      "what can you do", "prompt examples", "demo prompts"}, "help"),
+      "what can you do", "prompt examples", "demo prompts", "command", "commands", "prefix",
+      "difference between metrics", "metrics and sql", "metrics vs sql", "metrics and query",
+      "metrics vs query", "what is metrics", "what is query"}, "help"),
     ({"teams", "microsoft teams", "post to teams", "send to teams", "notify teams",
       "remind on teams", "remind in teams", "teams reminder", "post off-track blockers to teams", "post off-track", "send the off-track work to teams",
       "send off-track work to teams", "send overdue", "remind of overdue"}, "teams"),
@@ -93,11 +103,26 @@ def routing_mode() -> str:
     return os.environ.get("ROUTING_MODE", "warn").strip().lower() or "warn"
 
 
+def _normalize_prefix(prefix: str | None) -> str | None:
+    if not prefix:
+        return None
+    p = prefix.lower().strip()
+    if p in {"sql", "data"}:
+        return "query"
+    return p
+
+
 def parse_prefix(message: str) -> tuple[str | None, str]:
     m = COMMAND_PREFIX_RE.match(message or "")
     if not m:
         return None, message
-    return m.group(1).lower(), (m.group(2) or "").strip()
+    prefix = _normalize_prefix(m.group(1) or m.group(2))
+    return prefix, (m.group(3) or "").strip()
+
+
+def command_text(prefix: str | None, message: str = "") -> str:
+    p = _normalize_prefix(prefix) or "help"
+    return (f"/{p} {message}" if message else f"/{p}").strip()
 
 
 def keyword_route(message: str) -> str:
@@ -181,7 +206,10 @@ def _explicit_help_signal(message: str) -> bool:
     msg = message.lower()
     return any(k in msg for k in [
         "how to use", "how should i ask", "how should i use", "usage",
-        "instructions", "prompt examples", "demo prompts", "what can you do"
+        "instructions", "prompt examples", "demo prompts", "what can you do",
+        "difference between metrics", "metrics and sql", "metrics vs sql",
+        "metrics and query", "metrics vs query", "what is metrics", "what is query",
+        "slash command", "commands", "prefix",
     ])
 
 
@@ -241,17 +269,17 @@ def _needs_clarification(message: str, intent: str) -> str | None:
     if ambiguous_drop and not _stage_present(msg):
         return (
             "Which funnel transition should I diagnose?\n\n"
-            "1. `sql: break May traffic drop down by reason`\n"
-            "2. `sql: break May approval drop down by reason`\n"
-            "3. `sql: break May completion drop down by reason`\n"
-            "4. `metrics: why is the current top risk?`"
+            "1. `/query break May traffic drop down by reason`\n"
+            "2. `/query break May approval drop down by reason`\n"
+            "3. `/query break May completion drop down by reason`\n"
+            "4. `/metrics why is the current top risk?`"
         )
     if ambiguous_volume:
         return (
             "What volume do you want? For exact routing, try one of these:\n\n"
-            "- `sql: show daily volume in May`\n"
-            "- `metrics: show me the funnel metrics`\n"
-            "- `sql: show May volume by channel`"
+            "- `/query show daily volume in May`\n"
+            "- `/metrics show me the funnel metrics`\n"
+            "- `/query show May volume by channel`"
         )
     return None
 
@@ -271,7 +299,7 @@ def _write_like(intent: str, message: str) -> bool:
 
 def _prefix_for_intent(intent: str) -> str:
     if intent in {"analyst"}:
-        return "sql"
+        return "query"
     if intent in {"metrics"}:
         return "metrics"
     if intent in {"weekly", "knowledge"}:
@@ -314,8 +342,8 @@ def _route_within_confluence(message: str) -> str:
 
 
 def _explicit_prefix_route(prefix: str, message: str, fallback: str) -> RouteResult:
-    p = prefix.lower()
-    if p in {"sql", "data"}:
+    p = _normalize_prefix(prefix) or prefix.lower()
+    if p in {"query", "sql", "data"}:
         intent = "analyst"
     elif p == "metrics":
         intent = "metrics"
@@ -334,17 +362,17 @@ def _explicit_prefix_route(prefix: str, message: str, fallback: str) -> RouteRes
         source="prefix",
         confidence=1.0,
         fallback_intent=fallback,
-        reason=f"explicit {prefix}: prefix",
-        prefix=prefix,
+        reason=f"explicit /{p} prefix",
+        prefix=p,
         stripped_message=message,
-        interpreted_as=f"{prefix}: {message}".strip(),
+        interpreted_as=command_text(p, message),
     )
 
 
 def _apply_no_prefix_policy(result: RouteResult, original: str) -> RouteResult:
     mode = routing_mode()
     guessed_prefix = _prefix_for_intent(result.intent)
-    interpreted_as = f"{guessed_prefix}: {original.strip()}".strip()
+    interpreted_as = command_text(guessed_prefix, original.strip())
     result.interpreted_as = interpreted_as
     if mode == "natural":
         return result
@@ -353,7 +381,7 @@ def _apply_no_prefix_policy(result: RouteResult, original: str) -> RouteResult:
         result.source = "strict_guard"
         result.warning = None
         result.needs_prefix = True
-        result.reason = "ROUTING_MODE=strict requires a command prefix"
+        result.reason = "ROUTING_MODE=strict requires a slash command"
         return result
     # warn mode
     clarification = _needs_clarification(original, result.intent)
@@ -364,13 +392,13 @@ def _apply_no_prefix_policy(result: RouteResult, original: str) -> RouteResult:
         result.reason = "ambiguous prompt needs clarification"
         return result
     result.warning = (
-        "No command prefix detected. I interpreted this as "
+        "No slash command detected. I interpreted this as "
         f"`{interpreted_as}`. For exact routing, start with one of: "
-        "`metrics:`, `sql:`, `jira:`, `confluence:`, `teams:`, `help:`."
+        "`/metrics`, `/query`, `/jira`, `/confluence`, `/teams`, `/help`."
     )
     if _write_like(result.intent, original):
         result.needs_prefix = True
-        result.reason = "write-like prompt requires explicit command prefix"
+        result.reason = "write-like prompt requires explicit slash command"
     return result
 
 
@@ -398,7 +426,7 @@ def route_result(message: str) -> RouteResult:
         return _apply_no_prefix_policy(result, original)
     if _explicit_help_signal(original):
         # Help itself is safe without a prefix; no warning needed.
-        return RouteResult("help", "keyword", 1.0, fallback, "explicit usage/help prompt", stripped_message=original, interpreted_as=f"help: {original.strip()}")
+        return RouteResult("help", "keyword", 1.0, fallback, "explicit usage/help prompt", stripped_message=original, interpreted_as=command_text("help", original.strip()))
 
     llm_intent, confidence, reason = _llm_route(original)
     if llm_intent and confidence >= 0.45:

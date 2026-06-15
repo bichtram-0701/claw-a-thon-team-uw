@@ -55,10 +55,10 @@ jobs:
             echo "HTTP $HTTP in $(( $(date +%s) - T0 ))s"
             head -c 1500 /tmp/resp.json; echo
           }
-          ask "metrics: show me the funnel metrics"
-          ask "sql: why did approval drop?"
-          ask "confluence: weekly meeting summary"
-          ask "jira: what does blocked mean here and what is it blocking?"
+          ask "/metrics show me the funnel metrics"
+          ask "/query why did approval drop?"
+          ask "/confluence weekly meeting summary"
+          ask "/jira what does blocked mean here and what is it blocking?"
           echo "================ LOGS AFTER TESTS ================"
           curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" \
             -d '{"from": 0, "limit": 100}' \

@@ -19,7 +19,7 @@ env:
   RUNTIME_NAME: funnel-watchtower
   IAM_TOKEN_URL: https://iam.api.vngcloud.vn/accounts-api/v2/auth/token
   RUNTIME_API: https://agentbase.api.vngcloud.vn/runtime
-  QUESTION: "jira: Give me today's funnel oversight: what is critical or off track right now, who owns it, and a one-line read per funnel stage."
+  QUESTION: "/jira Give me today's funnel oversight: what is critical or off track right now, who owns it, and a one-line read per funnel stage."
 
 jobs:
   digest:

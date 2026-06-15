@@ -14,16 +14,16 @@ Think of the final stage as the business outcome. In another team, that could be
 
 Funnel Watchtower does more than summarize Jira. It detects target drift, estimates business value at risk, ranks the affected funnel stage, checks Jira ownership and execution risk, drafts or updates the recovery task, and prepares weekly meeting notes from metrics, Jira, and Confluence.
 
-The LLM layer is deliberately bounded and replaceable. Prefix routing and deterministic guards own workflow selection for `metrics:`, `sql:`, `jira:`, `confluence:`, `teams:`, and `help:`. The LLM helps with semantic fallback, field extraction, and manager-ready narration. Python and SQL own the facts: conversion math, target gaps, value-at-risk sizing, SQL templates, Jira issue keys, owners, write guards, and Confluence publishing.
+The LLM layer is deliberately bounded and replaceable. Prefix routing and deterministic guards own workflow selection for `/metrics`, `/query`, `/jira`, `/confluence`, `/teams`, and `/help`. The LLM helps with semantic fallback, field extraction, and manager-ready narration. Python and SQL own the facts: conversion math, target gaps, value-at-risk sizing, SQL templates, Jira issue keys, owners, write guards, and Confluence publishing.
 
 ## What changed in this upgraded version
 
-- **Command-prefix routing with guardrails**: `metrics:`, `sql:`, `jira:`, `confluence:`, `teams:`, and `help:` force exact routing. Non-prefixed read-only prompts get a routing warning; non-prefixed writes require the prefix.
+- **Slash-command routing with guardrails**: `/metrics`, `/query`, `/jira`, `/confluence`, `/teams`, and `/help` force exact routing. Non-slash-command read-only prompts get a routing warning; non-prefixed writes require the prefix.
 - **Impact Ranking Engine** (`impact.py`): ranks target misses by value at risk, trend severity, and Jira execution risk.
 - **Initiative contracts** (`contracts.py`): Jira issues include structured stage, metric, owner, due date, confidence, expected value, evidence, and success check.
 - **Template-first SQL analyst** (`sql_analyst.py`): common breakdowns use deterministic SQL templates; LLM SQL is only fallback and still read-only validated. Daily and monthly views now reconcile from the same row-level fixture.
-- **Idempotent investigations**: `jira: flag it` searches for an existing open investigation by stage, metric, and month before creating a new Jira issue.
-- **Weekly Confluence summary**: `confluence: weekly meeting summary` drafts a manager-ready weekly readout; `confluence: publish weekly meeting summary to Confluence` creates or updates a Confluence page.
+- **Idempotent investigations**: `/jira flag it` searches for an existing open investigation by stage, metric, and month before creating a new Jira issue.
+- **Weekly Confluence summary**: `/confluence weekly meeting summary` drafts a manager-ready weekly readout; `/confluence publish weekly meeting summary to Confluence` creates or updates a Confluence page.
 - **Legacy portfolio cleanup**: the old portfolio watchdog project is excluded from this clean package so it does not mix with Watchtower runtime code.
 - **Synthetic partner cleanup**: Jira seed tickets use fictional partner names only.
 
@@ -34,18 +34,19 @@ See `DEMO_PROMPTS.md` for the recommended demo prompts and exact expected output
 ## Example questions
 
 ```text
-metrics: show me the funnel metrics
-metrics: why is approval the top risk?
-sql: break May approval drop down by reason
-jira: flag the drops and assign owners to investigate
-jira: what is critical or off track right now?
-jira: what does blocked mean here and what is it blocking?
-teams: post off-track blockers
-confluence: weekly meeting summary
-confluence: publish weekly meeting summary to Confluence
-metrics: compare April and May performance
-sql: show daily volume in May
-help: how should I ask questions?
+/metrics show me the funnel metrics
+/metrics why is approval the top risk?
+/query break May approval drop down by reason
+/jira explain stage ownership structure
+/jira flag the drops and assign owners to investigate
+/jira what is critical or off track right now?
+/jira what does blocked mean here and what is it blocking?
+/teams post off-track blockers
+/confluence weekly meeting summary
+/confluence publish weekly meeting summary to Confluence
+/metrics compare April and May performance
+/query show daily volume in May
+/help how should I ask questions?
 ```
 
 ## Core value
@@ -63,7 +64,7 @@ A dashboard can show that approval dropped. Watchtower answers the operational f
 
 ```text
 User message
-  -> router.py                 command-prefix routing + semantic fallback + deterministic guards
+  -> router.py                 slash-command routing + semantic fallback + deterministic guards
   -> deterministic handlers
       -> funnel_metrics.py     monthly conversion, MoM anomalies, OKR target misses
       -> impact.py             value-at-risk ranking + execution-risk scoring
@@ -112,7 +113,7 @@ Execution risk comes from Jira signals such as blocked issues, overdue work, and
 Ask:
 
 ```text
-confluence: weekly meeting summary
+/confluence weekly meeting summary
 ```
 
 The agent returns a weekly meeting brief with:
@@ -126,7 +127,7 @@ The agent returns a weekly meeting brief with:
 Ask:
 
 ```text
-confluence: publish weekly meeting summary to Confluence
+/confluence publish weekly meeting summary to Confluence
 ```
 
 When `ALLOW_WRITES=true`, the agent creates or updates a Confluence page titled like:

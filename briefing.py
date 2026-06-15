@@ -53,14 +53,23 @@ def _open_done() -> tuple[list[dict], list[dict]]:
 
 
 def stage_owners_from_issues(issues: list[dict]) -> dict:
-    """Map each funnel stage -> most common owner in a supplied issue list."""
+    """Map each funnel stage -> most common operational owner.
+
+    Unassigned investigation tickets should not override the seeded stage owner.
+    We therefore ignore Unassigned values when at least one named owner exists
+    for a stage, and only return Unassigned if no named owner exists at all.
+    """
     from collections import Counter
     buckets: dict = {}
     for i in issues:
         st = i.get("stage")
         if st:
             buckets.setdefault(st, []).append(i.get("owner") or i.get("assignee") or "Unassigned")
-    return {st: Counter(o).most_common(1)[0][0] for st, o in buckets.items() if o}
+    out = {}
+    for st, owners in buckets.items():
+        named = [o for o in owners if o and o != "Unassigned"]
+        out[st] = Counter(named or owners).most_common(1)[0][0]
+    return out
 
 
 def stage_owners() -> dict:

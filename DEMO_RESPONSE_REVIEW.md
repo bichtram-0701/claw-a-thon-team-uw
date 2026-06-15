@@ -150,11 +150,11 @@ Observed in `Funnel Watchtower - Team UW_v10(1).html`:
 
 The remaining class of issues was not one specific answer; it was ambiguity in mapping user language to workflows. v12 adds a command-prefix layer:
 
-- `metrics:` for funnel metrics, MoM, top risk, and value at risk.
-- `sql:` for deterministic DuckDB templates and drilldowns.
-- `jira:` for ownership, blockers, off-track work, and Jira write actions.
-- `confluence:` for weekly summaries and Confluence publishing.
-- `teams:` for Teams reminders.
-- `help:` for usage/database guidance.
+- `/metrics` for funnel metrics, MoM, top risk, and value at risk.
+- `/query` for deterministic DuckDB templates and drilldowns.
+- `/jira` for ownership, blockers, off-track work, and Jira write actions.
+- `/confluence` for weekly summaries and Confluence publishing.
+- `/teams` for Teams reminders.
+- `/help` for usage/database guidance.
 
 In `ROUTING_MODE=warn`, non-prefixed read-only prompts still answer but include a routing warning. Non-prefixed write actions are blocked and ask the user to resend with the explicit prefix. Ambiguous prompts such as `why did it drop?` ask for clarification instead of guessing the stage or transition.
