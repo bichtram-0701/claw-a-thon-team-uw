@@ -10,7 +10,7 @@ import calendar
 import json
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
 from greennode_agentbase import GreenNodeAgentBaseApp, PingStatus, RequestContext
@@ -115,13 +115,22 @@ _CREATE_PREFIX = re.compile(
 )
 
 
+def _today_vn() -> str:
+    """Today's date in Asia/Bangkok (UTC+7) — the team/Jira timezone."""
+    return (datetime.now(timezone.utc) + timedelta(hours=7)).date().isoformat()
+
+
 def extract_create_fields(message: str) -> dict:
     """Extract a Jira initiative; validate LLM JSON before use."""
+    today = _today_vn()
     raw = rp.llm_chat(
         "Extract a Jira initiative from the user's message as STRICT JSON only. Keys: "
         "summary (short imperative string), stage (traffic/submission/approval/completion/crosscut/null), "
         "owner (person name or null), due (YYYY-MM-DD or null), confidence (low/medium/high or null), "
         "target_lift_pp (number or null), evidence (array of short strings or null). "
+        f"Today's date is {today} (Asia/Bangkok). Resolve relative due dates against it: "
+        "'today'->today's date, 'tomorrow'->+1 day, 'next week'->+7 days, 'end of week'->coming Friday, "
+        "'in N days'->+N days. NEVER output a past date for a future-sounding request; output absolute YYYY-MM-DD. "
         "Infer stage only when obvious: acquisition/eligible traffic->traffic; submit/docs/KYC/form->submission; "
         "approval/review/risk/income->approval; payout/e-sign/final outcome->completion; shared data/platform->crosscut.",
         message,
