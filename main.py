@@ -139,7 +139,7 @@ async def _jira_event(request):
         # the "created" and "field value changed" automation rules (and Jira may
         # fire several field changes at once). Same issue + same `updated` stamp
         # within the window -> notify once. (Single replica -> in-memory is fine.)
-        sig = str(full.get("updated"))
+        sig = str(full.get("updated_ts") or full.get("updated"))
         now = time.monotonic()
         prev = _RECENT_EVENTS.get(key)
         _RECENT_EVENTS[key] = (sig, now)
@@ -151,7 +151,8 @@ async def _jira_event(request):
 
         # A freshly created task (created ~= updated) is always a "new task",
         # regardless of which rule fired first -> correct header + no dup.
-        cu, uu = _parse_iso(full.get("created")), _parse_iso(full.get("updated"))
+        cu = _parse_iso(full.get("created_ts") or full.get("created"))
+        uu = _parse_iso(full.get("updated_ts") or full.get("updated"))
         just_created = bool(cu and uu and (uu - cu).total_seconds() < _CREATE_GRACE_SEC)
         changes = jc.get_latest_changes(key)
         if event == "created" or just_created:

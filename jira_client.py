@@ -257,6 +257,8 @@ def get_issue_full(key: str) -> dict:
         "stale_after": stale_after,
         "created": (f.get("created") or "")[:10] or None,
         "updated": (f.get("updated") or "")[:10] or None,
+        "updated_ts": f.get("updated"),   # full timestamp, for event dedup
+        "created_ts": f.get("created"),
         "description": description,
         "blocked_by": blocked_by,
         "blocks": blocks,
