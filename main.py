@@ -65,7 +65,7 @@ app.router.routes.append(Route("/version", _version, methods=["GET"]))
 
 JIRA_EVENT_TOKEN = os.environ.get("JIRA_EVENT_TOKEN", "")
 ALLOW_WRITES = os.environ.get("ALLOW_WRITES", "true").lower() in ("1", "true", "yes")
-APP_VERSION = os.environ.get("APP_VERSION", "demo-v17")
+APP_VERSION = os.environ.get("APP_VERSION", "demo-v18")
 BUILD_VERSION = os.environ.get("GIT_SHA", "dev")[:7]
 
 STAGE_TO_EPIC = {
@@ -391,9 +391,10 @@ def _handle(payload: dict) -> dict:
                 intro = _analyst_intro(result)
                 if intro:
                     answer = intro + "\n\n" + answer
-                if result.get("source") == "template":
+                show_debug_sql = any(k in message.lower() for k in ["show sql", "debug sql", "show query", "template", "duckdb"])
+                if result.get("source") == "template" and show_debug_sql:
                     answer = f"_Template: {result.get('template')}_\n\n" + answer
-                if result.get("sql"):
+                if result.get("sql") and show_debug_sql:
                     answer += "\n\n_SQL:_ `" + result["sql"] + "`"
     elif intent == "metrics":
         cmp_months = _comparison_months_from_message(message)
@@ -450,15 +451,23 @@ def _handle(payload: dict) -> dict:
         result["route"] = route_info
     else:
         result = {"route": route_info,
-                  "hint": "Try the demo chips, press / for the command palette, or ask /help for feature prompts."}
+                  "hint": "Open the Demo script drawer, press / for the command palette, or ask /help for context and feature prompts."}
         if _is_database_help_question(message) and not _is_command_help_question(message):
             answer = sa.schema_guide_markdown()
         else:
             answer = (
-                "Hi, I am Funnel Agent. I turn funnel drift into owned recovery work across metrics, Jira, "
-                "Confluence, and Teams. Slash commands give exact routing and keep write actions safe. Press `/` in "
-                "the chat box to see available commands.\n\n"
-                "**Core demo flow**\n"
+                "**Funnel Agent context**\n\n"
+                "Funnel Agent turns **funnel drift into owned recovery work**. It is for teams that already have "
+                "dashboards, Jira, Confluence, and Teams, but still need someone to connect: what moved, what matters, "
+                "who owns recovery, what is blocked, and what should go into the weekly review.\n\n"
+                "**Workflow loop**\n\n"
+                "`Detect → Diagnose → Assign → Summarize → Notify`\n\n"
+                "- **Detect:** `/metrics` computes funnel KPIs, MoM movement, target gaps, value at risk, and top recovery priority.\n"
+                "- **Diagnose:** `/metrics` also runs safe drilldowns like drop reasons, daily volume, channel/product contribution, and reconciliation tables.\n"
+                "- **Assign:** `/jira` maps metric risk to an Epic → stage owner → task assignee structure and creates/updates recovery work.\n"
+                "- **Summarize:** `/confluence` prepares or publishes the weekly meeting readout and decision memory.\n"
+                "- **Notify:** `/teams` posts blockers, due-soon reminders, task-change digests, and off-track work.\n\n"
+                "**Main demo flow**\n"
                 "1. `/metrics show me the funnel metrics`\n"
                 "2. `/metrics why is approval the top risk?`\n"
                 "3. `/metrics break May approval drop down by reason`\n"
@@ -469,17 +478,18 @@ def _handle(payload: dict) -> dict:
                 "8. `/confluence weekly meeting summary`\n"
                 "9. `/confluence publish weekly meeting summary to Confluence`\n"
                 "10. `/teams post off-track blockers`\n\n"
-                "**Other useful feature prompts**\n"
+                "**Workflow principles**\n\n"
+                "- Jira: each stage has an Epic; stage owner is inferred from owned work; if `/jira create` or `/jira flag` does not name an assignee, Funnel Agent defaults to the operational stage owner.\n"
+                "- Confluence: weekly pages are the meeting artifact and decision memory; they include metrics, Jira blockers, completed work, context, and agenda.\n"
+                "- Teams: notifications are for accountability: new tasks, changed tasks, 09:00 overdue/stale digests, 17:00 due-tomorrow reminders, and off-track blockers.\n\n"
+                "**Other useful prompts**\n"
                 "- `/model` — show app version, UI version, build, configured model, routing mode, and write mode.\n"
                 "- `/metrics compare April and May performance` — compare two months.\n"
                 "- `/metrics show daily volume in May` — validate daily rows against monthly totals.\n"
                 "- `/metrics what was done in March to improve approval?` — check historical Jira/Confluence evidence.\n"
                 "- `/jira give me all the tasks along with assignee and due date and status` — list work items.\n"
                 "- `/teams post due-soon reminders` — post the due-soon reminder preview/card.\n\n"
-                "Funnel stages: **Traffic → Submission → Approval → Disbursement**. Jira work follows an "
-                "**Epic → stage owner → task assignee** structure: when a Jira write does not name an assignee, "
-                "Funnel Agent defaults to that stage's operational owner. Read-only questions without a slash command "
-                "still work with an interpretation warning; writes require the explicit command."
+                "Funnel stages: **Traffic → Submission → Approval → Disbursement**. Read-only questions without a slash command still work with an interpretation warning; writes require an explicit command."
             )
 
     if answer is None:
@@ -956,7 +966,7 @@ def _handle_model(message: str, route_info: dict) -> dict:
         "route": route_info,
         "app_version": APP_VERSION,
         "build_version": BUILD_VERSION,
-        "ui_version": "v17",
+        "ui_version": "v18",
         "routing_mode": os.environ.get("ROUTING_MODE", "warn"),
         "allow_writes": ALLOW_WRITES,
         **info,
@@ -965,7 +975,7 @@ def _handle_model(message: str, route_info: dict) -> dict:
         "**Funnel Agent runtime**",
         "",
         f"- App version: **{APP_VERSION}**",
-        "- UI version: **v17**",
+        "- UI version: **v18**",
         f"- Build: `{BUILD_VERSION}`",
         f"- Chat model: **{info.get('model') or 'not configured'}**",
         f"- Model source: {info.get('source') or 'unknown'}",

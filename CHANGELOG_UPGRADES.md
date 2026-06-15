@@ -1,6 +1,6 @@
 # Upgrade changelog
 
-## v17 demo package
+## v18 demo package
 
 - Renamed the user-facing bot to **Funnel Agent**.
 - Default MaaS model is now `openai/gpt-oss-20b`; `/model` reports the configured model from runtime config instead of asking the LLM to self-identify.
@@ -39,3 +39,12 @@ The offline suite intentionally avoids live MaaS and Atlassian calls. Before a l
 ## Security packaging
 
 The final ZIP excludes `.env`, `.git`, caches, pyc files, local runtime state, and legacy prototype folders. Use `.env.example` as the only shared credential template.
+
+## v18 - onboarding + UI polish
+
+- Added an in-chat onboarding card explaining the problem, workflow loop, and how Jira/Confluence/Teams fit together.
+- Moved demo suggestions out of the always-visible chat area into a compact **Demo script** drawer.
+- Kept optional / advanced feature prompts in `/help` instead of cluttering the main UI.
+- Added horizontal table wrappers in the chat UI so wide Markdown tables stay inside the message card.
+- Simplified `/metrics break May approval drop down by reason` output: no visible SQL/template noise by default, shorter columns, and percentage fields formatted with `%`.
+- Bumped app/UI version to demo-v18 / UI v18.

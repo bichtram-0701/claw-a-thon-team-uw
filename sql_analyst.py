@@ -182,15 +182,88 @@ def run_sql(sql: str, limit: int = 200) -> dict:
         return {"error": str(e)[:240]}
 
 
+def _friendly_col(col: str) -> str:
+    names = {
+        "loss_stage": "Loss stage",
+        "drop_reason": "Drop reason",
+        "dropped_applications": "Dropped",
+        "stage_start_total": "Stage start",
+        "stage_passed_total": "Passed",
+        "stage_drop_total": "Total dropped",
+        "share_of_stage_drop_pct": "Share of drop",
+        "share_of_loss_stage_pct": "Share of transition drop",
+        "applications": "Traffic",
+        "submitted": "Submission",
+        "approved": "Approval",
+        "disbursed": "Disbursement",
+        "completed": "Disbursement",
+        "submission_rate_pct": "Submission rate",
+        "approval_rate_pct": "Approval rate",
+        "completion_rate_pct": "Disbursement rate",
+        "potential_value_vnd": "Potential value",
+        "disbursement_amount_vnd": "Disbursement Volume",
+        "completion_amount_vnd": "Disbursement Volume",
+        "product_type": "Product type",
+        "channel": "Channel",
+        "dimension": "Dimension",
+        "segment": "Segment",
+        "stage_passed_total": "Passed",
+        "stage_dropped_total": "Dropped",
+    }
+    return names.get(col, col.replace("_", " ").title())
+
+
+def _fmt_cell(col: str, value) -> str:
+    if value is None or value == "":
+        return "—"
+    if col.endswith("_pct") or col in {"share_of_stage_drop_pct", "share_of_loss_stage_pct"}:
+        try:
+            return f"{float(value):.1f}%"
+        except Exception:  # noqa: BLE001
+            return str(value)
+    if col.endswith("_vnd") or col in {"potential_value_vnd", "disbursement_amount_vnd", "completion_amount_vnd"}:
+        try:
+            n = float(value)
+            if abs(n) >= 1_000_000_000:
+                return f"{n/1_000_000_000:.1f}B"
+            if abs(n) >= 1_000_000:
+                return f"{n/1_000_000:.1f}M"
+            return f"{n:,.0f}"
+        except Exception:  # noqa: BLE001
+            return str(value)
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        try:
+            return f"{int(value):,}" if float(value).is_integer() else f"{float(value):,.1f}"
+        except Exception:  # noqa: BLE001
+            return str(value)
+    return str(value)
+
+
+def _presentation_cols(res: dict) -> tuple[list[str], list[list]]:
+    cols, rows = list(res.get("columns") or []), list(res.get("rows") or [])
+    template = res.get("template") or ""
+    if template.endswith("_drop_reason_breakdown") and template != "all_drop_reason_breakdown":
+        # The intro already states stage_start/stage_passed/stage_drop totals.
+        keep = ["drop_reason", "dropped_applications", "share_of_stage_drop_pct"]
+        idx = [cols.index(c) for c in keep if c in cols]
+        return [cols[i] for i in idx], [[r[i] for i in idx] for r in rows]
+    if template == "all_drop_reason_breakdown":
+        keep = ["loss_stage", "drop_reason", "dropped_applications", "share_of_loss_stage_pct"]
+        idx = [cols.index(c) for c in keep if c in cols]
+        return [cols[i] for i in idx], [[r[i] for i in idx] for r in rows]
+    return cols, rows
+
+
 def to_markdown(res: dict, max_rows: int = 50) -> str:
     if res.get("error"):
         return f"(query error: {res['error']})"
-    cols, rows = res["columns"], res["rows"]
+    cols, rows = _presentation_cols(res)
     if not rows:
         return "(no rows matched)"
-    head = "| " + " | ".join(str(c) for c in cols) + " |"
-    sep = "|" + "---|" * len(cols)
-    body = ["| " + " | ".join("" if v is None else str(v) for v in r) + " |" for r in rows[:max_rows]]
+    display_cols = [_friendly_col(c) for c in cols]
+    head = "| " + " | ".join(display_cols) + " |"
+    sep = "|" + "---|" * len(display_cols)
+    body = ["| " + " | ".join(_fmt_cell(c, v) for c, v in zip(cols, r)) + " |" for r in rows[:max_rows]]
     extra = f"\n\n_({len(rows)} rows; showing {max_rows})_" if len(rows) > max_rows else ""
     return "\n".join([head, sep] + body) + extra
 

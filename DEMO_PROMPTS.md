@@ -1,11 +1,11 @@
 # Funnel Agent demo prompts
 
-Use the chips in this order. The UI now shows only the main demo flow; optional validation/add-on prompts live in `/help` so the demo surface stays clean.
+Use the **Demo script** drawer in this order. Optional validation/add-on prompts live in `/help` so the chat surface stays clean.
 
 
 ## Routing policy
 
-The demo chips intentionally use slash commands. Slash-command prompts route deterministically:
+The demo script intentionally uses slash commands. Slash-command prompts route deterministically:
 
 ```text
 /metrics      funnel KPIs + safe data drilldowns (daily volume, drop reasons, channel/product breakdowns)

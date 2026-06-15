@@ -329,7 +329,7 @@ check("teams previews when webhook missing", "did not post" in teams.get("answer
 print("chat UI version:")
 with open(os.path.join(ROOT, "chat.html"), encoding="utf-8") as fh:
     chat_html = fh.read()
-check("chat header has UI version", "UI v17" in chat_html)
+check("chat header has UI version", "UI v18" in chat_html)
 check("chat JS has one UI_VERSION const", chat_html.count("const UI_VERSION") == 1)
 check("footer is minimal powered-by only", "<footer>Powered by GreenNode AgentBase + MaaS.</footer>" in chat_html)
 check("removed old descriptive header line", "Business-funnel initiative tracker" not in chat_html and "Synthetic workspace data" not in chat_html)
@@ -339,7 +339,7 @@ check("removed old header tagline", "Business-funnel initiative tracker" not in 
 check("removed old chips note", "Main demo order with slash commands" not in chat_html)
 check("footer only powered by", "Synthetic workspace data" not in chat_html and "Powered by GreenNode AgentBase + MaaS." in chat_html)
 check("slash command menu present", "command-menu" in chat_html and "Available commands" in chat_html)
-check("demo chips only", chat_html.count('class="chip"') == 10 and "/model" not in chat_html.split('<div id="chips">', 1)[1].split('</div>', 1)[0])
+check("demo prompts moved out of always-visible chips", 'id="chips"' not in chat_html and "DEMO_PROMPTS" in chat_html and "/model" not in chat_html.split("const DEMO_PROMPTS", 1)[1].split("];", 1)[0])
 
 print("confluence markdown conversion:")
 storage = cf.markdown_to_storage("""# Weekly Brief
@@ -401,7 +401,7 @@ check("database help mentions funnel view", rd.get("intent") == "help" and "`fun
 reo = m.handler({"message": "who's the owner of each epic?"}, None)
 check("epic owner answer distinguishes operational owner", "operational stage owner" in reo.get("answer", ""))
 
-print("v17 model + combined metrics/query:")
+print("v18 model + combined metrics/query:")
 check("slash model routes model", m.route("/model") == "model")
 mdl = m.handler({"message": "/model"}, None)
 check("model handler works", mdl.get("intent") == "model" and "Chat model" in mdl.get("answer", ""))
@@ -415,7 +415,7 @@ check("stage history question answers with caveat", rhist.get("intent") == "metr
 rtasks = m.handler({"message": "/jira give me all the tasks along with assignee and due date and status"}, None)
 check("all tasks deterministic table", rtasks.get("intent") == "oversight" and "| Key | Summary | Assignee |" in rtasks.get("answer", "") and "Data JSON" not in rtasks.get("answer", ""))
 
-print("v17 seed/storyboard cleanup:")
+print("v18 seed/storyboard cleanup:")
 seed_text = open(os.path.join(ROOT, "scripts", "seed_atlassian.py"), encoding="utf-8").read()
 check("monthly Jira seeds present", "month-2026-03" in seed_text and "month-2026-04" in seed_text and "month-2026-05" in seed_text)
 check("monthly Confluence seeds present", "Monthly Funnel Review - 2026-03" in seed_text and "Decision Log - Submission Instrumentation - 2026-04" in seed_text)
