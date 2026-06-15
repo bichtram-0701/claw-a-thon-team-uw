@@ -14,8 +14,9 @@ name: Teams poll (Jira changes)
 
 on:
   schedule:
-    # GitHub's effective minimum is ~5 min; "*/2" gets coalesced/dropped.
-    - cron: "*/5 * * * *"
+    # Real-time is handled by the Jira Automation rules -> /jira-event.
+    # Polling is just a safety net now, so run every 30 min to save Actions minutes.
+    - cron: "*/30 * * * *"
   workflow_dispatch: {}
 
 concurrency:
