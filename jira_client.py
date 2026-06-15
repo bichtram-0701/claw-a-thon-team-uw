@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import re
+from datetime import datetime, timezone
 
 import httpx
 
@@ -328,9 +329,74 @@ def due_tomorrow_issues() -> list[dict]:
                   "AND statusCategory != Done ORDER BY due ASC")
 
 
+# Per-task stale threshold lives in a Jira custom Number field. We resolve its
+# id by display name at runtime so no field id is hard-coded.
+STALE_FIELD_NAME = os.environ.get("STALE_FIELD_NAME", "Stale after")
+_STALE_FIELD_CACHE: dict = {}
+
+
+def _stale_field_id() -> str | None:
+    if "id" in _STALE_FIELD_CACHE:
+        return _STALE_FIELD_CACHE["id"]
+    fid = None
+    want = STALE_FIELD_NAME.strip().lower()
+    try:
+        with _client() as c:
+            r = c.get(f"{SITE}/rest/api/3/field")
+            if r.status_code == 200:
+                for f in r.json():
+                    # match "Stale after" or "Stale after (days)"
+                    if (f.get("name") or "").strip().lower().startswith(want):
+                        fid = f.get("id")
+                        break
+    except Exception:  # noqa: BLE001
+        fid = None
+    _STALE_FIELD_CACHE["id"] = fid
+    return fid
+
+
+def _parse_ts(s: str | None):
+    try:
+        return datetime.fromisoformat(s) if s else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def stale_issues(days: int = 7) -> list[dict]:
-    """Open issues not updated in the last `days` days — nudge the owner."""
-    return search(f"statusCategory != Done AND updated <= -{days}d ORDER BY updated ASC", limit=100)
+    """Open issues idle longer than their threshold. Per-task threshold comes
+    from the '{STALE_FIELD_NAME}' Jira field when set; otherwise `days` (default).
+    Each returned issue carries idle_days and stale_threshold."""
+    fid = _stale_field_id()
+    fields = FIELDS + ("," + fid if fid else "")
+    jql = _scope_jql("statusCategory != Done ORDER BY updated ASC")
+    with _client() as c:
+        r = c.get(f"{SITE}/rest/api/3/search/jql",
+                  params={"jql": jql, "maxResults": 100, "fields": fields})
+        r.raise_for_status()
+        issues = r.json().get("issues", [])
+    now = datetime.now(timezone.utc)
+    out = []
+    for issue in issues:
+        b = _brief(issue)
+        upd = _parse_ts(b.get("updated"))
+        if not upd:
+            continue
+        idle = (now - upd).days
+        threshold = days
+        if fid:
+            val = (issue.get("fields") or {}).get(fid)
+            if val not in (None, ""):
+                try:
+                    v = int(float(val))
+                    if v >= 0:           # 0 is valid (fires immediately); blank -> default
+                        threshold = v
+                except (TypeError, ValueError):
+                    pass
+        if idle >= threshold:
+            b["idle_days"] = idle
+            b["stale_threshold"] = threshold
+            out.append(b)
+    return out
 
 
 # --------------------------------------------------------------- write side --
