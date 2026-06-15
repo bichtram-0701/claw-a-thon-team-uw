@@ -27,6 +27,16 @@ The LLM layer is deliberately bounded and replaceable. Prefix routing and determ
 - **Legacy portfolio cleanup**: the old portfolio watchdog project is excluded from this clean package so it does not mix with Funnel Agent runtime code.
 - **Synthetic partner cleanup**: Jira seed tickets use fictional partner names only.
 
+
+## Chat UI layout
+
+The chatbot UI is intentionally split into two tabs:
+
+- **Chat**: the live agent interface, with the demo flow kept in a right-side panel so prompt suggestions do not consume the conversation area.
+- **Pitch**: the storytelling view for people opening the endpoint cold. It explains the problem, why this is an agent instead of a normal chatbot, the Jira/Confluence/Teams workflow principles, and the frame-by-frame demo arc.
+
+Press `/` in the chat input to open the command menu.
+
 ## Demo script
 
 See `DEMO_PROMPTS.md` for the recommended demo prompts and exact expected outputs.

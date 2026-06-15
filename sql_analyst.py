@@ -182,16 +182,43 @@ def run_sql(sql: str, limit: int = 200) -> dict:
         return {"error": str(e)[:240]}
 
 
-def _friendly_col(col: str) -> str:
-    names = {
-        "loss_stage": "Loss stage",
-        "drop_reason": "Drop reason",
-        "dropped_applications": "Dropped",
-        "stage_start_total": "Stage start",
-        "stage_passed_total": "Passed",
-        "stage_drop_total": "Total dropped",
-        "share_of_stage_drop_pct": "Share of drop",
-        "share_of_loss_stage_pct": "Share of transition drop",
+def _fmt_amount(v) -> str:
+    if v is None or v == "":
+        return ""
+    try:
+        n = float(v)
+    except Exception:  # noqa: BLE001
+        return str(v)
+    sign = "-" if n < 0 else ""
+    n = abs(n)
+    if n >= 1_000_000_000:
+        return f"{sign}{n / 1_000_000_000:.1f}B"
+    if n >= 1_000_000:
+        return f"{sign}{n / 1_000_000:.1f}M"
+    if n >= 1_000:
+        return f"{sign}{n / 1_000:.1f}K"
+    return f"{sign}{int(n):,}"
+
+
+def _fmt_cell(col: str, v) -> str:
+    if v is None or v == "":
+        return ""
+    c = col.lower()
+    if c.endswith("_pct") or c in {"share", "rate"}:
+        try:
+            return f"{float(v):.1f}%"
+        except Exception:  # noqa: BLE001
+            return str(v)
+    if "vnd" in c or "amount" in c or "value" in c:
+        return _fmt_amount(v)
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    return str(v)
+
+
+def _nice_col(col: str) -> str:
+    mapping = {
+        "day": "Day",
         "applications": "Traffic",
         "submitted": "Submission",
         "approved": "Approval",
@@ -202,70 +229,74 @@ def _friendly_col(col: str) -> str:
         "completion_rate_pct": "Disbursement rate",
         "potential_value_vnd": "Potential value",
         "disbursement_amount_vnd": "Disbursement Volume",
-        "completion_amount_vnd": "Disbursement Volume",
-        "product_type": "Product type",
-        "channel": "Channel",
+        "drop_reason": "Drop reason",
+        "dropped_applications": "Dropped",
+        "stage_start_total": "Stage start",
+        "stage_passed_total": "Passed",
+        "stage_drop_total": "Drop total",
+        "share_of_stage_drop_pct": "Share of drop",
+        "share_of_loss_stage_pct": "Share of loss stage",
+        "loss_stage": "Loss stage",
         "dimension": "Dimension",
         "segment": "Segment",
         "stage_passed_total": "Passed",
         "stage_dropped_total": "Dropped",
+        "product_type": "Product type",
+        "channel": "Channel",
+        "iso_week": "ISO week",
     }
-    return names.get(col, col.replace("_", " ").title())
+    return mapping.get(col, col.replace("_", " ").title())
 
 
-def _fmt_cell(col: str, value) -> str:
-    if value is None or value == "":
-        return "—"
-    if col.endswith("_pct") or col in {"share_of_stage_drop_pct", "share_of_loss_stage_pct"}:
-        try:
-            return f"{float(value):.1f}%"
-        except Exception:  # noqa: BLE001
-            return str(value)
-    if col.endswith("_vnd") or col in {"potential_value_vnd", "disbursement_amount_vnd", "completion_amount_vnd"}:
-        try:
-            n = float(value)
-            if abs(n) >= 1_000_000_000:
-                return f"{n/1_000_000_000:.1f}B"
-            if abs(n) >= 1_000_000:
-                return f"{n/1_000_000:.1f}M"
-            return f"{n:,.0f}"
-        except Exception:  # noqa: BLE001
-            return str(value)
-    if isinstance(value, (int, float)) and not isinstance(value, bool):
-        try:
-            return f"{int(value):,}" if float(value).is_integer() else f"{float(value):,.1f}"
-        except Exception:  # noqa: BLE001
-            return str(value)
-    return str(value)
+def _rows_to_markdown(cols: list[str], rows: list[list], *, max_rows: int = 50, align_numeric: bool = True) -> str:
+    display_cols = [_nice_col(c) for c in cols]
+    head = "| " + " | ".join(display_cols) + " |"
+    seps = []
+    for c in cols:
+        if align_numeric and any(k in c.lower() for k in ["count", "total", "pct", "amount", "value", "applications", "submitted", "approved", "disbursed", "completed", "dropped", "traffic"]):
+            seps.append("---:")
+        else:
+            seps.append("---")
+    sep = "|" + "|".join(seps) + "|"
+    body = ["| " + " | ".join(_fmt_cell(c, v) for c, v in zip(cols, r)) + " |" for r in rows[:max_rows]]
+    extra = f"\n\n_({len(rows)} rows; showing {max_rows})_" if len(rows) > max_rows else ""
+    return "\n".join([head, sep] + body) + extra
 
 
-def _presentation_cols(res: dict) -> tuple[list[str], list[list]]:
-    cols, rows = list(res.get("columns") or []), list(res.get("rows") or [])
+def _drop_reason_markdown(res: dict, rows: list[list], max_rows: int) -> str:
     template = res.get("template") or ""
-    if template.endswith("_drop_reason_breakdown") and template != "all_drop_reason_breakdown":
-        # The intro already states stage_start/stage_passed/stage_drop totals.
-        keep = ["drop_reason", "dropped_applications", "share_of_stage_drop_pct"]
-        idx = [cols.index(c) for c in keep if c in cols]
-        return [cols[i] for i in idx], [[r[i] for i in idx] for r in rows]
-    if template == "all_drop_reason_breakdown":
-        keep = ["loss_stage", "drop_reason", "dropped_applications", "share_of_loss_stage_pct"]
-        idx = [cols.index(c) for c in keep if c in cols]
-        return [cols[i] for i in idx], [[r[i] for i in idx] for r in rows]
-    return cols, rows
+    if template.startswith("approval_"):
+        cols = ["drop_reason", "dropped_applications", "share_of_stage_drop_pct", "stage_start_total", "stage_passed_total", "stage_drop_total"]
+        labels = ["Drop reason", "Dropped", "Share of drop", "Submitted", "Approved", "Drop total"]
+    elif template.startswith("submission_"):
+        cols = ["drop_reason", "dropped_applications", "share_of_stage_drop_pct", "stage_start_total", "stage_passed_total", "stage_drop_total"]
+        labels = ["Drop reason", "Dropped", "Share of drop", "Traffic", "Submitted", "Drop total"]
+    elif template.startswith("completion_"):
+        cols = ["drop_reason", "dropped_applications", "share_of_stage_drop_pct", "stage_start_total", "stage_passed_total", "stage_drop_total"]
+        labels = ["Drop reason", "Dropped", "Share of drop", "Approved", "Disbursed", "Drop total"]
+    else:
+        return _rows_to_markdown(res["columns"], rows, max_rows=max_rows)
+    idx = {c: i for i, c in enumerate(res["columns"])}
+    out_rows = []
+    for r in rows:
+        out_rows.append([r[idx[c]] for c in cols])
+    head = "| " + " | ".join(labels) + " |"
+    sep = "|---|---:|---:|---:|---:|---:|"
+    body = ["| " + " | ".join(_fmt_cell(c, v) for c, v in zip(cols, r)) + " |" for r in out_rows[:max_rows]]
+    extra = f"\n\n_({len(out_rows)} rows; showing {max_rows})_" if len(out_rows) > max_rows else ""
+    return "\n".join([head, sep] + body) + extra
 
 
 def to_markdown(res: dict, max_rows: int = 50) -> str:
     if res.get("error"):
         return f"(query error: {res['error']})"
-    cols, rows = _presentation_cols(res)
+    cols, rows = res["columns"], res["rows"]
     if not rows:
         return "(no rows matched)"
-    display_cols = [_friendly_col(c) for c in cols]
-    head = "| " + " | ".join(display_cols) + " |"
-    sep = "|" + "---|" * len(display_cols)
-    body = ["| " + " | ".join(_fmt_cell(c, v) for c, v in zip(cols, r)) + " |" for r in rows[:max_rows]]
-    extra = f"\n\n_({len(rows)} rows; showing {max_rows})_" if len(rows) > max_rows else ""
-    return "\n".join([head, sep] + body) + extra
+    template = res.get("template") or ""
+    if template.endswith("_drop_reason_breakdown") and template != "all_drop_reason_breakdown":
+        return _drop_reason_markdown(res, rows, max_rows)
+    return _rows_to_markdown(cols, rows, max_rows=max_rows)
 
 
 def _month_filter(question: str) -> str:

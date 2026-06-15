@@ -44,20 +44,9 @@ Traffic -> Submission -> Approval -> Disbursement
 /confluence weekly meeting summary
 /confluence publish weekly meeting summary to Confluence
 /teams post off-track blockers
-```
-
-## Other useful feature prompts
-
-```text
-/model
-/metrics compare April and May performance
-/metrics show daily volume in May
 /metrics what was done in March to improve approval?
-/jira give me all the tasks along with assignee and due date and status
-/teams post due-soon reminders
+/model
 ```
-
-Press `/` in the chat input to open the command palette.
 
 ## Ownership model
 
