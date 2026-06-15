@@ -87,9 +87,17 @@ async def _jira_event(request):
         return JSONResponse({"ok": False, "error": "no issue key in payload"}, status_code=400)
     try:
         full = jc.get_issue_full(key)
+        event = str(payload.get("event") or "").lower()
         changes = jc.get_latest_changes(key)
-        sent = tc.change_card(full, changes, header="Task updated")
-        return JSONResponse({"ok": True, "key": key, "changes": changes, "sent": sent})
+        # created event (or no change history) -> full "new task" card;
+        # otherwise the change diff card.
+        if event == "created" or (event != "updated" and not changes):
+            sent = tc.issue_card(full, header="New task created")
+            kind = "created"
+        else:
+            sent = tc.change_card(full, changes, header="Task updated")
+            kind = "updated"
+        return JSONResponse({"ok": True, "key": key, "kind": kind, "changes": changes, "sent": sent})
     except Exception as e:  # noqa: BLE001
         return JSONResponse({"ok": False, "key": key, "error": str(e)}, status_code=200)
 
