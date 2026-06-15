@@ -100,7 +100,9 @@ jobs:
           IMAGE="${{ steps.cr.outputs.image }}"
           echo "${{ steps.cr.outputs.secret }}" | docker login "${{ steps.cr.outputs.registry }}" \
             -u "${{ steps.cr.outputs.user }}" --password-stdin
-          docker build --platform linux/amd64 --build-arg GIT_SHA="${{ github.sha }}" -t "$IMAGE" .
+          # --provenance=false: skip the OCI attestation manifest that the VNG
+          # registry (Harbor) rejects with "unknown blob" on push.
+          docker build --platform linux/amd64 --provenance=false --build-arg GIT_SHA="${{ github.sha }}" -t "$IMAGE" .
           docker push "$IMAGE"
           echo "Pushed $IMAGE"
 
