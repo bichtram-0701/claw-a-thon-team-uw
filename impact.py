@@ -17,6 +17,11 @@ STAGE_TO_RATE = {
     "approval": "approval_rate_pct",
     "completion": "completion_rate_pct",
 }
+STAGE_LABEL = {
+    "submission": "Submission",
+    "approval": "Approval",
+    "completion": "Disbursement",
+}
 RATE_LABEL = {
     "submission_rate_pct": "Submission rate",
     "approval_rate_pct": "Approval rate",
@@ -151,7 +156,7 @@ def execution_risk(stage: str, issues: list[dict] | None = None) -> dict:
 
 def _recommend(stage: str, owner: str | None, var: dict, exec_risk: dict) -> str:
     who = f" with {owner}" if owner else ""
-    label = stage.title()
+    label = STAGE_LABEL.get(stage, stage.title())
     article = "an" if label[:1].lower() in {"a", "e", "i", "o", "u"} else "a"
     if exec_risk["blocked"] or exec_risk["overdue"]:
         return f"Escalate {label} recovery{who}; unblock/refresh the overdue initiative and open one investigation if none exists."
@@ -246,7 +251,7 @@ def render_markdown(ranked: list[dict] | None = None) -> str:
             signals.append(f"MoM {r['mom_delta_pp']}pp")
         er = ", ".join((r.get("execution_risk") or {}).get("reasons", []))
         rows.append("| {rank} | {stage} | {signal} | {var} | {owner} | {er} | {rec} |".format(
-            rank=r.get("rank"), stage=str(r.get("stage", "")).title(), signal="; ".join(signals) or r.get("metric"),
+            rank=r.get("rank"), stage=STAGE_LABEL.get(str(r.get("stage", "")).lower(), str(r.get("stage", "")).title()), signal="; ".join(signals) or r.get("metric"),
             var=r.get("value_at_risk_display") or r.get("value_at_risk_label") or _fmt_vnd(r.get("value_at_risk_vnd")),
             owner=r.get("owner") or "Unassigned", er=er,
             rec=str(r.get("recommended_action") or "").replace("|", "/"),
@@ -267,7 +272,7 @@ def top_risk_sentence(ranked: list[dict] | None = None) -> str:
     if not ranked:
         return "No stage is currently below target or showing a significant MoM drop."
     r = ranked[0]
-    return (f"Top business risk: {r['stage'].title()} - {r['value_at_risk_display']} estimated at risk, "
+    return (f"Top business risk: {STAGE_LABEL.get(str(r['stage']).lower(), str(r['stage']).title())} - {r['value_at_risk_display']} estimated at risk, "
             f"owner {r.get('owner') or 'Unassigned'}, {', '.join(r['execution_risk']['reasons'])}.")
 
 

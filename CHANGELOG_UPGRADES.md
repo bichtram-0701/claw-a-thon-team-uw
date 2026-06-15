@@ -1,3 +1,11 @@
+## v23 report consistency polish
+
+- Made `/jira what is critical or off track right now?` deterministic instead of LLM-shaped.
+- Removed empty/ambiguous owner-load, overloaded-owner, and Epic-level sections from the off-track report.
+- Normalized legacy `completion` wording to user-facing `Disbursement` in Jira reports, blocker context, and issue summaries.
+- Filtered Epic container issues out of manager-digest workload/unassigned counts so only actionable tasks are counted.
+- Kept `/model`, GPT-OSS 20B default, pitch FAQ tab, and Audit SQL behavior from v22.
+
 # Upgrade changelog
 
 ## v22 pitch/FAQ and audit SQL polish
@@ -12,7 +20,7 @@
 - Kept the demo sequence in the Chat view side panel only.
 - Restored the collapsed `Audit SQL` block for template-backed metric drilldowns by default.
 - Kept normal drilldown answers clean: no visible template line unless the user asks for audit/debug/template details.
-- Bumped app/UI version to demo-v22 / UI v22.
+- Bumped app/UI version to demo-v23 / UI v23.
 
 ## v21 demo package
 

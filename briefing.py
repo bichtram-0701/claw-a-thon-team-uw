@@ -52,6 +52,17 @@ def _open_done() -> tuple[list[dict], list[dict]]:
     return jc.all_open_issues(), jc.done_issues()
 
 
+def _non_epic(issues: list[dict]) -> list[dict]:
+    """Workload/off-track reports should count tasks, not Epic container issues."""
+    return [i for i in issues if (i.get("type") or "").lower() != "epic"]
+
+
+def _epic_label(epic: str | None) -> str:
+    if not epic:
+        return "Unsorted"
+    return "Disbursement" if str(epic).strip().lower() == "completion" else str(epic)
+
+
 def stage_owners_from_issues(issues: list[dict]) -> dict:
     """Map each funnel stage -> most common operational owner.
 
@@ -80,13 +91,15 @@ def stage_owners() -> dict:
 def manager_digest() -> dict:
     """Business lead's oversight view: ownership, off-track work, and ranked risks."""
     open_issues, done = _open_done()
-    owners = stage_owners_from_issues(open_issues)
+    task_issues = _non_epic(open_issues)
+    done_tasks = _non_epic(done)
+    owners = stage_owners_from_issues(task_issues)
 
     by_owner: dict = {}
     by_epic: dict = {}
-    for i in open_issues:
+    for i in task_issues:
         owner = i.get("owner") or "Unassigned"
-        epic = i.get("epic") or "Unsorted"   # Epic = funnel stage / project
+        epic = _epic_label(i.get("epic"))   # Epic = funnel stage / project
         by_owner.setdefault(owner, {"count": 0, "off_track": 0})
         by_owner[owner]["count"] += 1
         if _is_overdue(i) or _is_blocked(i):
@@ -96,20 +109,20 @@ def manager_digest() -> dict:
         if (i.get("status") or "").lower() == "in progress":
             by_epic[epic]["in_progress"] += 1
 
-    off_track = [i for i in open_issues if _is_overdue(i) or _is_blocked(i)]
-    due_soon = [i for i in open_issues if _is_due_soon(i)]
+    off_track = [i for i in task_issues if _is_overdue(i) or _is_blocked(i)]
+    due_soon = [i for i in task_issues if _is_due_soon(i)]
     owner_unassigned = [
-        i for i in open_issues
+        i for i in task_issues
         if (i.get("owner") or i.get("assignee") or "Unassigned") == "Unassigned"
     ]
     assignee_unassigned = [
-        i for i in open_issues
+        i for i in task_issues
         if (i.get("assignee") or "Unassigned") == "Unassigned"
     ]
 
     return {
         "as_of": jc_today(),
-        "totals": {"open": len(open_issues), "done": len(done),
+        "totals": {"open": len(task_issues), "done": len(done_tasks),
                    "off_track": len(off_track), "due_soon": len(due_soon),
                    "owner_unassigned": len(owner_unassigned),
                    "assignee_unassigned": len(assignee_unassigned)},
@@ -120,10 +133,10 @@ def manager_digest() -> dict:
         "by_owner": by_owner,
         "by_epic": by_epic,
         "stage_owners": owners,
-        "impact_ranking": im.rank_stage_risks(open_issues, owners),
-        "recently_completed": done[:5],
+        "impact_ranking": im.rank_stage_risks(task_issues, owners),
+        "recently_completed": done_tasks[:5],
         "note": "needs_attention_now = overdue OR blocked. In this demo, blocked means a Jira label/status flag, not a workflow state; blocked_by/blocks explains the dependency when known. due_soon = due within 3 days. "
-                "owner_unassigned_open lists open issues without a normalized owner; assignee_unassigned_open lists open issues without a real Jira assignee. "
+                "owner_unassigned_open lists non-Epic open tasks without a normalized owner; assignee_unassigned_open lists non-Epic open tasks without a real Jira assignee. "
                 "by_epic groups initiatives by Epic (funnel stage / project). "
                 "impact_ranking is deterministic: target gap + value at risk + Jira execution risk.",
     }

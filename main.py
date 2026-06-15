@@ -65,7 +65,7 @@ app.router.routes.append(Route("/version", _version, methods=["GET"]))
 
 JIRA_EVENT_TOKEN = os.environ.get("JIRA_EVENT_TOKEN", "")
 ALLOW_WRITES = os.environ.get("ALLOW_WRITES", "true").lower() in ("1", "true", "yes")
-APP_VERSION = os.environ.get("APP_VERSION", "demo-v22")
+APP_VERSION = os.environ.get("APP_VERSION", "demo-v23")
 BUILD_VERSION = os.environ.get("GIT_SHA", "dev")[:7]
 
 STAGE_TO_EPIC = {
@@ -289,7 +289,7 @@ def parse_assign(message: str):
 
 
 NARRATE_SYS = {
-    "oversight": "Lead with impact_ranking.ranking[0] if present, then needs_attention_now, due_soon, by_epic, and overloaded owners. Quote issue keys and owners. For blocked items, clarify that blocked is a label/flag, not necessarily the Jira workflow status; include blocked_by and blocks when present.",
+    "oversight": "Lead with impact_ranking.ranking[0] if present, then needs_attention_now and due_soon. Do not add owner-load, overloaded-owner, or Epic-level sections unless the user explicitly asks for owner workload or Epic grouping. Quote issue keys and owners. For blocked items, clarify that blocked is a label/flag, not necessarily the Jira workflow status; include blocked_by and blocks when present.",
     "briefing": "Summarize the user's plate: blocked/overdue first, then active work. Quote issue keys. For blocked items, say what they are blocked by if the JSON includes blocked_by.",
     "sprint": "Give a team health summary: open vs done, status mix, blockers, overdue, and workload by owner. For blocked items, clarify what dependency blocks them and what work they block when the JSON includes blocked_by/blocks.",
     "knowledge": "Answer using ONLY the provided Confluence pages. Quote page title and URL. If the pages do not answer it, say so plainly.",
@@ -436,6 +436,8 @@ def _handle(payload: dict) -> dict:
         result["route"] = route_info
         if _is_epic_assignment_question(message):
             answer = _render_epic_assignment_answer(result)
+        elif _is_blocked_semantics_question(message):
+            answer = _render_blocked_semantics_answer(result)
         elif _is_unassigned_work_question(message):
             answer = _render_unassigned_work_answer(result)
         elif _is_open_items_question(message):
@@ -444,6 +446,8 @@ def _handle(payload: dict) -> dict:
             answer = _render_all_tasks_answer(result, message)
         elif _is_epic_owner_question(message):
             answer = _render_epic_owner_answer(result)
+        elif _is_critical_offtrack_question(message):
+            answer = _render_offtrack_answer(result)
     elif intent == "briefing":
         result = bf.my_briefing()
         result["route"] = route_info
@@ -798,8 +802,8 @@ def _render_epic_owner_answer(result: dict) -> str:
 
 def _fmt_issue_line(issue: dict) -> str:
     key = issue.get("key") or "(no key)"
-    summary = issue.get("summary") or "(no summary)"
-    stage = issue.get("stage") or issue.get("epic") or "unsorted"
+    summary = _issue_summary(issue) or "(no summary)"
+    stage = _stage_label(issue.get("stage")) if issue.get("stage") else _display_text(issue.get("epic") or "unsorted")
     status = issue.get("status") or "unknown status"
     due = issue.get("due") or "no due date"
     assignee = issue.get("assignee") or "Unassigned"
@@ -842,7 +846,7 @@ def _render_top_risk_answer(result: dict, month: str | None = None) -> str:
     if not ranking:
         return "I do not have enough impact-ranking data to identify a top funnel risk right now."
     top = ranking[0]
-    stage = str(top.get("stage", "unknown")).title()
+    stage = _stage_label(top.get("stage"))
     owner = top.get("owner") or "Unassigned"
     reasons = top.get("reasons") or []
     signal = "; ".join(reasons) if reasons else "target gap / MoM movement"
@@ -986,7 +990,7 @@ def _handle_model(message: str, route_info: dict) -> dict:
         "route": route_info,
         "app_version": APP_VERSION,
         "build_version": BUILD_VERSION,
-        "ui_version": "v22",
+        "ui_version": "v23",
         "routing_mode": os.environ.get("ROUTING_MODE", "warn"),
         "allow_writes": ALLOW_WRITES,
         **info,
@@ -995,7 +999,7 @@ def _handle_model(message: str, route_info: dict) -> dict:
         "**Funnel Agent runtime**",
         "",
         f"- App version: **{APP_VERSION}**",
-        "- UI version: **v22**",
+        "- UI version: **v23**",
         f"- Build: `{BUILD_VERSION}`",
         f"- Chat model: **{info.get('model') or 'not configured'}**",
         f"- Model source: {info.get('source') or 'unknown'}",
@@ -1013,6 +1017,47 @@ def _stage_label(stage: str | None) -> str:
     return STAGE_TO_EPIC.get((stage or "").lower(), (stage or "").title() or "Unsorted")
 
 
+def _display_text(value) -> str:
+    """Normalize legacy/internal wording for user-facing Jira reports."""
+    text = str(value or "")
+    replacements = [
+        ("stage-completion", "stage-disbursement"),
+        ("Stage: completion", "Stage: disbursement"),
+        ("Completion timestamp", "Disbursement timestamp"),
+        ("completion timestamp", "disbursement timestamp"),
+        ("Completion records", "Disbursement records"),
+        ("completion records", "disbursement records"),
+        ("Completion amount", "Disbursement Volume"),
+        ("completion amount", "disbursement volume"),
+        ("Completion value", "Disbursement Volume"),
+        ("completion value", "disbursement volume"),
+        ("Completion rate", "Disbursement rate"),
+        ("completion rate", "disbursement rate"),
+        ("Completion (Epic)", "Disbursement (Epic)"),
+        ("Epic: Completion", "Epic: Disbursement"),
+        ("final-outcome reporting", "disbursement reporting"),
+        ("final outcome reporting", "disbursement reporting"),
+        ("final outcome value", "disbursement value"),
+    ]
+    for old, new in replacements:
+        text = text.replace(old, new)
+    if text.strip() == "Completion":
+        return "Disbursement"
+    return text
+
+
+def _issue_summary(issue: dict) -> str:
+    return _display_text(issue.get("summary") or "")
+
+
+def _issue_blocked_by(issue: dict) -> str:
+    return _display_text(issue.get("blocked_by") or "")
+
+
+def _issue_blocks(issue: dict) -> str:
+    return _display_text(issue.get("blocks") or "")
+
+
 def _issue_md(issue: dict) -> str:
     key = issue.get("key") or "(no key)"
     return jc.issue_markdown(key)
@@ -1028,6 +1073,128 @@ def _stage_matches(issue: dict, stage: str | None) -> bool:
         or stage.lower() in (issue.get("summary") or "").lower()
         or label in (issue.get("summary") or "").lower()
     )
+
+
+def _is_critical_offtrack_question(message: str) -> bool:
+    q = message.lower()
+    return any(k in q for k in [
+        "critical", "off track", "off-track", "needs attention", "what is blocking",
+        "what's blocking", "what is at risk", "what is urgent", "urgent right now",
+    ])
+
+
+def _render_issue_status(issue: dict) -> str:
+    status = issue.get("status") or "unknown"
+    flags = []
+    labels = [str(l).lower() for l in (issue.get("labels") or [])]
+    if "blocked" in labels or str(status).lower() == "blocked":
+        flags.append("blocked")
+    due = issue.get("due")
+    if due:
+        try:
+            from datetime import date
+            if due < date.today().isoformat():
+                flags.append("overdue")
+        except Exception:  # noqa: BLE001
+            pass
+    return status + (" (" + ", ".join(flags) + ")" if flags else "")
+
+
+def _render_offtrack_answer(result: dict) -> str:
+    """Deterministic manager-facing report for `/jira what is critical or off track`.
+
+    This intentionally avoids generic owner-load / overloaded-owner sections.
+    Open item count alone is not a reliable workload metric in this demo, so the
+    report focuses on business risk, blocked/overdue work, and due-soon tasks.
+    """
+    ranking = (result.get("impact_ranking") or {}).get("ranking") or []
+    needs = result.get("needs_attention_now") or []
+    due_soon = result.get("due_soon") or []
+    lines = [f"**Critical / off-track snapshot** (as of {result.get('as_of') or 'today'})", ""]
+
+    if ranking:
+        lines += [
+            "**1. Impact-ranked funnel risks**",
+            "",
+            "| Rank | Stage | Signal | Owner | Execution context | Recommended action |",
+            "|---:|---|---|---|---|---|",
+        ]
+        for r in ranking[:3]:
+            stage = _stage_label(r.get("stage"))
+            signal = "; ".join(r.get("reasons") or []) or r.get("metric") or "risk signal"
+            er = ", ".join((r.get("execution_risk") or {}).get("reasons", [])) or "no Jira execution risk detected"
+            lines.append(
+                f"| {r.get('rank') or ''} | {stage} | {_display_text(signal)} | {r.get('owner') or 'Unassigned'} | {er} | {_display_text(r.get('recommended_action') or '')} |"
+            )
+        lines.append("")
+
+    lines += ["**2. Needs attention now**", ""]
+    if needs:
+        lines += [
+            "| Issue | Stage | Owner | Status | Due | Why it needs attention |",
+            "|---|---|---|---|---|---|",
+        ]
+        for it in needs[:8]:
+            why = []
+            if _issue_blocked_by(it):
+                why.append(f"Blocked by {_issue_blocked_by(it)}")
+            if _issue_blocks(it):
+                why.append(f"Blocks {_issue_blocks(it)}")
+            if not why:
+                why.append("Overdue" if it.get("due") else "Flagged for attention")
+            lines.append(
+                f"| {_issue_md(it)} | {_stage_label(it.get('stage'))} | {it.get('owner') or it.get('assignee') or 'Unassigned'} | "
+                f"{_render_issue_status(it)} | {it.get('due') or '—'} | {'; '.join(why)} |"
+            )
+    else:
+        lines.append("No blocked or overdue open Jira tasks detected.")
+    lines += [
+        "",
+        "> **Blocked** is a Jira label/dependency flag. The workflow status can still be `To Do` or `In Progress`.",
+        "",
+        "**3. Due soon**",
+        "",
+    ]
+    if due_soon:
+        lines += ["| Issue | Stage | Owner | Status | Due |", "|---|---|---|---|---|"]
+        for it in due_soon[:8]:
+            lines.append(
+                f"| {_issue_md(it)} | {_stage_label(it.get('stage'))} | {it.get('owner') or it.get('assignee') or 'Unassigned'} | "
+                f"{it.get('status') or ''} | {it.get('due') or '—'} |"
+            )
+    else:
+        lines.append("No items due within the next 3 days.")
+
+    lines += [
+        "",
+        "_For the full execution inventory, ask `/jira give me all the tasks along with assignee and due date and status`._",
+    ]
+    return "\n".join(lines)
+
+
+def _is_blocked_semantics_question(message: str) -> bool:
+    q = message.lower()
+    return "blocked" in q and any(k in q for k in ["mean", "meaning", "blocking", "blocked by", "what is it blocking", "what does blocked"])
+
+
+def _render_blocked_semantics_answer(result: dict) -> str:
+    blocked = []
+    for it in result.get("needs_attention_now") or []:
+        labels = [str(l).lower() for l in (it.get("labels") or [])]
+        if "blocked" in labels or str(it.get("status") or "").lower() == "blocked":
+            blocked.append(it)
+    lines = [
+        "**Blocked** is a Jira label/dependency flag, not necessarily the workflow status. A task can still be `To Do` or `In Progress` while marked blocked.",
+        "",
+    ]
+    if not blocked:
+        return "\n".join(lines + ["I do not see blocked open Jira tasks in the current digest."])
+    lines += ["| Issue | Stage | Blocked by | Blocks |", "|---|---|---|---|"]
+    for it in blocked[:10]:
+        lines.append(
+            f"| {_issue_md(it)} | {_stage_label(it.get('stage'))} | {_issue_blocked_by(it) or 'unspecified'} | {_issue_blocks(it) or 'unspecified'} |"
+        )
+    return "\n".join(lines)
 
 
 def _jira_board_url() -> str | None:
@@ -1097,7 +1264,7 @@ def _render_issue_table(issues: list[dict], *, title: str, include_board: bool =
     lines = [title, "", "| Key | Summary | Assignee | Owner | Status | Due | Stage |", "|---|---|---|---|---|---|---|"]
     for it in issues[:limit]:
         lines.append(
-            f"| {_issue_md(it)} | {it.get('summary') or ''} | {it.get('assignee') or 'Unassigned'} | "
+            f"| {_issue_md(it)} | {_issue_summary(it)} | {it.get('assignee') or 'Unassigned'} | "
             f"{it.get('owner') or 'Unassigned'} | {it.get('status') or ''} | {it.get('due') or '—'} | {_stage_label(it.get('stage'))} |"
         )
     if len(issues) > limit:
@@ -1348,11 +1515,11 @@ def _handle_teams(message: str, route_info: dict) -> dict:
             owner = it.get("owner") or it.get("assignee") or "Unassigned"
             due = it.get("due") or "no due date"
             status = it.get("status") or "unknown status"
-            lines.append(f"- {key}: {it.get('summary')} — owner {owner}, status {status}, due {due}")
+            lines.append(f"- {key}: {_issue_summary(it)} — owner {owner}, status {status}, due {due}")
             blocked_by = it.get("blocked_by")
             blocks = it.get("blocks")
             if blocked_by or blocks:
-                lines.append(f"  - Blocker context: blocked by {blocked_by or 'unspecified'}; blocks {blocks or 'unspecified'}")
+                lines.append(f"  - Blocker context: blocked by {_display_text(blocked_by) or 'unspecified'}; blocks {_display_text(blocks) or 'unspecified'}")
     else:
         lines.append(empty)
     return _respond("teams", "\n".join(lines), {"mode": mode, "sent": sent, "reason": reason, "issues": issues, "teams_configured": tc.configured(), **digest})

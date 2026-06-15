@@ -166,6 +166,13 @@ ru = m.handler({"message": "what are those open tasks without assignee"}, None)
 check("unassigned handler lists details", ru.get("intent") == "oversight" and "UW-6" in ru.get("answer", "") and "Untriaged funnel monitor" in ru.get("answer", ""))
 jc.all_open_issues = _old_all
 
+ro = m.handler({"message": "/jira what is critical or off track right now?"}, None)
+ans = ro.get("answer", "")
+check("offtrack deterministic", ro.get("intent") == "oversight" and "Critical / off-track snapshot" in ans)
+check("offtrack no overloaded owners section", "overloaded" not in ans.lower() and "owner-load" not in ans.lower())
+check("offtrack no epic-level blanks", "Epic-level view" not in ans and "Completion" not in ans)
+check("offtrack uses Disbursement label", "Disbursement" in ans)
+
 print("jira jql scoping + links:")
 scoped = jc._scope_jql("statusCategory != Done ORDER BY due ASC")
 check("project scope keeps ORDER BY outside parentheses", scoped == 'project = "UW" AND (statusCategory != Done) ORDER BY due ASC')
@@ -329,7 +336,7 @@ check("teams previews when webhook missing", "did not post" in teams.get("answer
 print("chat UI version:")
 with open(os.path.join(ROOT, "chat.html"), encoding="utf-8") as fh:
     chat_html = fh.read()
-check("chat header has UI version", "UI v22" in chat_html)
+check("chat header has UI version", "UI v23" in chat_html)
 check("chat JS has one UI_VERSION const", chat_html.count("const UI_VERSION") == 1)
 
 check("chat has demo side panel", "Demo flow" in chat_html and "demo-step" in chat_html)
@@ -397,7 +404,7 @@ check("database help mentions funnel view", rd.get("intent") == "help" and "`fun
 reo = m.handler({"message": "who's the owner of each epic?"}, None)
 check("epic owner answer distinguishes operational owner", "operational stage owner" in reo.get("answer", ""))
 
-print("v22 model + combined metrics/query:")
+print("v23 model + combined metrics/query:")
 check("slash model routes model", m.route("/model") == "model")
 mdl = m.handler({"message": "/model"}, None)
 check("model handler works", mdl.get("intent") == "model" and "Chat model" in mdl.get("answer", ""))
@@ -412,7 +419,7 @@ check("stage history question answers with caveat", rhist.get("intent") == "metr
 rtasks = m.handler({"message": "/jira give me all the tasks along with assignee and due date and status"}, None)
 check("all tasks deterministic table", rtasks.get("intent") == "oversight" and "| Key | Summary | Assignee |" in rtasks.get("answer", "") and "Data JSON" not in rtasks.get("answer", ""))
 
-print("v22 seed/storyboard cleanup:")
+print("v23 seed/storyboard cleanup:")
 seed_text = open(os.path.join(ROOT, "scripts", "seed_atlassian.py"), encoding="utf-8").read()
 check("monthly Jira seeds present", "month-2026-03" in seed_text and "month-2026-04" in seed_text and "month-2026-05" in seed_text)
 check("monthly Confluence seeds present", "Monthly Funnel Review - 2026-03" in seed_text and "Decision Log - Submission Instrumentation - 2026-04" in seed_text)

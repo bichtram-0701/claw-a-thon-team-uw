@@ -117,6 +117,44 @@ def _stage_from_labels(labels: list[str]) -> str | None:
     return None
 
 
+def _stage_epic_label(stage: str | None) -> str | None:
+    if not stage:
+        return None
+    return {
+        "traffic": "Traffic",
+        "submission": "Submission",
+        "approval": "Approval",
+        "completion": "Disbursement",
+        "crosscut": "Data & Platform",
+    }.get(stage, str(stage).title())
+
+
+def _display_text(value) -> str | None:
+    if value is None:
+        return None
+    text = str(value)
+    replacements = [
+        ("stage-completion", "stage-disbursement"),
+        ("Stage: completion", "Stage: disbursement"),
+        ("Completion timestamp", "Disbursement timestamp"),
+        ("completion timestamp", "disbursement timestamp"),
+        ("Completion records", "Disbursement records"),
+        ("completion records", "disbursement records"),
+        ("Completion amount", "Disbursement Volume"),
+        ("completion amount", "disbursement volume"),
+        ("Completion value", "Disbursement Volume"),
+        ("completion value", "disbursement volume"),
+        ("Completion rate", "Disbursement rate"),
+        ("completion rate", "disbursement rate"),
+        ("final-outcome reporting", "disbursement reporting"),
+        ("final outcome reporting", "disbursement reporting"),
+        ("final outcome value", "disbursement value"),
+    ]
+    for old, new in replacements:
+        text = text.replace(old, new)
+    return "Disbursement" if text.strip().lower() == "completion" else text
+
+
 def _epic_from_parent(f: dict) -> str | None:
     """The Epic (= funnel stage / project) this task belongs to, from its parent."""
     parent = f.get("parent") or {}
@@ -171,20 +209,20 @@ def _brief(issue: dict) -> dict:
     return {
         "key": issue.get("key"),
         "url": f"{SITE}/browse/{issue.get('key')}",
-        "summary": f.get("summary"),
+        "summary": _display_text(f.get("summary")),
         "status": (f.get("status") or {}).get("name"),
         "assignee": assignee,
         "owner": _owner_from_labels(labels) or assignee,
         "stage": stage,
-        "epic": epic or (stage.title() if stage else None),
+        "epic": epic or _stage_epic_label(stage),
         "due": f.get("duedate"),
         "created": f.get("created"),
         "updated": f.get("updated"),
         "labels": labels,
         "type": (f.get("issuetype") or {}).get("name"),
-        "description": description,
-        "blocked_by": blocked_by,
-        "blocks": blocks,
+        "description": _display_text(description),
+        "blocked_by": _display_text(blocked_by),
+        "blocks": _display_text(blocks),
     }
 
 
@@ -246,7 +284,7 @@ def get_issue_full(key: str) -> dict:
     return {
         "key": key,
         "url": f"{SITE}/browse/{key}",
-        "summary": f.get("summary"),
+        "summary": _display_text(f.get("summary")),
         "type": (f.get("issuetype") or {}).get("name"),
         "status": (f.get("status") or {}).get("name"),
         "priority": (f.get("priority") or {}).get("name"),
@@ -260,9 +298,9 @@ def get_issue_full(key: str) -> dict:
         "updated": (f.get("updated") or "")[:10] or None,
         "updated_ts": f.get("updated"),   # full timestamp, for event dedup
         "created_ts": f.get("created"),
-        "description": description,
-        "blocked_by": blocked_by,
-        "blocks": blocks,
+        "description": _display_text(description),
+        "blocked_by": _display_text(blocked_by),
+        "blocks": _display_text(blocks),
     }
 
 
