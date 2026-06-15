@@ -39,11 +39,14 @@ def fact_set(facts: list[tuple[str, str]]) -> dict:
 # Full field order shown on a Jira issue panel.
 # Key is shown in the card header, so it's omitted from the field list below.
 ISSUE_FIELD_ORDER = [
-    ("Type", "type"), ("Status", "status"), ("Priority", "priority"),
-    ("Assignee", "assignee"), ("Reporter", "reporter"), ("Epic / Parent", "parent"),
-    ("Due date", "due"), ("Start date", "start"), ("Labels", "labels"),
-    ("Stale after", "stale_after"), ("Created", "created"), ("Updated", "updated"),
+    ("Status", "status"),
+    ("Assignee", "assignee"),
+    ("Due date", "due"),
+    ("Start date", "start"),
 ]
+
+# Changelog fields to never show on a change card (Jira noise / internal).
+CHANGE_IGNORE = {"resolution", "rank", "timeestimate", "timespent", "workratio"}
 
 
 def issue_card(issue: dict, header: str = "Jira task") -> bool:
@@ -119,10 +122,11 @@ def change_card(issue: dict, changes: list[dict], header: str = "Task updated") 
     # changed fields not in the standard list (e.g. Sprint, Story points)
     shown = {label for label, _ in ISSUE_FIELD_ORDER}
     for label, ch in changed.items():
-        if label not in shown:
-            old = ch.get("old") or "None"
-            new = ch.get("new") or "None"
-            body.append(text_block(f"{label}: {old}  →  {new}", bold=True, color="Attention"))
+        if label in shown or label.lower() in CHANGE_IGNORE:
+            continue
+        old = ch.get("old") or "None"
+        new = ch.get("new") or "None"
+        body.append(text_block(f"{label}: {old}  →  {new}", bold=True, color="Attention"))
     return send_card(f"{header} — {issue.get('key')}", body, url=issue.get("url"))
 
 
