@@ -65,7 +65,7 @@ app.router.routes.append(Route("/version", _version, methods=["GET"]))
 
 JIRA_EVENT_TOKEN = os.environ.get("JIRA_EVENT_TOKEN", "")
 ALLOW_WRITES = os.environ.get("ALLOW_WRITES", "true").lower() in ("1", "true", "yes")
-APP_VERSION = os.environ.get("APP_VERSION", "demo-v16")
+APP_VERSION = os.environ.get("APP_VERSION", "demo-v17")
 BUILD_VERSION = os.environ.get("GIT_SHA", "dev")[:7]
 
 STAGE_TO_EPIC = {
@@ -450,28 +450,36 @@ def _handle(payload: dict) -> dict:
         result["route"] = route_info
     else:
         result = {"route": route_info,
-                  "hint": "Try: /metrics show me the funnel metrics, /metrics show daily volume in May, /jira what is critical or off track, /jira flag it, /confluence weekly meeting summary, /jira create a ticket, /model, or /help how should I ask questions."}
+                  "hint": "Try the demo chips, press / for the command palette, or ask /help for feature prompts."}
         if _is_database_help_question(message) and not _is_command_help_question(message):
             answer = sa.schema_guide_markdown()
         else:
             answer = (
-                "Hi, I am Funnel Agent. I track the business funnel, rank target misses by value at risk, "
-                "connect them to Jira ownership, answer safe data drilldowns, summarize Confluence decisions, "
-                "draft weekly meeting briefs, post Jira digests to Teams, and create or update Jira recovery work.\n\n"
-                "Best prompt pattern: **slash command + action + stage/metric + time period**. Main commands: "
-                "`/metrics`, `/jira`, `/confluence`, `/teams`, `/help`, and `/model`.\n\n"
-                "Use `/metrics` for both KPI readouts and data drilldowns: funnel health, MoM comparison, top risk, "
-                "value at risk, daily volume, drop reasons, channel/product breakdowns, and safe SQL-backed templates. "
-                "`/query` still works as an advanced alias for `/metrics` drilldowns, but the demo uses `/metrics`.\n\n"
-                "Examples: `/metrics show me the funnel metrics`, `/metrics why is approval the top risk?`, "
-                "`/metrics break May approval drop down by reason`, `/jira flag the drops and assign owners to investigate`, "
-                "`/teams post off-track blockers`, `/confluence weekly meeting summary`, `/model`, or "
-                "`/confluence publish weekly meeting summary to Confluence`.\n\n"
+                "Hi, I am Funnel Agent. I turn funnel drift into owned recovery work across metrics, Jira, "
+                "Confluence, and Teams. Slash commands give exact routing and keep write actions safe. Press `/` in "
+                "the chat box to see available commands.\n\n"
+                "**Core demo flow**\n"
+                "1. `/metrics show me the funnel metrics`\n"
+                "2. `/metrics why is approval the top risk?`\n"
+                "3. `/metrics break May approval drop down by reason`\n"
+                "4. `/jira explain stage ownership structure`\n"
+                "5. `/jira flag the drops and assign owners to investigate`\n"
+                "6. `/jira what is critical or off track right now?`\n"
+                "7. `/jira what does blocked mean here and what is it blocking?`\n"
+                "8. `/confluence weekly meeting summary`\n"
+                "9. `/confluence publish weekly meeting summary to Confluence`\n"
+                "10. `/teams post off-track blockers`\n\n"
+                "**Other useful feature prompts**\n"
+                "- `/model` — show app version, UI version, build, configured model, routing mode, and write mode.\n"
+                "- `/metrics compare April and May performance` — compare two months.\n"
+                "- `/metrics show daily volume in May` — validate daily rows against monthly totals.\n"
+                "- `/metrics what was done in March to improve approval?` — check historical Jira/Confluence evidence.\n"
+                "- `/jira give me all the tasks along with assignee and due date and status` — list work items.\n"
+                "- `/teams post due-soon reminders` — post the due-soon reminder preview/card.\n\n"
                 "Funnel stages: **Traffic → Submission → Approval → Disbursement**. Jira work follows an "
                 "**Epic → stage owner → task assignee** structure: when a Jira write does not name an assignee, "
                 "Funnel Agent defaults to that stage's operational owner. Read-only questions without a slash command "
-                "still work with an interpretation warning; writes require the explicit command. "
-                "For month-over-month, ask `/metrics compare April and May performance`."
+                "still work with an interpretation warning; writes require the explicit command."
             )
 
     if answer is None:
@@ -948,7 +956,7 @@ def _handle_model(message: str, route_info: dict) -> dict:
         "route": route_info,
         "app_version": APP_VERSION,
         "build_version": BUILD_VERSION,
-        "ui_version": "v16",
+        "ui_version": "v17",
         "routing_mode": os.environ.get("ROUTING_MODE", "warn"),
         "allow_writes": ALLOW_WRITES,
         **info,
@@ -957,7 +965,7 @@ def _handle_model(message: str, route_info: dict) -> dict:
         "**Funnel Agent runtime**",
         "",
         f"- App version: **{APP_VERSION}**",
-        "- UI version: **v16**",
+        "- UI version: **v17**",
         f"- Build: `{BUILD_VERSION}`",
         f"- Chat model: **{info.get('model') or 'not configured'}**",
         f"- Model source: {info.get('source') or 'unknown'}",

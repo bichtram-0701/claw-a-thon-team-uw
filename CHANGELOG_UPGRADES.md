@@ -1,6 +1,6 @@
 # Upgrade changelog
 
-## v16 demo package
+## v17 demo package
 
 - Renamed the user-facing bot to **Funnel Agent**.
 - Default MaaS model is now `openai/gpt-oss-20b`; `/model` reports the configured model from runtime config instead of asking the LLM to self-identify.

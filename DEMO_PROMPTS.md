@@ -1,6 +1,6 @@
 # Funnel Agent demo prompts
 
-Use the chips in this order. The first 8 prompts are the main 2-3 minute demo; the remaining prompts are optional validation/add-on prompts.
+Use the chips in this order. The UI now shows only the main demo flow; optional validation/add-on prompts live in `/help` so the demo surface stays clean.
 
 
 ## Routing policy
@@ -56,11 +56,12 @@ Non-slash-command read-only prompts still work in `ROUTING_MODE=warn`, but the b
 9. `/confluence publish weekly meeting summary to Confluence`
    - Expected: creates/updates the Confluence weekly page and returns a short confirmation link instead of repeating the full summary.
 
+10. `/teams post off-track blockers`
+   - Expected: posts or previews a Teams reminder for blocked/overdue work.
+   - If `TEAMS_WEBHOOK_URL` is configured and `ALLOW_WRITES=true`, it posts to Teams. Otherwise it shows the reminder preview and explains what is missing.
+
 ## Optional validation / add-on prompts
 
-- `/teams post off-track blockers`
-  - Posts or previews a Teams reminder for blocked/overdue work.
-  - If `TEAMS_WEBHOOK_URL` is configured and `ALLOW_WRITES=true`, it posts to Teams. Otherwise it shows the reminder preview and explains what is missing.
 
 - `/metrics compare April and May performance`
   - Shows a specific month-pair comparison. Useful if someone asks for MoM details beyond the default metrics table.
