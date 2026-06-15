@@ -10,6 +10,9 @@ import os
 import httpx
 
 WEBHOOK_URL = os.environ.get("TEAMS_WEBHOOK_URL", "")
+# Alerts (overdue / due-soon / stale digests) go to their own group when set;
+# otherwise they fall back to the main activity webhook.
+ALERT_WEBHOOK_URL = os.environ.get("TEAMS_WEBHOOK_ALERT", "") or WEBHOOK_URL
 TIMEOUT = 15.0
 
 
@@ -70,7 +73,7 @@ def digest_card(title: str, issues: list[dict], *, empty_msg: str | None = None,
     by assignee/owner. If issues is empty, posts empty_msg (or nothing)."""
     if not issues:
         if empty_msg:
-            return send_card(title, [text_block(empty_msg, color="Good")])
+            return send_card(title, [text_block(empty_msg, color="Good")], webhook=ALERT_WEBHOOK_URL)
         return False
 
     # group by owner/assignee
@@ -92,7 +95,7 @@ def digest_card(title: str, issues: list[dict], *, empty_msg: str | None = None,
                 extra = f" · idle {it['idle_days']}d (limit {it.get('stale_threshold')}d)"
             body.append(text_block(
                 f"• {key_md} {it.get('summary')} — {it.get('status')} · due {due}{extra}"))
-    return send_card(title, body)
+    return send_card(title, body, webhook=ALERT_WEBHOOK_URL)
 
 
 def change_card(issue: dict, changes: list[dict], header: str = "Task updated") -> bool:
@@ -123,10 +126,14 @@ def change_card(issue: dict, changes: list[dict], header: str = "Task updated") 
     return send_card(f"{header} — {issue.get('key')}", body, url=issue.get("url"))
 
 
-def send_card(title: str, body_elements: list[dict], url: str | None = None) -> bool:
+def send_card(title: str, body_elements: list[dict], url: str | None = None,
+              webhook: str | None = None) -> bool:
     """Send an Adaptive Card. body_elements is a list of card elements
-    (use text_block / fact_set). url adds an 'Open in Jira' action button."""
-    if not configured():
+    (use text_block / fact_set). url adds an 'Open in Jira' action button.
+    webhook overrides the target (e.g. the alerts group); defaults to the
+    main activity webhook."""
+    target = webhook or WEBHOOK_URL
+    if not target:
         return False
     elements = [text_block(title, bold=True, size="Large")] + body_elements
     card = {
@@ -140,7 +147,7 @@ def send_card(title: str, body_elements: list[dict], url: str | None = None) -> 
     # The Power Automate flow's "Post card" action is bound to triggerBody(),
     # so we POST the raw Adaptive Card object directly (no message wrapper).
     try:
-        r = httpx.post(WEBHOOK_URL, json=card, timeout=TIMEOUT)
+        r = httpx.post(target, json=card, timeout=TIMEOUT)
         return r.status_code < 300
     except Exception:  # noqa: BLE001 — never break the caller on a Teams error
         return False
