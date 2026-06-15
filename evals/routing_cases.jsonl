@@ -15,3 +15,6 @@
 {"prompt":"flag the approval drop","expected_intent":"flag"}
 {"prompt":"create a ticket to improve submission rate","expected_intent":"create"}
 {"prompt":"assign UW-23 to Mai","expected_intent":"assign"}
+{"prompt":"/model","expected_intent":"model"}
+{"prompt":"/metrics what was done in March to improve approval?","expected_intent":"metrics"}
+{"prompt":"/teams post off-track blockers","expected_intent":"teams"}

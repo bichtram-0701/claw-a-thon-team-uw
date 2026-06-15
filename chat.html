@@ -40,7 +40,7 @@
 </head>
 <body>
 <header>
-  <h1>🛰️ Funnel <span>Agent</span> <small class="version-badge">UI v14</small></h1>
+  <h1>🛰️ Funnel <span>Agent</span> <small class="version-badge">UI v16</small></h1>
   <p>Team UW — Claw-a-thon 2026 · Business-funnel initiative tracker · Jira + Confluence · synthetic workspace · agent version shown per response</p>
 </header>
 
@@ -50,7 +50,7 @@
 <div id="chips">
   <span class="chip">/metrics show me the funnel metrics</span>
   <span class="chip">/metrics why is approval the top risk?</span>
-  <span class="chip">/query break May approval drop down by reason</span>
+  <span class="chip">/metrics break May approval drop down by reason</span>
   <span class="chip">/jira explain stage ownership structure</span>
   <span class="chip">/jira flag the drops and assign owners to investigate</span>
   <span class="chip">/jira what is critical or off track right now?</span>
@@ -59,7 +59,9 @@
   <span class="chip">/confluence publish weekly meeting summary to Confluence</span>
   <span class="chip">/teams post off-track blockers</span>
   <span class="chip">/metrics compare April and May performance</span>
-  <span class="chip">/query show daily volume in May</span>
+  <span class="chip">/metrics what was done in March to improve approval?</span>
+  <span class="chip">/metrics show daily volume in May</span>
+  <span class="chip">/model</span>
   <span class="chip">/help how should I ask questions?</span>
 </div>
 
@@ -67,11 +69,11 @@
   <input id="input" placeholder="Ask about the funnel: who owns what, what's critical, what's on track…" autocomplete="off" autofocus>
   <button id="send">Send</button>
 </form>
-<footer>UI v14 · Synthetic workspace data — no company systems, no real personal data. Powered by GreenNode AgentBase + MaaS.</footer>
+<footer>UI v16 · Synthetic workspace data — no company systems, no real personal data. Powered by GreenNode AgentBase + MaaS.</footer>
 
 <script>
 // Same-origin when served by the agent itself; absolute URL when opened as a local file.
-const UI_VERSION = "v14";
+const UI_VERSION = "v16";
 const ENDPOINT = location.protocol.startsWith("http")
   ? "/invocations"
   : "https://endpoint-2f37c067-4516-4483-ba07-2199f07abb90.agentbase-runtime.aiplatform.vngcloud.vn/invocations";
@@ -89,9 +91,9 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 
 add("bot", marked.parse("Hi! I'm **Funnel Agent** — I track the demo funnel " +
   "(Traffic → Submission → Approval → Disbursement) across metrics, Jira, Confluence, and Teams. Use slash commands for exact routing: " +
-  "`/metrics`, `/query`, `/jira`, `/confluence`, `/teams`, or `/help`. " +
+  "`/metrics`, `/jira`, `/confluence`, `/teams`, `/help`, or `/model`. " +
   "Read-only prompts without a slash command still work with a routing warning; write actions require the slash command. " +
-  "The chips are ordered for the main demo flow, including the Epic → stage owner → task assignee structure before Jira writes."));
+  "The chips are ordered for the main demo flow. `/metrics` now covers both KPI readouts and safe data drilldowns; `/query` still works as an advanced alias."));
 
 document.querySelectorAll(".chip").forEach(c =>
   c.addEventListener("click", () => { input.value = c.textContent; form.requestSubmit(); }));

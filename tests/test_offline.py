@@ -66,7 +66,7 @@ def _mk(key, summary, status, owner, stage, due, labels=None, blocked_by=None, b
 
 _ISSUES = [
     _mk("UW-1", "Renew TLS certs", "To Do", "Nam", "completion", "2026-01-10", ["blocked", "infra"],
-        blocked_by="certificate approval", blocks="secure completion webhook"),
+        blocked_by="certificate approval", blocks="secure disbursement webhook"),
     _mk("UW-2", "Reduce docs-upload abandonment", "In Progress", "Linh", "submission", "2026-12-15"),
     _mk("UW-3", "Migrate risk-score batch", "To Do", "Rino", "crosscut", "2026-12-15", ["blocked"]),
     _mk("UW-4", "Instrument funnel events", "In Progress", "Rino", "crosscut", "2026-12-16"),
@@ -329,7 +329,7 @@ check("teams previews when webhook missing", "did not post" in teams.get("answer
 print("chat UI version:")
 with open(os.path.join(ROOT, "chat.html"), encoding="utf-8") as fh:
     chat_html = fh.read()
-check("chat header has UI version", "UI v14" in chat_html)
+check("chat header has UI version", "UI v16" in chat_html)
 check("chat JS has one UI_VERSION const", chat_html.count("const UI_VERSION") == 1)
 
 print("confluence markdown conversion:")
@@ -391,6 +391,29 @@ rd = m.handler({"message": "how do I query the database?"}, None)
 check("database help mentions funnel view", rd.get("intent") == "help" and "`funnel` view" in rd.get("answer", ""))
 reo = m.handler({"message": "who's the owner of each epic?"}, None)
 check("epic owner answer distinguishes operational owner", "operational stage owner" in reo.get("answer", ""))
+
+print("v16 model + combined metrics/query:")
+check("slash model routes model", m.route("/model") == "model")
+mdl = m.handler({"message": "/model"}, None)
+check("model handler works", mdl.get("intent") == "model" and "Chat model" in mdl.get("answer", ""))
+check("/metrics data drilldown routes analyst", m.route("/metrics break May approval drop down by reason") == "analyst")
+rdrop = m.handler({"message": "/metrics break May approval drop down by reason"}, None)
+check("/metrics drop reason works", rdrop.get("intent") == "analyst" and ("Submission → Approval reconciliation" in rdrop.get("answer", "") or "application-level dataset is not available" in rdrop.get("answer", "")))
+# Regression: this used to fall through to the full metrics table instead of answering the history/outcome question.
+rhist = m.handler({"message": "/metrics what has been done in March to improve the approval rate? or if it's been done at all"}, None)
+check("stage history question answers with caveat", rhist.get("intent") == "metrics" and "closed-loop outcome tracking" in rhist.get("answer", ""))
+# Regression: broad Jira task list questions should not dump raw JSON.
+rtasks = m.handler({"message": "/jira give me all the tasks along with assignee and due date and status"}, None)
+check("all tasks deterministic table", rtasks.get("intent") == "oversight" and "| Key | Summary | Assignee |" in rtasks.get("answer", "") and "Data JSON" not in rtasks.get("answer", ""))
+
+print("v16 seed/storyboard cleanup:")
+seed_text = open(os.path.join(ROOT, "scripts", "seed_atlassian.py"), encoding="utf-8").read()
+check("monthly Jira seeds present", "month-2026-03" in seed_text and "month-2026-04" in seed_text and "month-2026-05" in seed_text)
+check("monthly Confluence seeds present", "Monthly Funnel Review - 2026-03" in seed_text and "Decision Log - Submission Instrumentation - 2026-04" in seed_text)
+check("Teams notification policy seeded", "Teams notification policy" in seed_text and "09:00 digest" in seed_text and "17:00 reminder" in seed_text)
+check("old docs removed", not os.path.exists(os.path.join(ROOT, "AGENT_SPEC.md")) and not os.path.exists(os.path.join(ROOT, "PIVOT_SPEC.md")) and not os.path.exists(os.path.join(ROOT, "HOW_TO_USE_WATCHTOWER.md")))
+story_text = open(os.path.join(ROOT, "DEMO_VIDEO_STORYBOARD.md"), encoding="utf-8").read()
+check("storyboard includes cross-system workflow", "Detect -> Diagnose -> Assign -> Summarize -> Notify" in story_text and "Teams" in story_text and "Confluence" in story_text and "Jira" in story_text)
 
 print("prefix routing guards:")
 np = m.handler({"message": "flag the drops and assign owners to investigate"}, None)

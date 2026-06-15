@@ -95,7 +95,7 @@ def render_contract_md(contract: dict) -> str:
     evidence = contract.get("evidence") or []
     ev = "\n".join(f"- {e}" for e in evidence) if evidence else "- None"
     lines = [
-        "## Watchtower initiative contract",
+        "## Funnel Agent initiative contract",
         f"- Kind: {contract.get('kind')}",
         f"- Stage: {contract.get('stage')}",
         f"- Metric: {contract.get('metric')}",
@@ -144,11 +144,11 @@ def validate_create_fields(fields: dict, original_message: str = "") -> dict:
     return out
 
 
-def contract_markdown(contract: dict, title: str = "Watchtower initiative contract") -> str:
+def contract_markdown(contract: dict, title: str = "Funnel Agent initiative contract") -> str:
     c = dict(contract or {})
     if "kind" not in c:
         c = create_contract_from_fields(c)
     text = render_contract_md(c)
     if title and not text.startswith("## " + title):
-        text = text.replace("## Watchtower initiative contract", "## " + title, 1)
+        text = text.replace("## Funnel Agent initiative contract", "## " + title, 1)
     return text

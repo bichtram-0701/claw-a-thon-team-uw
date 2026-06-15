@@ -83,6 +83,20 @@ ISSUES = [
      ["stage-crosscut", "data"], "Done"),
     ("Fix approval-rate rounding in the weekly report", -5,
      ["stage-approval", "data"], "Done"),
+
+    # --- monthly evidence trail (lets Funnel Agent answer what was done in past months) ---
+    ("2026-03 Approval recovery: instrument approval monitor by channel", -76,
+     ["stage-approval", "monitoring", "month-2026-03", "metric-approval-rate", "outcome-partial"], "Done"),
+    ("2026-03 Approval recovery: fix approval-rate rounding in reports", -73,
+     ["stage-approval", "data", "month-2026-03", "metric-approval-rate", "outcome-partial"], "Done"),
+    ("2026-04 Submission recovery: add docs-upload abandonment monitor", -45,
+     ["stage-submission", "monitoring", "month-2026-04", "metric-submission-rate", "outcome-inconclusive"], "Done"),
+    ("2026-04 Submission recovery: standardize submitted-event schema", -42,
+     ["stage-submission", "schema", "month-2026-04", "metric-submission-rate", "outcome-inconclusive"], "Done"),
+    ("2026-05 Approval recovery: investigate agent-referral approval drop", 6,
+     ["stage-approval", "investigation", "month-2026-05", "metric-approval-rate"], "In Progress"),
+    ("2026-05 Submission recovery: investigate partner handoff drop", 6,
+     ["stage-submission", "investigation", "month-2026-05", "metric-submission-rate"], "To Do"),
 ]
 
 ISSUE_BLOCKERS = {
@@ -105,11 +119,20 @@ def issue_description(summary: str, labels: list[str]) -> str:
     it prevents from becoming reliable.
     """
     stage = next((l.split("-", 1)[1] for l in labels if l.startswith("stage-")), "crosscut")
+    month = next((l.split("month-", 1)[1] for l in labels if l.startswith("month-")), None)
+    metric = next((l.split("metric-", 1)[1].replace("-", "_") for l in labels if l.startswith("metric-")), None)
+    outcome = next((l.split("outcome-", 1)[1] for l in labels if l.startswith("outcome-")), None)
     lines = [
         "# Funnel Agent seed issue",
         f"Stage: {stage}",
         "Source: synthetic demo data",
     ]
+    if month:
+        lines.append(f"Month: {month}")
+    if metric:
+        lines.append(f"Metric: {metric}")
+    if outcome:
+        lines.append(f"Outcome note: {outcome} evidence only; correlation, not causal proof.")
     ctx = ISSUE_BLOCKERS.get(summary)
     if ctx:
         lines += [
@@ -143,11 +166,11 @@ program groups every initiative that moves a funnel-stage metric, with one accou
 owner each, so the business lead can see at a glance what's in flight and what's at risk.</p>
 <h2>Stages &amp; current owners</h2>
 <ul>
-<li><strong>Traffic</strong> (eligible users entering the flow) — Mai, Linh</li>
-<li><strong>Submission</strong> (submit &amp; documents) — Linh, Mai, Nam</li>
-<li><strong>Approval</strong> (partner review) — Hathy</li>
-<li><strong>Disbursement</strong> (disbursement event) — Nam</li>
-<li><strong>Cross-cutting</strong> (instrumentation, reporting) — Rino</li>
+<li><strong>Traffic</strong> (eligible users entering the flow) — Dat Nguyen</li>
+<li><strong>Submission</strong> (submit &amp; documents) — Rino Tran</li>
+<li><strong>Approval</strong> (partner review) — bichtram</li>
+<li><strong>Disbursement</strong> (disbursement event) — Dat Nguyen</li>
+<li><strong>Cross-cutting</strong> (instrumentation, reporting) — Dat Nguyen</li>
 </ul>
 <p>Urgency = the due date. Anything <em>overdue</em> or <em>blocked</em> is escalated
 in the daily LM digest; items due within 3 days are flagged as due-soon. Every
@@ -191,6 +214,71 @@ disbursement stage (no duplicate disbursements — reconciliation caught them).<
 <li><strong>End-to-end (E2E) rate</strong> = Disbursement ÷ Traffic.</li>
 <li><strong>Avg ticket size</strong> = Disbursement amount ÷ Disbursement count.</li>
 <li>Owner of a stage metric = owner of the initiative tagged to that stage.</li>
+</ul>
+"""),
+    ("Monthly Funnel Review - 2026-03", """
+<h2>March signal</h2>
+<p>Approval rate dropped to <strong>13.0%</strong> versus the <strong>15.0%</strong> target, while Submission was on target at 30.0%.</p>
+<h2>Actions created</h2>
+<ul>
+<li>2026-03 Approval recovery: instrument approval monitor by channel.</li>
+<li>2026-03 Approval recovery: fix approval-rate rounding in reports.</li>
+</ul>
+<h2>Outcome note</h2>
+<p>Approval recovered to 15.1% in April. Treat this as directional evidence, not causal proof.</p>
+"""),
+    ("Decision Log - Approval Recovery - 2026-03", """
+<h2>Decision</h2>
+<p>Instrument Approval by channel and product type before changing partner policy rules.</p>
+<h2>Why</h2>
+<p>The March Approval drop was concentrated in a few segments, but the team did not have enough evidence to call it a causal root cause.</p>
+<h2>Linked Jira work</h2>
+<ul>
+<li>2026-03 Approval recovery: instrument approval monitor by channel.</li>
+<li>2026-03 Approval recovery: fix approval-rate rounding in reports.</li>
+</ul>
+"""),
+    ("Monthly Funnel Review - 2026-04", """
+<h2>April signal</h2>
+<p>Submission rate remained below target at <strong>28.0%</strong> versus <strong>30.0%</strong>. Approval recovered to 15.1%.</p>
+<h2>Actions created</h2>
+<ul>
+<li>2026-04 Submission recovery: add docs-upload abandonment monitor.</li>
+<li>2026-04 Submission recovery: standardize submitted-event schema.</li>
+</ul>
+<h2>Outcome note</h2>
+<p>Submission fell again to 27.0% in May, so the issue persisted. Closed-loop attribution is not yet implemented.</p>
+"""),
+    ("Decision Log - Submission Instrumentation - 2026-04", """
+<h2>Decision</h2>
+<p>Fix submission instrumentation before optimizing the form.</p>
+<h2>Why</h2>
+<p>The team could see a submission-rate gap but needed better docs-upload abandonment and submitted-event consistency before proposing product changes.</p>
+<h2>Linked Jira work</h2>
+<ul>
+<li>2026-04 Submission recovery: add docs-upload abandonment monitor.</li>
+<li>2026-04 Submission recovery: standardize submitted-event schema.</li>
+</ul>
+"""),
+    ("Weekly Recovery Plan - 2026-05", """
+<h2>May recovery focus</h2>
+<p>Approval became the top recovery priority: 11.1% actual versus 15.0% target, with estimated value at risk around 108.1M VND.</p>
+<h2>Open recovery actions</h2>
+<ul>
+<li>2026-05 Approval recovery: investigate agent-referral approval drop.</li>
+<li>2026-05 Submission recovery: investigate partner handoff drop.</li>
+</ul>
+<h2>Weekly meeting ask</h2>
+<p>Review blockers, default assignees from stage ownership, and publish the weekly readout to Confluence.</p>
+"""),
+    ("Teams notification policy", """
+<h2>Why Teams is part of the workflow</h2>
+<p>Jira is the work system, Confluence is the meeting memory, and Teams is the accountability layer.</p>
+<ul>
+<li>New Jira task: post a full field card; missing fields such as due date and assignee are highlighted.</li>
+<li>Task update: post changed fields from old value to new value.</li>
+<li>09:00 digest: overdue tasks and stale tasks without updates.</li>
+<li>17:00 reminder: tasks due tomorrow.</li>
 </ul>
 """),
     ("Team working agreements", """

@@ -14,17 +14,17 @@ Think of the final stage as the business outcome. In another team, that could be
 
 Funnel Agent does more than summarize Jira. It detects target drift, estimates business value at risk, ranks the affected funnel stage, checks Jira ownership and execution risk, drafts or updates the recovery task, and prepares weekly meeting notes from metrics, Jira, and Confluence.
 
-The LLM layer is deliberately bounded and replaceable. Prefix routing and deterministic guards own workflow selection for `/metrics`, `/query`, `/jira`, `/confluence`, `/teams`, and `/help`. The LLM helps with semantic fallback, field extraction, and manager-ready narration. Python and SQL own the facts: conversion math, target gaps, value-at-risk sizing, SQL templates, Jira issue keys, owners, write guards, and Confluence publishing.
+The LLM layer is deliberately bounded and replaceable. Prefix routing and deterministic guards own workflow selection for `/metrics`, `/jira`, `/confluence`, `/teams`, `/help`, and `/model`. The LLM helps with semantic fallback, field extraction, and manager-ready narration. Python and SQL own the facts: conversion math, target gaps, value-at-risk sizing, SQL templates, Jira issue keys, owners, write guards, and Confluence publishing.
 
 ## What changed in this upgraded version
 
-- **Slash-command routing with guardrails**: `/metrics`, `/query`, `/jira`, `/confluence`, `/teams`, and `/help` force exact routing. Non-slash-command read-only prompts get a routing warning; non-prefixed writes require the prefix.
+- **Slash-command routing with guardrails**: `/metrics`, `/jira`, `/confluence`, `/teams`, `/help`, and `/model` force exact routing. Non-slash-command read-only prompts get a routing warning; non-prefixed writes require the prefix.
 - **Impact Ranking Engine** (`impact.py`): ranks target misses by value at risk, trend severity, and Jira execution risk.
 - **Initiative contracts** (`contracts.py`): Jira issues include structured stage, metric, owner, due date, confidence, expected value, evidence, and success check.
 - **Template-first SQL analyst** (`sql_analyst.py`): common breakdowns use deterministic SQL templates; LLM SQL is only fallback and still read-only validated. Daily and monthly views now reconcile from the same row-level fixture.
 - **Idempotent investigations**: `/jira flag it` searches for an existing open investigation by stage, metric, and month before creating a new Jira issue.
 - **Weekly Confluence summary**: `/confluence weekly meeting summary` drafts a manager-ready weekly readout; `/confluence publish weekly meeting summary to Confluence` creates or updates a Confluence page.
-- **Legacy portfolio cleanup**: the old portfolio watchdog project is excluded from this clean package so it does not mix with Watchtower runtime code.
+- **Legacy portfolio cleanup**: the old portfolio watchdog project is excluded from this clean package so it does not mix with Funnel Agent runtime code.
 - **Synthetic partner cleanup**: Jira seed tickets use fictional partner names only.
 
 ## Demo script
@@ -36,7 +36,7 @@ See `DEMO_PROMPTS.md` for the recommended demo prompts and exact expected output
 ```text
 /metrics show me the funnel metrics
 /metrics why is approval the top risk?
-/query break May approval drop down by reason
+/metrics break May approval drop down by reason
 /jira explain stage ownership structure
 /jira flag the drops and assign owners to investigate
 /jira what is critical or off track right now?
@@ -45,13 +45,15 @@ See `DEMO_PROMPTS.md` for the recommended demo prompts and exact expected output
 /confluence weekly meeting summary
 /confluence publish weekly meeting summary to Confluence
 /metrics compare April and May performance
-/query show daily volume in May
+/metrics what was done in March to improve approval?
+/metrics show daily volume in May
+/model
 /help how should I ask questions?
 ```
 
 ## Core value
 
-A dashboard can show that approval dropped. Watchtower answers the operational follow-up:
+A dashboard can show that approval dropped. Funnel Agent answers the operational follow-up:
 
 1. Which stage is the top recovery priority?
 2. How much synthetic business value is at risk?
@@ -82,7 +84,7 @@ This is not a pitch about a specific model. The configured LLM is only a languag
 
 | Layer | Owner |
 |---|---|
-| Intent understanding | LLM first, guardrail validation second |
+| Intent understanding | Slash-command routing first, LLM semantic fallback second |
 | Funnel rates and targets | Deterministic Python |
 | Value-at-risk ranking | Deterministic Python |
 | Root-cause drilldown | SQL templates / contribution analysis |
@@ -94,7 +96,7 @@ That makes the system cheaper, safer, reproducible, and portable across approved
 
 ## Impact ranking
 
-Watchtower estimates value at risk with simple, auditable formulas. For example:
+Funnel Agent estimates value at risk with simple, auditable formulas. For example:
 
 ```text
 approval value at risk = submission volume x approval target gap x actual downstream disbursement rate x average ticket size
@@ -158,7 +160,7 @@ All data is synthetic and generated to reconcile across daily SQL and monthly me
 - `scripts/generate_synthetic_funnel.py`: deterministic generator for the row-level fixture.
 - `scripts/seed_atlassian.py`: creates synthetic Jira initiatives and Confluence pages with fictional partner names.
 
-For example, May 2026 reconciles as Traffic 800 -> Submission 216 -> Approval 24 -> Disbursement 23. The Submission -> Approval drop is 192 rows, and `break May approval drop down by reason` explains those rows instead of mixing them with successful completions.
+For example, May 2026 reconciles as Traffic 800 -> Submission 216 -> Approval 24 -> Disbursement 23. The Submission -> Approval drop is 192 rows, and `break May approval drop down by reason` explains those rows instead of mixing them with successful disbursements.
 
 No company systems, real customers, or real partner names are used.
 
@@ -176,7 +178,7 @@ Offline tests do not require network credentials or LLM access:
 python tests/test_offline.py
 ```
 
-Current offline suite: **149 passed, 0 failed**.
+Current offline suite: **160 passed, 0 failed**.
 
 ## Environment variables
 
@@ -185,7 +187,7 @@ See `.env.example`. Key values:
 ```text
 LLM_API_KEY=
 LLM_BASE_URL=https://maas-llm-aiplatform-hcm.api.vngcloud.vn/v1
-LLM_MODEL=md-7c838436-12d0-4174-ad8b-ad324d85a6b9
+LLM_MODEL=openai/gpt-oss-20b
 ATLASSIAN_SITE=
 ATLASSIAN_EMAIL=
 ATLASSIAN_TOKEN=
@@ -211,5 +213,5 @@ If you renamed the Jira project/space key, set `JIRA_PROJECT_KEY` before deployi
 
 ## Usage guide
 
-For demo prompts, stage definitions, and safe defaults for ambiguous terms like `volume` and `drop`, see [`HOW_TO_USE_WATCHTOWER.md`](HOW_TO_USE_WATCHTOWER.md).
+For demo prompts, stage definitions, and safe defaults for ambiguous terms like `volume` and `drop`, see [`HOW_TO_USE_FUNNEL_AGENT.md`](HOW_TO_USE_FUNNEL_AGENT.md).
 

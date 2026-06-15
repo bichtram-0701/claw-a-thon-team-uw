@@ -122,7 +122,8 @@ def _epic_from_parent(f: dict) -> str | None:
     parent = f.get("parent") or {}
     pf = parent.get("fields") or {}
     if (pf.get("issuetype") or {}).get("name") == "Epic" or parent.get("key"):
-        return pf.get("summary") or parent.get("key")
+        summary = pf.get("summary") or parent.get("key")
+        return "Disbursement" if str(summary).lower() == "completion" else summary
     return None
 
 

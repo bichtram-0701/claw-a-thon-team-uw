@@ -17,10 +17,10 @@ The real bottleneck is metric-to-action translation.
 ## Solution
 Funnel Agent is an execution intelligence agent for owned business funnels. Ask `/metrics show me the funnel metrics` and it computes conversion, target gaps, month-over-month anomalies, and estimated value at risk. Ask `/jira what is critical or off track right now?` and it links those risks to Jira owners, blockers, overdue work, and open initiatives. Ask `/jira flag it` and it creates or updates one Jira investigation per stage + metric + month with a structured initiative contract. Ask `/confluence weekly meeting summary` and it drafts, and optionally publishes, a Confluence readout with impact-ranked risks, execution follow-up, decisions, and agenda.
 
-The LLM handles routing, extraction, and narration only. Python and SQL compute numbers, rankings, SQL templates, Jira writes, duplicate-ticket prevention, and Confluence publishing guards.
+Slash commands and deterministic guards handle primary routing. The LLM handles semantic fallback, bounded extraction, and narration only. Python and SQL compute numbers, rankings, SQL templates, Jira writes, duplicate-ticket prevention, and Confluence publishing guards.
 
 ## Value
-Watchtower compresses the manager's operating loop from dashboard -> Jira -> Confluence -> Teams into one accountable workflow: detect target drift, estimate business value at risk, rank the priority, identify the owner, open/update recovery work, and prepare the weekly readout. It is useful even with a replaceable internal model layer because the business truth is deterministic and auditable.
+Funnel Agent compresses the manager's operating loop from dashboard -> Jira -> Confluence -> Teams into one accountable workflow: detect target drift, estimate business value at risk, rank the priority, identify the owner, open/update recovery work, and prepare the weekly readout. It is useful even with a replaceable internal model layer because the business truth is deterministic and auditable.
 
 ## Voter guide
 Try:
@@ -28,7 +28,7 @@ Try:
 ```text
 /metrics show me the funnel metrics
 /metrics why is approval the top risk?
-/query break May approval drop down by reason
+/metrics break May approval drop down by reason
 /jira explain stage ownership structure
 /jira flag the drops and assign owners to investigate
 /jira what is critical or off track right now?
@@ -45,7 +45,7 @@ Business teams do not only need to know that a funnel metric moved. They need to
 
 Funnel Agent is an execution intelligence agent for owned funnels. The demo uses a simple four-stage funnel: Traffic -> Submission -> Approval -> Disbursement, but the pattern applies to marketing acquisition, product onboarding, sales pipeline, merchant activation, and operations workflows. It computes conversion, OKR target gaps, month-over-month drops, and estimated value at risk deterministically from synthetic data. It then links those signals to Jira initiatives, owners, blockers, Confluence decisions, Teams follow-up, and weekly meeting summaries. When a metric slips, Funnel Agent ranks the issue by business impact and execution risk, identifies the owner, and can open or update a Jira investigation with a structured initiative contract.
 
-The LLM only routes, extracts bounded fields, and narrates verified JSON. The math, issue keys, owners, SQL templates, and write decisions are validated by code.
+Slash commands route primary workflows. The LLM only provides semantic fallback, extracts bounded fields, and narrates verified JSON. The math, issue keys, owners, SQL templates, and write decisions are validated by code.
 
 ## Links
 - Repo: https://github.com/bichtram-0701/claw-a-thon-team-uw

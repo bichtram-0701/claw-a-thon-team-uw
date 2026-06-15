@@ -9,13 +9,15 @@ should also check route source, confidence, and final answer quality.
 | Prompt | Expected intent | Notes |
 |---|---|---|
 | /metrics show me the funnel metrics | metrics | Exact prefix route; no routing warning |
-| /query break May approval drop down by reason | analyst | Exact SQL/drop-reason route |
+| /metrics break May approval drop down by reason | analyst | Exact data-drilldown route |
 | /jira flag the drops and assign owners to investigate | flag | Exact Jira write route |
 | /jira what does blocked mean here and what is it blocking? | oversight | Blocker semantics, not generic help |
 | /confluence weekly meeting summary | weekly | Read-only weekly pack |
 | /confluence publish weekly meeting summary to Confluence | weekly | Confluence write route |
 | /teams post off-track blockers | teams | Teams write route |
 | /help how should I ask questions? | help | Usage guide |
+| /model | model | Deterministic runtime/model info, not LLM self-identification |
+| /metrics what was done in March to improve approval? | metrics | Historical Jira/Confluence evidence + outcome caveat |
 | flag the drops and assign owners to investigate | flag + prefix_required | Non-slash-command write should be blocked in warn mode |
 | show me the funnel metrics | metrics + warning | Non-slash-command read-only can answer with routing warning |
 | why did it drop? | help + clarification_required | Ambiguous stage should ask clarification |
@@ -29,7 +31,7 @@ should also check route source, confidence, and final answer quality.
 | show daily volume | analyst + warning | Analytics request; warn because no slash command |
 | draft my daily standup | standup | Standup keyword must win only with standup context |
 | draft my standup | standup | Standard standup request |
-| daily approval volume by channel | analyst | SQL-style breakdown |
+| daily approval volume by channel | analyst | data-drilldown breakdown |
 | weekly volume in May | analyst | Data aggregation, not weekly meeting |
 | prepare weekly meeting summary | weekly + warning | Meeting summary; warn because no slash command |
 | publish weekly meeting summary to Confluence | weekly + prefix_required | Non-slash-command Confluence write should be blocked |
@@ -53,7 +55,7 @@ For metrics answers:
 - Must mention impact ranking when target misses exist.
 - Must not invent owners or Jira issue keys.
 
-For analyst answers:
+For data-drilldown answers:
 
 - Prefer `source=template` for supported breakdowns.
 - `show daily volume in May` and `can you give me the number day over day in May` should return daily rows whose totals reconcile to monthly metrics.
@@ -61,7 +63,7 @@ For analyst answers:
 - Show the SQL.
 - Reject or avoid non-read SQL.
 
-For flagging:
+For Jira flagging:
 
 - One open investigation per stage + metric + month.
 - If an investigation exists, comment/update instead of creating a duplicate.
@@ -73,3 +75,11 @@ For weekly summary:
   context, and proposed agenda.
 - If asked to publish and writes are disabled, clearly say it drafted but did not
   publish.
+
+## Teams workflow checks
+
+- New Jira task events should produce a Teams card with required fields.
+- Task updates should show changed fields old value -> new value.
+- The 09:00 digest should include overdue tasks and stale open tasks.
+- The 17:00 reminder should include tasks due tomorrow.
+

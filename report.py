@@ -1,4 +1,4 @@
-"""LLM helpers for Funnel Agent / Funnel Watchtower.
+"""LLM helpers for Funnel Agent.
 
 The configured LLM is used as a controlled language layer: semantic routing, bounded
 field extraction and narration from verified JSON. Business metrics, rankings,
@@ -15,7 +15,7 @@ _MODEL_CACHE: dict[str, str] = {}
 _MODEL_OVERRIDE: str | None = None
 
 
-PREFERRED_GPT_OSS_20B_MODEL_ID = "md-7c838436-12d0-4174-ad8b-ad324d85a6b9"
+PREFERRED_GPT_OSS_20B_MODEL_ID = "openai/gpt-oss-20b"
 
 
 def _client():
@@ -49,6 +49,11 @@ def _discover_model(client) -> str | None:
     preferred_exact = os.environ.get("LLM_PREFERRED_MODEL") or PREFERRED_GPT_OSS_20B_MODEL_ID
     if preferred_exact in ids:
         return preferred_exact
+    # Older packages used the md-* id for GPT-OSS 20B. Keep it as a fallback if the
+    # serving endpoint exposes model ids that way.
+    legacy_id = "md-7c838436-12d0-4174-ad8b-ad324d85a6b9"
+    if legacy_id in ids:
+        return legacy_id
     # Some MaaS deployments expose readable ids; others expose md-* ids. Prefer
     # GPT-OSS when available, then fall back to previous contest defaults.
     return (next((i for i in ids if "gpt-oss-20b" in i.lower()), None)
@@ -177,3 +182,30 @@ def one_line(text: str | None) -> str | None:
     if not text:
         return None
     return text.strip().splitlines()[0].strip().strip("`.,!\"'") or None
+
+
+def model_label() -> str:
+    """Human-readable configured model label for /version and /model."""
+    return (_MODEL_OVERRIDE
+            or os.environ.get("LLM_MODEL")
+            or _MODEL_CACHE.get("name")
+            or os.environ.get("LLM_PREFERRED_MODEL")
+            or PREFERRED_GPT_OSS_20B_MODEL_ID)
+
+
+def model_info() -> dict:
+    """Safe runtime model metadata. Does not expose API keys or secrets."""
+    configured = os.environ.get("LLM_MODEL")
+    source = "LLM_MODEL env" if configured else "preferred/default"
+    model = model_label()
+    if _MODEL_OVERRIDE and _MODEL_OVERRIDE != configured:
+        source = "runtime autodiscovery/override"
+        model = _MODEL_OVERRIDE
+    return {
+        "model": model,
+        "configured_model": configured or None,
+        "preferred_model": os.environ.get("LLM_PREFERRED_MODEL") or PREFERRED_GPT_OSS_20B_MODEL_ID,
+        "source": source,
+        "llm_configured": bool(os.environ.get("LLM_API_KEY") and os.environ.get("LLM_BASE_URL")),
+        "note": "Model identity comes from Funnel Agent runtime config, not from model self-reporting.",
+    }

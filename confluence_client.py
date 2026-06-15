@@ -203,7 +203,7 @@ def _table_to_storage(lines: list[str]) -> str:
 def markdown_to_storage(markdown: str) -> str:
     """Convert a safe markdown subset into Confluence storage XHTML.
 
-    Supported because they appear in Watchtower meeting notes:
+    Supported because they appear in Funnel Agent meeting notes:
     - headings (# through ####)
     - unordered bullets using '-' or '*'
     - ordered bullets such as '1.'

@@ -8,12 +8,14 @@ Use the chips in this order. The first 8 prompts are the main 2-3 minute demo; t
 The demo chips intentionally use slash commands. Slash-command prompts route deterministically:
 
 ```text
-/metrics      metric tables, MoM, top risk, value at risk
-/query          safe DuckDB templates and data drilldowns
+/metrics      funnel KPIs + safe data drilldowns (daily volume, drop reasons, channel/product breakdowns)
 /jira         owner/blocker views and Jira write actions
 /confluence   weekly summaries, Confluence read/publish flows
 /teams        Teams reminders
 /help         usage/database guidance
+/model        runtime/model info
+
+/query        optional advanced alias for /metrics drilldowns
 ```
 
 Non-slash-command read-only prompts still work in `ROUTING_MODE=warn`, but the bot shows a routing warning. Non-slash-command write actions are blocked and ask the user to resend with the correct slash command.
@@ -29,14 +31,14 @@ Non-slash-command read-only prompts still work in `ROUTING_MODE=warn`, but the b
    - Expected: concise explanation of the impact ranking: target gap, MoM movement, estimated value at risk, owner/execution context.
    - This is not causal proof; it explains why Approval ranks first.
 
-3. `/query break May approval drop down by reason`
+3. `/metrics break May approval drop down by reason`
    - Expected: Submission -> Approval reconciliation.
    - Should state 216 submitted, 24 approved, 192 dropped before Approval.
    - Drop reasons should sum to 192.
 
 4. `/jira explain stage ownership structure`
    - Expected: explains the Epic -> stage owner -> task assignee model.
-   - Should say that if a Jira write does not name an assignee, Watchtower defaults to the stage owner.
+   - Should say that if a Jira write does not name an assignee, Funnel Agent defaults to the stage owner.
 
 5. `/jira flag the drops and assign owners to investigate`
    - Expected: creates or updates idempotent Jira investigations for Approval and Submission.
@@ -63,8 +65,14 @@ Non-slash-command read-only prompts still work in `ROUTING_MODE=warn`, but the b
 - `/metrics compare April and May performance`
   - Shows a specific month-pair comparison. Useful if someone asks for MoM details beyond the default metrics table.
 
-- `/query show daily volume in May`
+- `/metrics show daily volume in May`
   - Shows daily stage counts that reconcile back to the May monthly totals.
+
+- `/metrics what was done in March to improve approval?`
+  - Uses seeded historical Jira and Confluence evidence to explain prior recovery work and caveats.
+
+- `/model`
+  - Shows the configured chat model and runtime info.
 
 - `/help how should I ask questions?`
   - Shows the usage guide and recommended prompt pattern.

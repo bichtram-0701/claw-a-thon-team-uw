@@ -18,7 +18,7 @@ Metric drops -> manager checks dashboard -> searches Jira -> searches Confluence
 
 ## 3. Why agent, not normal chat?
 
-Normal chat gives an answer. Watchtower runs the workflow.
+Normal chat gives an answer. Funnel Agent runs the workflow.
 
 | Normal chat | Funnel Agent |
 |---|---|
@@ -64,21 +64,22 @@ Use this story order:
 ```text
 1. /metrics show me the funnel metrics
 2. /metrics why is approval the top risk?
-3. /query break May approval drop down by reason
-4. /jira flag the drops and assign owners to investigate
-5. /jira what is critical or off track right now?
-6. /jira what does blocked mean here and what is it blocking?
-7. /teams post off-track blockers
-8. /confluence weekly meeting summary
-9. /confluence publish weekly meeting summary to Confluence
+3. /metrics break May approval drop down by reason
+4. /jira explain stage ownership structure
+5. /jira flag the drops and assign owners to investigate
+6. /jira what is critical or off track right now?
+7. /jira what does blocked mean here and what is it blocking?
+8. /teams post off-track blockers
+9. /confluence weekly meeting summary
+10. /confluence publish weekly meeting summary to Confluence
 ```
 
 Optional backup prompts:
 
 ```text
 /metrics compare April and May performance
-/query show daily volume in May
-how should I ask questions?
+/metrics show daily volume in May
+/help how should I ask questions?
 ```
 
 ## 7. Architecture / reliability
@@ -111,7 +112,7 @@ The moat is the Funnel Execution Graph:
 metric -> stage -> target -> owner -> initiative -> blocker -> decision -> outcome
 ```
 
-Generic AI can summarize tools. Watchtower encodes how the team operates the funnel and closes the recovery loop.
+Generic AI can summarize tools. Funnel Agent encodes how the team operates the funnel and closes the recovery loop.
 
 ## Closing line
 

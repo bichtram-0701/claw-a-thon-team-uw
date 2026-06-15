@@ -60,9 +60,9 @@ def estimate_value_at_risk(stage: str, row: dict | None = None,
     """Estimate downstream disbursement value lost to the latest target gap.
 
     The formula is simple and auditable for a hackathon/demo:
-    - submission: traffic * submission_gap * actual approval rate * actual completion rate * avg ticket
-    - approval: submission * approval_gap * actual completion rate * avg ticket
-    - completion: approval * completion_gap * avg ticket
+    - submission: traffic * submission_gap * actual approval rate * actual disbursement rate * avg ticket
+    - approval: submission * approval_gap * actual disbursement rate * avg ticket
+    - disbursement: approval * disbursement_rate_gap * avg ticket
     """
     row = row or fm.rows()[-1]
     targets = targets or fm.targets()
@@ -80,13 +80,13 @@ def estimate_value_at_risk(stage: str, row: dict | None = None,
 
     if stage == "submission":
         missed_disbursements = (row.get("traffic") or 0) * gap * approval_rate * completion_rate
-        formula = "traffic x submission gap x actual approval rate x actual completion rate x avg ticket"
+        formula = "traffic x submission gap x actual approval rate x actual disbursement rate x avg ticket"
     elif stage == "approval":
         missed_disbursements = (row.get("submission") or 0) * gap * completion_rate
-        formula = "submission volume x approval gap x actual completion rate x avg ticket"
+        formula = "submission volume x approval gap x actual disbursement rate x avg ticket"
     elif stage == "completion":
         missed_disbursements = (row.get("approval") or 0) * gap
-        formula = "approval volume x completion gap x avg ticket"
+        formula = "approval volume x disbursement-rate gap x avg ticket"
     else:
         missed_disbursements = 0
         formula = "unsupported stage"

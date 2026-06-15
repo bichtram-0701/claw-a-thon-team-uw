@@ -1,6 +1,6 @@
 """Funnel Agent — Team UW, Claw-a-thon 2026.
 
-Execution intelligence for a business funnel. The LLM routes and narrates; Python
+Execution intelligence for a business funnel. Slash-command routing chooses workflows; the LLM narrates; Python
 and SQL own the business facts: conversion math, value-at-risk ranking, issue
 keys, owners, write guards, Jira idempotency, and Confluence weekly summaries.
 """
@@ -57,6 +57,7 @@ async def _version(request):
         "build_version": BUILD_VERSION,
         "jira_project_key": os.environ.get("JIRA_PROJECT_KEY", ""),
         "allow_writes": ALLOW_WRITES,
+        "llm_model": rp.model_label(),
     })
 
 
@@ -64,7 +65,7 @@ app.router.routes.append(Route("/version", _version, methods=["GET"]))
 
 JIRA_EVENT_TOKEN = os.environ.get("JIRA_EVENT_TOKEN", "")
 ALLOW_WRITES = os.environ.get("ALLOW_WRITES", "true").lower() in ("1", "true", "yes")
-APP_VERSION = os.environ.get("APP_VERSION", "demo-v14")
+APP_VERSION = os.environ.get("APP_VERSION", "demo-v16")
 BUILD_VERSION = os.environ.get("GIT_SHA", "dev")[:7]
 
 STAGE_TO_EPIC = {
@@ -81,7 +82,7 @@ def _default_owner_for_stage(stage: str | None) -> str | None:
 
     Demo convention: each funnel Epic represents a stage. Open tasks under that
     stage reveal the operational owner. If a Jira write does not name an owner,
-    Watchtower defaults to this stage owner rather than leaving the task
+    Funnel Agent defaults to this stage owner rather than leaving the task
     unassigned or assigning everything to the token owner. Environment variables
     can override the demo inference, e.g. DEFAULT_STAGE_OWNER_APPROVAL=bichtram.
     """
@@ -306,7 +307,7 @@ def _prefix_required_answer(rr, original_message: str) -> str:
     if rr.source == "strict_guard":
         return (
             "⚠️ **Command prefix required.** Start your message with one of: "
-            "`/metrics`, `/query`, `/jira`, `/confluence`, `/teams`, `/help`.\n\n"
+            "`/metrics`, `/jira`, `/confluence`, `/teams`, `/help`, `/model`.\n\n"
             f"Suggested rewrite: `{interpreted}`"
         )
     if rr.intent in {"create", "assign", "flag"}:
@@ -324,7 +325,7 @@ def _prefix_required_answer(rr, original_message: str) -> str:
         f"⚠️ This looks like a **{system} write/action**. For safety, I did not execute it without an explicit slash command.\n\n"
         f"Please resend as: `{interpreted}`\n\n"
         "Read-only questions can still be answered without a slash command, but I will show an interpretation warning. "
-        "For exact routing, use `/metrics`, `/query`, `/jira`, `/confluence`, `/teams`, or `/help`."
+        "For exact routing, use `/metrics`, `/jira`, `/confluence`, `/teams`, `/help`, or `/model`."
     )
 
 
@@ -371,6 +372,8 @@ def _handle(payload: dict) -> dict:
         return _handle_teams(message, route_info)
     if intent == "weekly":
         return _handle_weekly(message, lang, route_info)
+    if intent == "model":
+        return _handle_model(message, route_info)
 
     answer = None
     if intent == "analyst":
@@ -394,7 +397,10 @@ def _handle(payload: dict) -> dict:
                     answer += "\n\n_SQL:_ `" + result["sql"] + "`"
     elif intent == "metrics":
         cmp_months = _comparison_months_from_message(message)
-        if _is_target_disbursement_question(message):
+        if _is_stage_work_history_question(message):
+            result = _stage_work_history_result(message, route_info)
+            answer = _render_stage_work_history_answer(result)
+        elif _is_target_disbursement_question(message):
             result = _metrics_result(route_info)
             answer = _render_target_disbursement_answer(result)
         elif _is_investigation_result_question(message):
@@ -424,6 +430,10 @@ def _handle(payload: dict) -> dict:
             answer = _render_epic_assignment_answer(result)
         elif _is_unassigned_work_question(message):
             answer = _render_unassigned_work_answer(result)
+        elif _is_open_items_question(message):
+            answer = _render_open_items_answer(result, message)
+        elif _is_all_tasks_question(message):
+            answer = _render_all_tasks_answer(result, message)
         elif _is_epic_owner_question(message):
             answer = _render_epic_owner_answer(result)
     elif intent == "briefing":
@@ -440,25 +450,26 @@ def _handle(payload: dict) -> dict:
         result["route"] = route_info
     else:
         result = {"route": route_info,
-                  "hint": "Try: /metrics show me the funnel metrics, /query show daily volume in May, /jira what is critical or off track, /jira flag it, /confluence weekly meeting summary, /jira create a ticket, or /help how should I ask questions."}
+                  "hint": "Try: /metrics show me the funnel metrics, /metrics show daily volume in May, /jira what is critical or off track, /jira flag it, /confluence weekly meeting summary, /jira create a ticket, /model, or /help how should I ask questions."}
         if _is_database_help_question(message) and not _is_command_help_question(message):
             answer = sa.schema_guide_markdown()
         else:
             answer = (
                 "Hi, I am Funnel Agent. I track the business funnel, rank target misses by value at risk, "
-                "connect them to Jira ownership, answer safe query-style breakdowns, summarize Confluence decisions, "
+                "connect them to Jira ownership, answer safe data drilldowns, summarize Confluence decisions, "
                 "draft weekly meeting briefs, post Jira digests to Teams, and create or update Jira recovery work.\n\n"
-                "Best prompt pattern: **slash command + action + stage/metric + time period**. Slash commands give exact routing: "
-                "`/metrics`, `/query`, `/jira`, `/confluence`, `/teams`, and `/help`.\n\n"
-                "Use `/metrics` for business KPI readouts: funnel health, MoM comparison, top risk, and value at risk. "
-                "Use `/query` for row-level data drilldowns: daily volume, drop reasons, channel/product breakdowns, and safe SQL templates.\n\n"
+                "Best prompt pattern: **slash command + action + stage/metric + time period**. Main commands: "
+                "`/metrics`, `/jira`, `/confluence`, `/teams`, `/help`, and `/model`.\n\n"
+                "Use `/metrics` for both KPI readouts and data drilldowns: funnel health, MoM comparison, top risk, "
+                "value at risk, daily volume, drop reasons, channel/product breakdowns, and safe SQL-backed templates. "
+                "`/query` still works as an advanced alias for `/metrics` drilldowns, but the demo uses `/metrics`.\n\n"
                 "Examples: `/metrics show me the funnel metrics`, `/metrics why is approval the top risk?`, "
-                "`/query break May approval drop down by reason`, `/jira flag the drops and assign owners to investigate`, "
-                "`/teams post off-track blockers`, `/confluence weekly meeting summary`, or "
+                "`/metrics break May approval drop down by reason`, `/jira flag the drops and assign owners to investigate`, "
+                "`/teams post off-track blockers`, `/confluence weekly meeting summary`, `/model`, or "
                 "`/confluence publish weekly meeting summary to Confluence`.\n\n"
                 "Funnel stages: **Traffic → Submission → Approval → Disbursement**. Jira work follows an "
                 "**Epic → stage owner → task assignee** structure: when a Jira write does not name an assignee, "
-                "Watchtower defaults to that stage's operational owner. Read-only questions without a slash command "
+                "Funnel Agent defaults to that stage's operational owner. Read-only questions without a slash command "
                 "still work with an interpretation warning; writes require the explicit command. "
                 "For month-over-month, ask `/metrics compare April and May performance`."
             )
@@ -640,7 +651,7 @@ def _render_target_disbursement_answer(result: dict) -> str:
     e2e_target_count = round(traffic * (e2e_target or 0) / 100) if e2e_target is not None else None
     rate_target_count = round(approvals * (disb_rate_target or 0) / 100) if disb_rate_target is not None else None
     lines = [
-        "There is **no standalone Disbursement volume OKR** configured in the demo data. Watchtower has rate targets, so the target volume depends on which target you mean.",
+        "There is **no standalone Disbursement volume OKR** configured in the demo data. Funnel Agent has rate targets, so the target volume depends on which target you mean.",
         "",
         f"For **{row.get('month')}**:",
         f"- Actual Disbursement count: **{disb:,}**",
@@ -675,8 +686,8 @@ def _render_investigation_result_answer(message: str, result: dict) -> str:
             "Submission had already been identified as an issue in April, but this demo does **not yet have closed-loop outcome tracking** that proves which investigation fixed or failed to fix it.\n\n"
             f"What the data shows: April Submission rate was **{apr['submission_rate_pct']}%** vs 30.0% target; May fell to **{may['submission_rate_pct']}%** (**{delta:+.1f}pp**). "
             "That means the issue persisted into May rather than being fully recovered.\n\n"
-            "What Watchtower can do now: use `/jira flag the drops and assign owners to investigate` to create/update the Submission recovery task and default it to the Submission stage owner. "
-            "What is still missing as a product feature: after the Jira task is completed, Watchtower should compare before/after metrics and mark the initiative as worked / partially worked / inconclusive."
+            "What Funnel Agent can do now: use `/jira flag the drops and assign owners to investigate` to create/update the Submission recovery task and default it to the Submission stage owner. "
+            "What is still missing as a product feature: after the Jira task is completed, Funnel Agent should compare before/after metrics and mark the initiative as worked / partially worked / inconclusive."
         )
     return (
         "I can show the metric trend and Jira recovery work, but this demo does not yet store closed-loop investigation outcomes for that stage. "
@@ -691,9 +702,9 @@ def _is_epic_assignment_question(message: str) -> bool:
 
 def _render_epic_assignment_answer(result: dict) -> str:
     return (
-        "Yes. The Jira Epic issue itself **can** be assigned, but Watchtower separates two concepts:\n\n"
+        "Yes. The Jira Epic issue itself **can** be assigned, but Funnel Agent separates two concepts:\n\n"
         "- **Jira Epic assignee:** the assignee field on the Epic ticket itself. In the demo this may be Unassigned.\n"
-        "- **Operational stage owner:** inferred from owner labels / assignees on open work under that Epic. This is what Watchtower uses when defaulting Jira investigation assignees.\n\n"
+        "- **Operational stage owner:** inferred from owner labels / assignees on open work under that Epic. This is what Funnel Agent uses when defaulting Jira investigation assignees.\n\n"
         "For the demo, keeping Epic issues unassigned is acceptable because ownership is demonstrated at the stage/task layer. If you want cleaner Jira hygiene, assign each Epic to its operational stage owner:\n\n"
         "| Epic / Stage | Suggested default owner |\n|---|---|\n"
         "| Traffic | Dat Nguyen |\n| Submission | Rino Tran |\n| Approval | bichtram |\n| Disbursement | Dat Nguyen |\n| Data & Platform | Dat Nguyen |\n\n"
@@ -724,12 +735,12 @@ def _render_epic_owner_answer(result: dict) -> str:
         ("crosscut", "Data & Platform"),
     ]
     lines = [
-        "Watchtower uses an **Epic → stage owner → task assignee** structure.",
+        "Funnel Agent uses an **Epic → stage owner → task assignee** structure.",
         "",
         "- Each funnel stage has a Jira Epic: Traffic, Submission, Approval, Disbursement, and Data & Platform.",
         "- The Jira Epic issue itself may be unassigned.",
         "- The **operational stage owner** is inferred from owner labels / assignees on open work under that stage.",
-        "- When `/jira create ...` or `/jira flag ...` does not name an assignee, Watchtower defaults to the operational stage owner instead of leaving the task unassigned.",
+        "- When `/jira create ...` or `/jira flag ...` does not name an assignee, Funnel Agent defaults to the operational stage owner instead of leaving the task unassigned.",
         "",
         "Current operational stage owners:",
         "",
@@ -742,7 +753,7 @@ def _render_epic_owner_answer(result: dict) -> str:
     lines += [
         "",
         "So if you ask `who owns Approval`, use the operational owner above. If you want literal Jira Epic assignees, those can still be Unassigned in the demo workspace.",
-        "Demo tip: show this before the Jira write step so viewers understand why Watchtower can default the assignee safely.",
+        "Demo tip: show this before the Jira write step so viewers understand why Funnel Agent can default the assignee safely.",
     ]
     return "\n".join(lines)
 
@@ -766,9 +777,9 @@ def _render_unassigned_work_answer(result: dict) -> str:
     owner_items = result.get("owner_unassigned_open") or []
     assignee_items = result.get("assignee_unassigned_open") or []
     # The old LLM answer only had aggregate by_owner counts. Keep both lists so
-    # users can distinguish Watchtower's owner mapping from raw Jira assignee.
+    # users can distinguish Funnel Agent's owner mapping from raw Jira assignee.
     items = owner_items or assignee_items
-    basis = "Watchtower owner mapping" if owner_items else "real Jira assignee"
+    basis = "Funnel Agent owner mapping" if owner_items else "real Jira assignee"
     if not items:
         return "I do not see any open UW issues without an owner or Jira assignee right now."
     lines = [
@@ -782,8 +793,8 @@ def _render_unassigned_work_answer(result: dict) -> str:
     if owner_items and assignee_items and len(owner_items) != len(assignee_items):
         lines += [
             "",
-            f"Note: **{len(owner_items)}** are unassigned by Watchtower owner mapping; **{len(assignee_items)}** have no real Jira assignee. "
-            "Watchtower treats an `owner-*` label or Jira assignee as the owner signal.",
+            f"Note: **{len(owner_items)}** are unassigned by Funnel Agent owner mapping; **{len(assignee_items)}** have no real Jira assignee. "
+            "Funnel Agent treats an `owner-*` label or Jira assignee as the owner signal.",
         ]
     return "\n".join(lines)
 
@@ -817,7 +828,7 @@ def _render_top_risk_answer(result: dict, month: str | None = None) -> str:
     stage_prompt = stage.lower()
     lines += [
         "",
-        f"This is an impact ranking, not a causal claim. Use `/query break {diag_month} {stage_prompt} drop down by reason` or `/query why did {stage_prompt} drop?` for diagnostic evidence.",
+        f"This is an impact ranking, not a causal claim. Use `/metrics break {diag_month} {stage_prompt} drop down by reason` or `/metrics why did {stage_prompt} drop?` for diagnostic evidence.",
     ]
     return "\n".join(lines)
 
@@ -927,6 +938,276 @@ def _render_month_comparison_answer(result: dict) -> str:
     return "\n".join(lines)
 
 
+
+
+# ------------------------------------------------------ deterministic answers --
+def _handle_model(message: str, route_info: dict) -> dict:
+    """Return runtime/model info from configuration, never from model self-knowledge."""
+    info = rp.model_info()
+    result = {
+        "route": route_info,
+        "app_version": APP_VERSION,
+        "build_version": BUILD_VERSION,
+        "ui_version": "v16",
+        "routing_mode": os.environ.get("ROUTING_MODE", "warn"),
+        "allow_writes": ALLOW_WRITES,
+        **info,
+    }
+    lines = [
+        "**Funnel Agent runtime**",
+        "",
+        f"- App version: **{APP_VERSION}**",
+        "- UI version: **v16**",
+        f"- Build: `{BUILD_VERSION}`",
+        f"- Chat model: **{info.get('model') or 'not configured'}**",
+        f"- Model source: {info.get('source') or 'unknown'}",
+        f"- Routing mode: `{result['routing_mode']}`",
+        f"- Writes enabled: **{str(ALLOW_WRITES).lower()}**",
+        "",
+        "The model is used for language, bounded extraction, and narration. Metrics, value-at-risk, SQL templates, Jira writes, Confluence publishing, Teams posting, and write guards are deterministic tool code.",
+    ]
+    if info.get("note"):
+        lines += ["", f"Note: {info['note']}"]
+    return _respond("model", "\n".join(lines), result)
+
+
+def _stage_label(stage: str | None) -> str:
+    return STAGE_TO_EPIC.get((stage or "").lower(), (stage or "").title() or "Unsorted")
+
+
+def _issue_md(issue: dict) -> str:
+    key = issue.get("key") or "(no key)"
+    return jc.issue_markdown(key)
+
+
+def _stage_matches(issue: dict, stage: str | None) -> bool:
+    if not stage:
+        return True
+    label = _stage_label(stage).lower()
+    return (
+        (issue.get("stage") or "").lower() == stage.lower()
+        or (issue.get("epic") or "").lower() == label
+        or stage.lower() in (issue.get("summary") or "").lower()
+        or label in (issue.get("summary") or "").lower()
+    )
+
+
+def _jira_board_url() -> str | None:
+    configured = os.environ.get("JIRA_BOARD_URL") or os.environ.get("ATLASSIAN_BOARD_URL")
+    if configured:
+        return configured.strip()
+    site = os.environ.get("ATLASSIAN_SITE", "").rstrip("/")
+    key = os.environ.get("JIRA_PROJECT_KEY", "").strip()
+    if site and key:
+        return f"{site}/jira/software/projects/{key}/boards"
+    return None
+
+
+def _stage_from_text(message: str) -> str | None:
+    st = ct.infer_stage(message)
+    if st:
+        return st
+    q = message.lower()
+    if "disbursement" in q or "disburse" in q:
+        return "completion"
+    return None
+
+
+def _is_all_tasks_question(message: str) -> bool:
+    q = message.lower()
+    return any(k in q for k in [
+        "all the tasks", "all tasks", "all current tasks", "all open tasks",
+        "all issues", "all tickets", "list tasks", "list all tasks", "give me all the tasks",
+        "give me all tasks", "tasks along with", "tasks and link", "link to kanban",
+    ])
+
+
+def _is_open_items_question(message: str) -> bool:
+    q = message.lower()
+    return bool(re.search(r"\b\d+\s+open\s+(items|tasks|issues|tickets)\b", q)) or any(k in q for k in [
+        "what are the open items", "what are those open items", "what are the open tasks",
+        "what are those open tasks", "show open items", "list open items",
+    ])
+
+
+def _infer_open_items_stage(result: dict, message: str) -> str | None:
+    explicit = _stage_from_text(message)
+    if explicit:
+        return explicit
+    q = message.lower()
+    m = re.search(r"\b(\d+)\s+open\s+(items|tasks|issues|tickets)\b", q)
+    if not m:
+        top = ((result.get("impact_ranking") or {}).get("top")
+               or (result.get("impact_ranking") or {}).get("top_problem") or {})
+        return top.get("stage")
+    n = int(m.group(1))
+    epic_to_stage = {"Traffic": "traffic", "Submission": "submission", "Approval": "approval", "Disbursement": "completion", "Data & Platform": "crosscut"}
+    matches = []
+    for epic, vals in (result.get("by_epic") or {}).items():
+        if int((vals or {}).get("open") or 0) == n and epic in epic_to_stage:
+            matches.append(epic_to_stage[epic])
+    if len(matches) == 1:
+        return matches[0]
+    top = ((result.get("impact_ranking") or {}).get("top")
+           or (result.get("impact_ranking") or {}).get("top_problem") or {})
+    if int(((top.get("execution_risk") or {}).get("open_count") or -1)) == n:
+        return top.get("stage")
+    return None
+
+
+def _render_issue_table(issues: list[dict], *, title: str, include_board: bool = False, limit: int = 30) -> str:
+    lines = [title, "", "| Key | Summary | Assignee | Owner | Status | Due | Stage |", "|---|---|---|---|---|---|---|"]
+    for it in issues[:limit]:
+        lines.append(
+            f"| {_issue_md(it)} | {it.get('summary') or ''} | {it.get('assignee') or 'Unassigned'} | "
+            f"{it.get('owner') or 'Unassigned'} | {it.get('status') or ''} | {it.get('due') or '—'} | {_stage_label(it.get('stage'))} |"
+        )
+    if len(issues) > limit:
+        lines += ["", f"Showing {limit} of {len(issues)} matching open issues."]
+    if include_board:
+        board = _jira_board_url()
+        lines += ["", f"Kanban board: {board}" if board else "Kanban board URL is not configured. Set `JIRA_BOARD_URL` if you want a precise board link."]
+    return "\n".join(lines)
+
+
+def _current_open_tasks() -> list[dict]:
+    try:
+        issues = jc.all_open_issues()
+    except Exception:  # noqa: BLE001
+        return []
+    return [i for i in issues if (i.get("type") or "").lower() != "epic"]
+
+
+def _render_all_tasks_answer(result: dict, message: str) -> str:
+    issues = _current_open_tasks()
+    if not issues:
+        return "I could not read any open non-Epic Jira tasks right now."
+    return _render_issue_table(
+        issues,
+        title=f"**Open non-Epic Jira tasks ({len(issues)})**",
+        include_board=("board" in message.lower() or "kanban" in message.lower()),
+        limit=40,
+    )
+
+
+def _render_open_items_answer(result: dict, message: str) -> str:
+    stage = _infer_open_items_stage(result, message)
+    issues = _current_open_tasks()
+    if stage:
+        issues = [i for i in issues if _stage_matches(i, stage)]
+        title = f"**Open {_stage_label(stage)} items ({len(issues)})**"
+    else:
+        title = f"**Open non-Epic Jira tasks ({len(issues)})**"
+    if not issues:
+        return f"I could not find open Jira tasks for {_stage_label(stage) if stage else 'that request'}."
+    return _render_issue_table(issues, title=title, include_board=False, limit=30)
+
+
+def _is_stage_work_history_question(message: str) -> bool:
+    q = message.lower()
+    has_stage = any(k in q for k in ["traffic", "submission", "approval", "disbursement", "completion"])
+    asks_work = any(k in q for k in [
+        "what has been done", "what have been done", "what was done", "been done",
+        "was it investigated", "been investigated", "investigated", "result", "outcome",
+        "worked on", "done to improve", "improve the", "fix", "recovered",
+    ])
+    return has_stage and asks_work
+
+
+def _stage_work_history_result(message: str, route_info: dict | None = None) -> dict:
+    stage = _stage_from_text(message) or "approval"
+    requested_month = _scoped_metric_month_from_message(message)
+    rows = fm.rows()
+    by_month = {r["month"]: r for r in rows}
+    month_sequence = []
+    if requested_month and requested_month in by_month:
+        months = [r["month"] for r in rows]
+        idx = months.index(requested_month)
+        month_sequence.append(by_month[requested_month])
+        if idx + 1 < len(months):
+            month_sequence.append(by_month[months[idx + 1]])
+        if months[-1] not in {m["month"] for m in month_sequence}:
+            month_sequence.append(by_month[months[-1]])
+    else:
+        month_sequence = rows[-3:]
+    open_related, done_related, pages = [], [], []
+    if jc.configured():
+        try:
+            open_related = [i for i in jc.all_open_issues() if _stage_matches(i, stage) and (i.get("type") or "").lower() != "epic"]
+        except Exception:  # noqa: BLE001
+            open_related = []
+        try:
+            done_related = [i for i in jc.done_issues() if _stage_matches(i, stage) and (i.get("type") or "").lower() != "epic"]
+        except Exception:  # noqa: BLE001
+            done_related = []
+    if cf.configured():
+        try:
+            month_text = _month_name_for_prompt(requested_month) if requested_month else ""
+            pages = cf.search_pages(f"{_stage_label(stage)} {month_text} investigation result decision", limit=5)
+        except Exception:  # noqa: BLE001
+            pages = []
+    return {
+        "route": route_info or {},
+        "stage": stage,
+        "stage_label": _stage_label(stage),
+        "requested_month": requested_month,
+        "metric_rows": month_sequence,
+        "open_related": open_related[:8],
+        "done_related": done_related[:8],
+        "confluence_pages": pages[:5],
+        "limitation": "This demo does not yet have closed-loop outcome tracking that links completed Jira work to measured before/after metric lift.",
+    }
+
+
+def _render_stage_work_history_answer(result: dict) -> str:
+    stage = result.get("stage")
+    label = result.get("stage_label") or _stage_label(stage)
+    rows = result.get("metric_rows") or []
+    rate_key = {"submission": "submission_rate_pct", "approval": "approval_rate_pct", "completion": "completion_rate_pct", "traffic": "e2e_rate_pct"}.get(stage, "approval_rate_pct")
+    count_key = {"submission": "submission", "approval": "approval", "completion": "completion", "traffic": "traffic"}.get(stage, "approval")
+    lines = [
+        f"**{label} work/history readout**",
+        "",
+        "This is partly an execution-history question, not just a KPI question. I can show related Jira/Confluence evidence and the metric trend, but I do **not** have audited closed-loop outcome tracking yet.",
+    ]
+    if rows:
+        lines += ["", "**Metric trend**", "", "| Month | Count | Rate |", "|---|---:|---:|"]
+        for r in rows:
+            val = r.get(count_key, "—")
+            try:
+                val = f"{int(val):,}"
+            except Exception:
+                val = str(val)
+            lines.append(f"| {r.get('month')} | {val} | {r.get(rate_key, '—')}% |")
+    done = result.get("done_related") or []
+    open_ = result.get("open_related") or []
+    pages = result.get("confluence_pages") or []
+    lines += ["", "**Completed / recently done related work**"]
+    if done:
+        for it in done[:6]:
+            lines.append(f"- {_issue_md(it)}: {it.get('summary')} — owner {it.get('owner') or it.get('assignee') or 'Unassigned'}, status {it.get('status')}")
+    else:
+        lines.append(f"- I do not see completed {label} Jira work in the current demo data for the requested period.")
+    lines += ["", "**Current related recovery work**"]
+    if open_:
+        for it in open_[:6]:
+            lines.append(f"- {_issue_md(it)}: {it.get('summary')} — assignee {it.get('assignee') or 'Unassigned'}, status {it.get('status')}, due {it.get('due') or 'no due date'}")
+    else:
+        lines.append(f"- I do not see open {label} Jira work right now.")
+    if pages:
+        lines += ["", "**Relevant Confluence context**"]
+        for p in pages[:3]:
+            url = p.get("url") or ""
+            title = p.get("title") or "Untitled"
+            lines.append(f"- {title}" + (f": {url}" if url else ""))
+    lines += [
+        "",
+        "**Result / caveat**",
+        "- The current demo can show that work existed and whether the metric later improved or worsened.",
+        "- It cannot yet prove that a specific Jira item caused the metric movement.",
+        "- Roadmap: close the loop by storing expected lift, completion date, before/after metric, and outcome classification for each recovery initiative.",
+    ]
+    return "\n".join(lines)
 
 def _handle_weekly(message: str, lang: str, route_info: dict) -> dict:
     pack = bf.weekly_meeting_pack()
@@ -1174,7 +1455,7 @@ def _handle_write(intent: str, message: str, route_info: dict) -> dict:
             f["owner"] = owner
             f.setdefault("evidence", [])
             if isinstance(f["evidence"], list):
-                f["evidence"].append("No assignee was mentioned; Watchtower defaulted to the operational stage owner.")
+                f["evidence"].append("No assignee was mentioned; Funnel Agent defaulted to the operational stage owner.")
         assignee_id = None
         assign_note = ""
         if owner:

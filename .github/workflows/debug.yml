@@ -56,7 +56,7 @@ jobs:
             head -c 1500 /tmp/resp.json; echo
           }
           ask "/metrics show me the funnel metrics"
-          ask "/query why did approval drop?"
+          ask "/metrics why did approval drop?"
           ask "/confluence weekly meeting summary"
           ask "/jira what does blocked mean here and what is it blocking?"
           echo "================ LOGS AFTER TESTS ================"
@@ -85,7 +85,7 @@ jobs:
           KEY="${{ secrets.LLM_API_KEY }}"
           echo "models visible with team key:"
           curl -s -m 20 -H "Authorization: Bearer $KEY" "$LLM_BASE_URL/models" | head -c 800; echo
-          MODEL="${{ vars.LLM_MODEL || 'md-7c838436-12d0-4174-ad8b-ad324d85a6b9' }}"
+          MODEL="${{ vars.LLM_MODEL || 'openai/gpt-oss-20b' }}"
           echo "trying chat completion on: $MODEL"
           T0=$(date +%s)
           curl -s -m 55 -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \

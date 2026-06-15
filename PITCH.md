@@ -39,7 +39,7 @@ Normal chat is good at answering a one-off question. This problem is a recurring
 | Can duplicate tasks | Uses idempotent investigation logic |
 | Has no weekly operating state | Produces a weekly recovery readout |
 
-**A chatbot gives an answer. Watchtower closes the loop.**
+**A chatbot gives an answer. Funnel Agent closes the loop.**
 
 ## Why this workflow?
 
@@ -66,7 +66,7 @@ Metrics, tasks, documents, and chat already exist. The hard part is connecting t
 
 ## Why this is defensible
 
-Generic assistants can summarize Jira and Confluence. Watchtower adds the missing business operating layer:
+Generic assistants can summarize Jira and Confluence. Funnel Agent adds the missing business operating layer:
 
 - **Funnel ontology**: stages, metrics, targets, owners, and Epics are explicit.
 - **Value-at-risk math**: target gaps are converted into estimated business impact.
@@ -88,11 +88,11 @@ Over time, this can learn which interventions actually recover which metrics.
 
 ### "Isn't this just Jira AI or a dashboard?"
 
-No. A dashboard shows metric movement. Jira shows work. Confluence stores decisions. Watchtower connects them into one recovery loop: impact ranking, owner, blocker, existing work, investigation, and weekly follow-up.
+No. A dashboard shows metric movement. Jira shows work. Confluence stores decisions. Funnel Agent connects them into one recovery loop: impact ranking, owner, blocker, existing work, investigation, and weekly follow-up.
 
 ### "Why not just use a normal chatbot?"
 
-Because the user would still have to paste data, search Jira, search Confluence, check duplicates, create the ticket, and prepare the weekly meeting summary. Watchtower does those steps as a governed workflow.
+Because the user would still have to paste data, search Jira, search Confluence, check duplicates, create the ticket, and prepare the weekly meeting summary. Funnel Agent does those steps as a governed workflow.
 
 ### "Does it depend on a specific model?"
 
@@ -106,21 +106,23 @@ No, and it should not claim to. Root-cause drilldowns are contribution analysis:
 
 1. Ask: `/metrics show me the funnel metrics`.
    - It shows the latest conversion table, MoM columns, and the top value-at-risk priority.
-2. Ask: `why is approval the top risk?`.
+2. Ask: `/metrics why is approval the top risk?`.
    - It explains the ranking: target gap, MoM deterioration, and value at risk.
-3. Ask: `break May approval drop down by reason`.
+3. Ask: `/metrics break May approval drop down by reason`.
    - It reconciles the 192 submitted-but-not-approved rows by drop reason.
-4. Ask: `flag the drops and assign owners to investigate`.
+4. Ask: `/jira explain stage ownership structure`.
+   - It explains Epic -> stage owner -> task assignee before any Jira write.
+5. Ask: `/jira flag the drops and assign owners to investigate`.
    - It creates or updates one investigation per stage, with a structured contract.
-5. Ask: `what is critical or off track right now?`.
+6. Ask: `/jira what is critical or off track right now?`.
    - It connects the metric risk to Jira blockers, owners, and overdue work.
-6. Ask: `what does blocked mean here and what is it blocking?`.
+7. Ask: `/jira what does blocked mean here and what is it blocking?`.
    - It explains blocker semantics and the dependency behind each blocked task.
-7. Ask: `/teams post off-track blockers`.
+8. Ask: `/teams post off-track blockers`.
    - It posts the blocked/overdue Jira digest to the configured Teams channel.
-8. Ask: `/confluence weekly meeting summary`.
+9. Ask: `/confluence weekly meeting summary`.
    - It drafts the weekly readout: executive summary, risks, blockers, Confluence context, agenda.
-9. Ask: `/confluence publish weekly meeting summary to Confluence`.
+10. Ask: `/confluence publish weekly meeting summary to Confluence`.
    - It creates or updates the weekly meeting page.
 
 ## Final positioning

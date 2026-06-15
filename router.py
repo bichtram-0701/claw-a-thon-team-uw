@@ -1,7 +1,7 @@
 """Command-aware semantic router for Funnel Agent.
 
 Reliability rule:
-- Slash-command prompts route deterministically: /metrics, /query, /jira, /confluence, /teams, /help.
+- Slash-command prompts route deterministically: /metrics, /jira, /confluence, /teams, /help, /model. (/query is kept as an alias for metric/data drilldowns.)
 - Legacy colon prefixes (metrics:, sql:, jira:, confluence:, teams:, help:) are still accepted as aliases.
 - Non-prefixed read-only prompts are still supported in warn mode, but the answer
   gets an interpretation warning.
@@ -21,7 +21,7 @@ import report as rp
 
 VALID = {
     "create", "assign", "flag", "analyst", "metrics", "oversight", "briefing",
-    "sprint", "knowledge", "standup", "weekly", "teams", "help",
+    "sprint", "knowledge", "standup", "weekly", "teams", "help", "model",
 }
 
 PREFIX_TO_SYSTEM = {
@@ -33,19 +33,20 @@ PREFIX_TO_SYSTEM = {
     "confluence": "confluence",
     "teams": "teams",
     "help": "help",
+    "model": "model",
 }
 
 # Preferred user syntax is slash-command style. Colon prefixes are accepted as
 # backwards-compatible aliases so old demo prompts do not break.
 COMMAND_PREFIX_RE = re.compile(
-    r"^\s*(?:/(metrics|query|sql|data|jira|confluence|teams|help)|"
-    r"(metrics|query|sql|data|jira|confluence|teams|help)\s*:)\s*(.*)$",
+    r"^\s*(?:/(metrics|query|sql|data|jira|confluence|teams|help|model)|"
+    r"(metrics|query|sql|data|jira|confluence|teams|help|model)\s*:)\s*(.*)$",
     re.IGNORECASE | re.DOTALL,
 )
 
 ROUTES: list[tuple[set[str], str]] = [
     ({"help", "how to use", "how should i ask", "how should i use", "guide", "usage", "instructions",
-      "what can you do", "prompt examples", "demo prompts", "command", "commands", "prefix",
+      "what can you do", "prompt examples", "demo prompts", "command", "commands", "prefix", "what model", "which model", "model are you",
       "difference between metrics", "metrics and sql", "metrics vs sql", "metrics and query",
       "metrics vs query", "what is metrics", "what is query"}, "help"),
     ({"teams", "microsoft teams", "post to teams", "send to teams", "notify teams",
@@ -67,7 +68,7 @@ ROUTES: list[tuple[set[str], str]] = [
       "group by", "by segment", "slice", "each day", "by month per", "daily volume", "volume by", "count by",
       "why did", "root cause", "diagnose", "diagnostic", "driver", "contribution", "what caused", "approval drop", "approval fell"},
      "analyst"),
-    ({"metric", "conversion", "submission rate", "approval rate", "completion rate", "traffic",
+    ({"metric", "conversion", "submission rate", "approval rate", "disbursement rate", "traffic",
       "ticket size", "funnel performance", "funnel numbers", "funnel table", "performance", "e2e",
       "throughput", "how is the funnel doing", "compare", "comparison", "what changed",
       "concerning", "drop", "dropped", "month over month", "mom", "vs last month", "anomal",
@@ -143,7 +144,7 @@ def _llm_route(message: str) -> tuple[str | None, float, str]:
     raw = rp.llm_chat(
         "You route messages for Funnel Agent, a business-funnel execution assistant. "
         "Return STRICT JSON only with keys: intent, confidence, reason. "
-        "intent must be exactly one of: create, assign, flag, analyst, metrics, oversight, briefing, sprint, knowledge, standup, weekly, teams, help.\n"
+        "intent must be exactly one of: create, assign, flag, analyst, metrics, oversight, briefing, sprint, knowledge, standup, weekly, teams, help, model.\n"
         "Definitions:\n"
         "- analyst = ad-hoc application data query/breakdown/count/volume by day/week/product/channel/drop reason.\n"
         "- metrics = standard funnel performance, conversion, target miss, value-at-risk/impact ranking.\n"
@@ -202,6 +203,15 @@ def _validate(intent: str, message: str, fallback: str) -> tuple[str, str]:
     return intent, ""
 
 
+def _explicit_model_signal(message: str) -> bool:
+    msg = message.lower().strip()
+    return msg in {"/model", "model"} or any(k in msg for k in [
+        "what model are you using", "which model are you using", "what chatbot model",
+        "what chat model", "which llm", "what llm", "model am i talking to",
+        "what model am i talking to", "are you using gpt", "are you using qwen",
+    ])
+
+
 def _explicit_help_signal(message: str) -> bool:
     msg = message.lower()
     return any(k in msg for k in [
@@ -209,7 +219,7 @@ def _explicit_help_signal(message: str) -> bool:
         "instructions", "prompt examples", "demo prompts", "what can you do",
         "difference between metrics", "metrics and sql", "metrics vs sql",
         "metrics and query", "metrics vs query", "what is metrics", "what is query",
-        "slash command", "commands", "prefix",
+        "slash command", "commands", "prefix", "what model", "which model", "model are you",
     ])
 
 
@@ -269,17 +279,17 @@ def _needs_clarification(message: str, intent: str) -> str | None:
     if ambiguous_drop and not _stage_present(msg):
         return (
             "Which funnel transition should I diagnose?\n\n"
-            "1. `/query break May traffic drop down by reason`\n"
-            "2. `/query break May approval drop down by reason`\n"
-            "3. `/query break May disbursement drop down by reason`\n"
+            "1. `/metrics break May traffic drop down by reason`\n"
+            "2. `/metrics break May approval drop down by reason`\n"
+            "3. `/metrics break May disbursement drop down by reason`\n"
             "4. `/metrics why is the current top risk?`"
         )
     if ambiguous_volume:
         return (
             "What volume do you want? For exact routing, try one of these:\n\n"
-            "- `/query show daily volume in May`\n"
+            "- `/metrics show daily volume in May`\n"
             "- `/metrics show me the funnel metrics`\n"
-            "- `/query show May volume by channel`"
+            "- `/metrics show May volume by channel`"
         )
     return None
 
@@ -298,10 +308,10 @@ def _write_like(intent: str, message: str) -> bool:
 
 
 def _prefix_for_intent(intent: str) -> str:
-    if intent in {"analyst"}:
-        return "query"
-    if intent in {"metrics"}:
+    if intent in {"analyst", "metrics"}:
         return "metrics"
+    if intent in {"model"}:
+        return "model"
     if intent in {"weekly", "knowledge"}:
         return "confluence"
     if intent in {"teams"}:
@@ -309,6 +319,28 @@ def _prefix_for_intent(intent: str) -> str:
     if intent in {"create", "assign", "flag", "oversight", "briefing", "sprint", "standup"}:
         return "jira"
     return "help"
+
+
+def _metrics_drilldown_signal(message: str) -> bool:
+    msg = message.lower()
+    # /metrics is the main user-facing data command. If the prompt asks for a
+    # row-level breakdown/table, route to the safe query/template layer.
+    return any(k in msg for k in [
+        "daily", "day over day", "day-over-day", "by day", "per day",
+        "weekly volume", "by week", "per week", "by product", "per product",
+        "by channel", "per channel", "drop reason", "drop reasons",
+        "break down", "breakdown", "down by reason", "break ", "group by", "slice", "show sql",
+        "volume by", "count by", "why did", "root cause", "diagnose",
+        "diagnostic", "driver", "contribution", "what caused",
+    ]) and not any(k in msg for k in ["top risk", "top recovery", "recovery priority", "value at risk", "funnel metrics", "funnel table"])
+
+
+def _route_within_metrics(message: str) -> str:
+    if _explicit_help_signal(message):
+        return "help"
+    if _metrics_drilldown_signal(message):
+        return "analyst"
+    return "metrics"
 
 
 def _route_within_jira(message: str) -> str:
@@ -346,11 +378,13 @@ def _explicit_prefix_route(prefix: str, message: str, fallback: str) -> RouteRes
     if p in {"query", "sql", "data"}:
         intent = "analyst"
     elif p == "metrics":
-        intent = "metrics"
+        intent = _route_within_metrics(message)
     elif p == "teams":
         intent = "teams"
     elif p == "help":
         intent = "help"
+    elif p == "model":
+        intent = "model"
     elif p == "jira":
         intent = _route_within_jira(message)
     elif p == "confluence":
@@ -394,7 +428,7 @@ def _apply_no_prefix_policy(result: RouteResult, original: str) -> RouteResult:
     result.warning = (
         "No slash command detected. I interpreted this as "
         f"`{interpreted_as}`. For exact routing, start with one of: "
-        "`/metrics`, `/query`, `/jira`, `/confluence`, `/teams`, `/help`."
+        "`/metrics`, `/jira`, `/confluence`, `/teams`, `/help`, `/model`."
     )
     if _write_like(result.intent, original):
         result.needs_prefix = True
@@ -424,6 +458,8 @@ def route_result(message: str) -> RouteResult:
     if _explicit_blocker_explanation_signal(original):
         result = RouteResult("oversight", "keyword", 1.0, fallback, "explicit blocker explanation prompt", stripped_message=original)
         return _apply_no_prefix_policy(result, original)
+    if _explicit_model_signal(original):
+        return RouteResult("model", "keyword", 1.0, fallback, "explicit model-info prompt", stripped_message=original, interpreted_as=command_text("model"))
     if _explicit_help_signal(original):
         # Help itself is safe without a prefix; no warning needed.
         return RouteResult("help", "keyword", 1.0, fallback, "explicit usage/help prompt", stripped_message=original, interpreted_as=command_text("help", original.strip()))

@@ -146,7 +146,7 @@ def generate() -> None:
             entity_no += 1
 
         # Adjust completed rows so their potential_value_vnd sum exactly matches the
-        # monthly completion value used by value-at-risk math.
+        # monthly disbursement volume used by value-at-risk math.
         if completed_indices:
             base = target_completed_amount // len(completed_indices)
             remainder = target_completed_amount - base * len(completed_indices)

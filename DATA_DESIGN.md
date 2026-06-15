@@ -32,8 +32,8 @@ Traffic -> Submission -> Approval -> Disbursement
 |---|---|---:|
 | `traffic` | Entered funnel but did not submit | 1 |
 | `submitted` | Submitted but did not get approved | 2 |
-| `approved` | Approved but did not complete | 3 |
-| `completed` / `disbursed` | Disbursed disbursement | 4 |
+| `approved` | Approved but did not disburse | 3 |
+| `completed` (internal) / `disbursed` | Reaches disbursement | 4 |
 
 Counting rules:
 
@@ -49,7 +49,7 @@ Conversion rates:
 ```text
 submission_rate = Submission / Traffic
 approval_rate   = Approval / Submission
-completion_rate = Disbursement / Approval
+completion_rate (internal key) = Disbursement / Approval
 e2e_rate        = Disbursement / Traffic
 ```
 
@@ -69,16 +69,16 @@ e2e_rate        = Disbursement / Traffic
 
 ## Drop logic
 
-`drop_reason` exists for every non-completed row.
+`drop_reason` exists for every non-disbursed row.
 
 | `final_stage` | `drop_transition` | Example `drop_reason` values |
 |---|---|---|
 | `traffic` | `traffic_to_submission` | `did_not_submit`, `abandoned_before_submit`, `no_partner_selected`, `not_ready`, `duplicate_entry` |
 | `submitted` | `submission_to_approval` | `policy_check`, `eligibility_check`, `docs_invalid`, `docs_abandoned` |
 | `approved` | `approval_to_disbursement` | `customer_withdrew`, `offer_expired`, `ops_timeout`, `partner_unavailable` |
-| `completed` / `disbursed` | blank | blank |
+| `completed` (internal) / `disbursed` | blank | blank |
 
-This means `/query break May approval drop down by reason` can answer the Submission -> Approval loss directly:
+This means `/metrics break May approval drop down by reason` can answer the Submission -> Approval loss directly:
 
 ```text
 May submitted: 216
@@ -152,5 +152,5 @@ Example seeded blockers:
 
 | Issue summary | Blocked by | Blocks |
 |---|---|---|
-| Disbursement timestamp mismatch | verification status-map alignment from the partner feed | reliable Disbursement timestamp reconciliation and final-outcome reporting |
+| Disbursement timestamp mismatch | verification status-map alignment from the partner feed | reliable Disbursement timestamp reconciliation and disbursement reporting |
 | Missing records in the E2E funnel log | upstream event-feed/backfill from the data platform | complete E2E funnel-log coverage and weekly metric confidence |
