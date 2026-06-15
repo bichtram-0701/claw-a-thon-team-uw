@@ -21,8 +21,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import jira_client as jc   # noqa: E402
 import teams_client as tc  # noqa: E402
 
-WINDOW_MIN = int(os.environ.get("POLL_WINDOW_MIN", "20"))
-GRACE_SEC = int(os.environ.get("CREATE_GRACE_SEC", "120"))
+WINDOW_MIN = int(os.environ.get("POLL_WINDOW_MIN", "720"))   # how far back to fetch
+RECENT_MIN = int(os.environ.get("POLL_RECENT_MIN", "45"))    # cold-start notify cutoff
 STATE_FILE = os.environ.get("POLL_STATE_FILE", ".poll_state/state.json")
 
 
@@ -52,24 +52,27 @@ def main() -> int:
         print("Missing ATLASSIAN_* or TEAMS_WEBHOOK_URL", file=sys.stderr)
         return 1
 
-    issues = jc.search(f"updated >= -{WINDOW_MIN}m ORDER BY updated ASC", limit=100)
     state = _load()
     seen = state.get("seen", {})
-    cold = "seen" not in state
+    now = dt.datetime.now(dt.timezone.utc)
+    last_run = _dt(state.get("last_run")) if state.get("last_run") else None
+    # Notify anything changed at/after this cutoff; older items are baselined
+    # silently. Warm runs use last_run (never miss); cold runs use a short
+    # recency so a fresh start still reports very recent tasks without spamming
+    # history.
+    cutoff = last_run or (now - dt.timedelta(minutes=RECENT_MIN))
 
+    issues = jc.search(f"updated >= -{WINDOW_MIN}m ORDER BY updated ASC", limit=200)
     notified = 0
     for it in issues:
         key, upd, created = it.get("key"), it.get("updated"), it.get("created")
         if seen.get(key) == upd:
-            continue  # already notified this exact version
-        first_time = key not in seen
-        seen[key] = upd  # mark regardless, so we don't re-fire
-
-        if cold:
-            continue  # baseline only — no notifications on first run
-
-        cu, uu = _dt(created), _dt(upd)
-        is_new = first_time and cu and uu and (uu - cu).total_seconds() < GRACE_SEC
+            continue  # already handled this exact version
+        seen[key] = upd
+        uu, cu = _dt(upd), _dt(created)
+        if not uu or uu < cutoff:
+            continue  # old change / baseline — record silently, don't notify
+        is_new = cu is not None and cu >= cutoff
         full = jc.get_issue_full(key)
         if is_new:
             tc.issue_card(full, header="New task created")
@@ -77,11 +80,10 @@ def main() -> int:
             tc.change_card(full, jc.get_latest_changes(key), header="Task updated")
         notified += 1
 
-    # cap state size
-    if len(seen) > 800:
-        seen = dict(list(seen.items())[-800:])
-    _save({"seen": seen})
-    print(f"polled {len(issues)} updated issue(s); {'baseline set' if cold else f'{notified} card(s) sent'}")
+    if len(seen) > 1000:
+        seen = dict(list(seen.items())[-1000:])
+    _save({"seen": seen, "last_run": now.isoformat()})
+    print(f"polled {len(issues)} issue(s); {notified} card(s) sent; cutoff={cutoff.isoformat()}")
     return 0
 
 
