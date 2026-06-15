@@ -15,7 +15,7 @@ name: Teams reminders
 
 on:
   schedule:
-    - cron: "0 2 * * 1-5"    # 09:00 VN — overdue + stale
+    - cron: "0 2 * * 1-5"    # 09:00 VN — overdue
     - cron: "0 10 * * 1-5"   # 17:00 VN — due tomorrow
   workflow_dispatch:
     inputs:
@@ -50,14 +50,14 @@ jobs:
         id: pick
         run: |
           case "${{ github.event.schedule }}" in
-            "0 2 * * 1-5")  MODES="overdue stale" ;;
+            "0 2 * * 1-5")  MODES="overdue" ;;
             "0 10 * * 1-5") MODES="due-soon" ;;
             *) # manual run
                case "${{ github.event.inputs.mode }}" in
                  overdue)  MODES="overdue" ;;
                  due-soon) MODES="due-soon" ;;
                  stale)    MODES="stale" ;;
-                 *)        MODES="overdue due-soon stale" ;;
+                 *)        MODES="overdue due-soon" ;;
                esac ;;
           esac
           echo "modes=$MODES" >> "$GITHUB_OUTPUT"
