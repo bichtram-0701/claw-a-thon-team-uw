@@ -226,7 +226,7 @@
 <body data-view="chat">
 <header>
   <div class="brand">
-    <h1><span class="logo">🛰️</span> Funnel Agent <small class="version-badge">UI v21</small></h1>
+    <h1><span class="logo">🛰️</span> Funnel Agent <small class="version-badge">UI v22</small></h1>
     <div class="header-actions">
       <button class="tab-btn active" type="button" data-view-target="chat">Chat</button>
       <button class="tab-btn" type="button" data-view-target="pitch">Pitch</button>
@@ -267,35 +267,49 @@
   </aside>
 </main>
 
-<section id="pitch-view" class="pitch-view" aria-label="Pitch and storytelling">
+<section id="pitch-view" class="pitch-view" aria-label="Pitch and FAQ">
   <article class="pitch-card">
-    <div class="pitch-kicker">Pitch narrative</div>
+    <div class="pitch-kicker">Product pitch</div>
     <h2>Funnel Agent turns funnel drift into owned recovery work.</h2>
-    <p class="pitch-lead">Dashboards show what changed. Jira shows what people are doing. Confluence stores decisions. Teams carries reminders. Funnel Agent connects those systems into one operating loop: <strong>Detect → Diagnose → Assign → Summarize → Notify</strong>.</p>
+    <p class="pitch-lead">Business teams already have dashboards, Jira, Confluence, and Teams. The gap is not visibility. The gap is converting metric movement into ranked business risk, ownership, action, meeting memory, and follow-up.</p>
 
+    <h3>What is Funnel Agent?</h3>
     <div class="pitch-grid">
-      <div class="pitch-box"><strong>Why agent?</strong>A chatbot answers a question. Funnel Agent executes a recurring workflow across metrics, Jira, Confluence, and Teams.</div>
-      <div class="pitch-box"><strong>Real bottleneck</strong>The bottleneck is not seeing that a metric moved. It is turning that movement into accountable recovery work.</div>
-      <div class="pitch-box"><strong>Workflow principle</strong>The LLM explains. Deterministic tools compute metrics, rank impact, validate writes, and update systems of record.</div>
+      <div class="pitch-box"><strong>Execution agent</strong>It connects funnel metrics to Jira work, Confluence decisions, and Teams notifications.</div>
+      <div class="pitch-box"><strong>Business funnel layer</strong>It understands Traffic -> Submission -> Approval -> Disbursement, targets, owners, drop reasons, and value at risk.</div>
+      <div class="pitch-box"><strong>Workflow system</strong>It follows one loop: Detect -> Diagnose -> Assign -> Summarize -> Notify.</div>
     </div>
 
-    <h3>Demo storyline</h3>
+    <h3>What problem does Funnel Agent solve?</h3>
     <div class="story-list">
-      <div class="story-step"><strong>Detect</strong><div><code>/metrics show me the funnel metrics</code><br>Find the top recovery priority and value at risk.</div></div>
-      <div class="story-step"><strong>Diagnose</strong><div><code>/metrics why is approval the top risk?</code><br>Explain target gap, MoM movement, owner, and execution context.</div></div>
-      <div class="story-step"><strong>Reconcile</strong><div><code>/metrics break May approval drop down by reason</code><br>Show that 216 submitted → 24 approved → 192 dropped before Approval.</div></div>
-      <div class="story-step"><strong>Assign</strong><div><code>/jira explain stage ownership structure</code><br>Introduce Epic → stage owner → task assignee before writing Jira.</div></div>
-      <div class="story-step"><strong>Act</strong><div><code>/jira flag the drops and assign owners to investigate</code><br>Create or update recovery investigations and default to the stage owner when no assignee is named.</div></div>
-      <div class="story-step"><strong>Context</strong><div><code>/jira what is critical or off track right now?</code><br>Connect the business risk to blocked, overdue, and due-soon execution work.</div></div>
-      <div class="story-step"><strong>Memory</strong><div><code>/confluence weekly meeting summary</code><br>Generate the weekly recovery readout from metrics, Jira, and Confluence context.</div></div>
-      <div class="story-step"><strong>Notify</strong><div><code>/teams post off-track blockers</code><br>Push blockers and reminders to the team channel.</div></div>
+      <div class="story-step"><strong>Problem</strong><div>Dashboards show that a metric moved, but managers still have to decide which movement matters, who owns it, whether recovery work exists, and what should happen next.</div></div>
+      <div class="story-step"><strong>Bottleneck</strong><div>The real bottleneck is <strong>metric-to-action translation</strong>: turning drift into accountable recovery work fast enough to recover the target.</div></div>
+      <div class="story-step"><strong>Solution</strong><div>Funnel Agent ranks the risk, explains the evidence, defaults the owner from the Jira Epic -> stage owner structure, updates the recovery task, prepares the Confluence weekly readout, and posts blockers to Teams.</div></div>
     </div>
 
-    <h3>What each system owns</h3>
+    <h3>Why agent, not normal ChatGPT?</h3>
     <div class="pitch-grid">
-      <div class="pitch-box"><strong>Jira</strong>Execution system of record. Each funnel stage has an Epic, an operational owner, and recovery tasks.</div>
-      <div class="pitch-box"><strong>Confluence</strong>Meeting memory. Weekly pages capture decisions, blockers, owners, and next actions.</div>
-      <div class="pitch-box"><strong>Teams</strong>Notification layer. Posts blockers, task changes, due-soon reminders, and stale-task digests.</div>
+      <div class="pitch-box"><strong>Normal chat</strong>Answers a question if the user brings the context.</div>
+      <div class="pitch-box"><strong>Funnel Agent</strong>Runs a governed workflow across metrics, Jira, Confluence, and Teams.</div>
+      <div class="pitch-box"><strong>Safety principle</strong>The LLM explains. Deterministic tools compute metrics, validate SQL templates, deduplicate Jira writes, and publish notifications.</div>
+    </div>
+
+    <h3>How the workflow systems fit together</h3>
+    <div class="pitch-grid">
+      <div class="pitch-box"><strong>Jira</strong>Execution system of record. Each stage has an Epic, an operational stage owner, and tasks. If no assignee is named, Funnel Agent defaults to the stage owner.</div>
+      <div class="pitch-box"><strong>Confluence</strong>Meeting memory. Weekly pages capture metric signals, blocker context, decisions, owners, and next recovery actions.</div>
+      <div class="pitch-box"><strong>Teams</strong>Notification layer. It can post off-track blockers, Jira task updates, due-soon reminders, and stale-task digests.</div>
+    </div>
+
+    <h3>FAQ</h3>
+    <div class="story-list">
+      <div class="story-step"><strong>Is this just a dashboard?</strong><div>No. A dashboard stops at reporting. Funnel Agent connects the metric to value at risk, owner, blocker context, Jira action, Confluence readout, and Teams follow-up.</div></div>
+      <div class="story-step"><strong>Is this just Jira AI?</strong><div>No. Jira knows work items; it does not know the funnel target gap, value-at-risk formula, drop-reason reconciliation, or weekly metric recovery loop.</div></div>
+      <div class="story-step"><strong>Does the LLM decide the numbers?</strong><div>No. Python and SQL compute metrics, MoM changes, value at risk, drop-reason breakdowns, and write guards. The model routes, extracts bounded fields, and explains verified facts.</div></div>
+      <div class="story-step"><strong>Does it prove causality?</strong><div>No. The diagnostic layer shows contribution analysis and reconciliation. It says where the drop is concentrated, not that a reason caused the decline.</div></div>
+      <div class="story-step"><strong>Why slash commands?</strong><div>Because this agent can query data and write to Jira, Confluence, and Teams. Slash commands make routing explicit and safer, while read-only natural-language prompts still work with warnings.</div></div>
+      <div class="story-step"><strong>What is defensible?</strong><div>The Funnel Execution Graph: metric -> target -> stage -> owner -> initiative -> blocker -> decision -> outcome. Over time, this becomes team-specific operating memory.</div></div>
+      <div class="story-step"><strong>What is still future work?</strong><div>Closed-loop outcome learning: when a Jira recovery task is completed, compare before/after metrics and classify whether the action worked, partially worked, or was inconclusive.</div></div>
     </div>
   </article>
 </section>
@@ -311,7 +325,7 @@
 
 <script>
 marked.setOptions({ breaks: true });
-const UI_VERSION = "v21";
+const UI_VERSION = "v22";
 const ENDPOINT = location.protocol.startsWith("http")
   ? "/invocations"
   : "https://endpoint-2f37c067-4516-4483-ba07-2199f07abb90.agentbase-runtime.aiplatform.vngcloud.vn/invocations";

@@ -71,6 +71,7 @@ ROUTES: list[tuple[set[str], str]] = [
     ({"metric", "conversion", "submission rate", "approval rate", "disbursement rate", "traffic",
       "ticket size", "funnel performance", "funnel numbers", "funnel table", "performance", "e2e",
       "throughput", "how is the funnel doing", "compare", "comparison", "what changed",
+      "share of drop", "share_of_drop", "share of stage drop",
       "concerning", "drop", "dropped", "month over month", "mom", "vs last month", "anomal",
       "value at risk", "impact ranking", "business risk", "top risk", "top recovery", "recovery priority",
       "prioritize", "rank"}, "metrics"),

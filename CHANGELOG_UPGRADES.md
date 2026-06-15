@@ -1,11 +1,18 @@
-## v21 UI reliability and pitch tab
-- Fixed chat scrolling by using a fixed viewport shell with independent scroll areas for chat, side guidance, and pitch.
-- Removed duplicate Demo Script buttons; demo prompts now live only in the right-side Demo Flow panel.
-- Added a dedicated Pitch tab with the product context, why-agent framing, workflow principles, and frame-by-frame demo storyline.
-- Kept the main chat minimal: Chat/Pitch tabs, command menu on `/`, side demo flow, and minimal footer.
-- Removed old unused `funnel.py` and `metrics.py` legacy modules from the package.
-
 # Upgrade changelog
+
+## v22 pitch/FAQ and audit SQL polish
+
+- Reworked the in-app Pitch tab to answer product questions instead of duplicating the demo flow:
+  - what Funnel Agent is
+  - what problem it solves
+  - why agent vs normal chat
+  - why this workflow
+  - Jira / Confluence / Teams principles
+  - FAQ
+- Kept the demo sequence in the Chat view side panel only.
+- Restored the collapsed `Audit SQL` block for template-backed metric drilldowns by default.
+- Kept normal drilldown answers clean: no visible template line unless the user asks for audit/debug/template details.
+- Bumped app/UI version to demo-v22 / UI v22.
 
 ## v21 demo package
 
@@ -19,7 +26,7 @@
 - Cleaned legacy/outdated files from the package: old portfolio specs, pivot docs, legacy agent folder, old loan CSV, caches, and local secrets.
 
 
-## v21 UI and onboarding polish
+## v22 UI and onboarding polish
 
 - Added a compact in-chat onboarding card explaining the problem, workflow, and how Jira/Confluence/Teams fit together.
 - Moved the main demo prompts out of the chat stream into a minimal right-side demo flow panel so the chatbot has more vertical space.

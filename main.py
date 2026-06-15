@@ -65,7 +65,7 @@ app.router.routes.append(Route("/version", _version, methods=["GET"]))
 
 JIRA_EVENT_TOKEN = os.environ.get("JIRA_EVENT_TOKEN", "")
 ALLOW_WRITES = os.environ.get("ALLOW_WRITES", "true").lower() in ("1", "true", "yes")
-APP_VERSION = os.environ.get("APP_VERSION", "demo-v21")
+APP_VERSION = os.environ.get("APP_VERSION", "demo-v22")
 BUILD_VERSION = os.environ.get("GIT_SHA", "dev")[:7]
 
 STAGE_TO_EPIC = {
@@ -391,15 +391,21 @@ def _handle(payload: dict) -> dict:
                 intro = _analyst_intro(result)
                 if intro:
                     answer = intro + "\n\n" + answer
-                wants_audit = any(k in message.lower() for k in ("show sql", "audit", "debug", "template"))
-                if result.get("source") == "template" and wants_audit:
+                wants_verbose_audit = any(k in message.lower() for k in ("show sql", "audit", "debug", "template"))
+                # Keep normal analyst answers clean, but do not hide auditability.
+                # Deterministic template SQL is shown as a collapsed details block by default.
+                if result.get("source") == "template" and wants_verbose_audit:
                     answer = f"**Template:** `{result.get('template')}`\n\n" + answer
-                if result.get("sql") and wants_audit:
+                if result.get("sql") and (result.get("source") == "template" or wants_verbose_audit):
                     sql_txt = result["sql"].strip()
-                    answer += "\n\n<details><summary>Audit SQL</summary>\n\n```sql\n" + sql_txt + "\n```\n</details>"
+                    template_line = f"Template: `{result.get('template')}`\n\n" if result.get("source") == "template" and result.get("template") else ""
+                    answer += "\n\n<details><summary>Audit SQL</summary>\n\n" + template_line + "```sql\n" + sql_txt + "\n```\n</details>"
     elif intent == "metrics":
         cmp_months = _comparison_months_from_message(message)
-        if _is_stage_work_history_question(message):
+        if _is_share_of_drop_question(message):
+            result = {"route": route_info, "concept": "share_of_drop"}
+            answer = _render_share_of_drop_answer()
+        elif _is_stage_work_history_question(message):
             result = _stage_work_history_result(message, route_info)
             answer = _render_stage_work_history_answer(result)
         elif _is_target_disbursement_question(message):
@@ -616,6 +622,24 @@ def _is_command_help_question(message: str) -> bool:
 def _is_database_help_question(message: str) -> bool:
     q = message.lower()
     return any(k in q for k in ["query the database", "query database", "database", "schema", "what table", "duckdb", "how do i query"])
+
+
+def _is_share_of_drop_question(message: str) -> bool:
+    q = message.lower()
+    return "share of drop" in q or "share_of_drop" in q or "share of stage drop" in q or "drop share" in q
+
+
+def _render_share_of_drop_answer() -> str:
+    return (
+        "**Share of drop** tells you how the lost rows at one funnel transition are distributed across reasons.\n\n"
+        "For `/metrics break May approval drop down by reason`, the transition is **Submission -> Approval**:\n\n"
+        "- Submitted: **216**\n"
+        "- Approved: **24**\n"
+        "- Dropped before Approval: **192**\n\n"
+        "So `policy_check = 90` means 90 of those 192 submitted-but-not-approved rows stopped because of `policy_check`. "
+        "Its share of drop is **90 / 192 = 46.9%**.\n\n"
+        "Important: this is a reconciliation of the dropped population, not causal proof. It answers **where the drop is concentrated**, not whether a reason caused the overall decline."
+    )
 
 
 def _scoped_metric_month_from_message(message: str) -> str | None:
@@ -962,7 +986,7 @@ def _handle_model(message: str, route_info: dict) -> dict:
         "route": route_info,
         "app_version": APP_VERSION,
         "build_version": BUILD_VERSION,
-        "ui_version": "v21",
+        "ui_version": "v22",
         "routing_mode": os.environ.get("ROUTING_MODE", "warn"),
         "allow_writes": ALLOW_WRITES,
         **info,
@@ -971,7 +995,7 @@ def _handle_model(message: str, route_info: dict) -> dict:
         "**Funnel Agent runtime**",
         "",
         f"- App version: **{APP_VERSION}**",
-        "- UI version: **v21**",
+        "- UI version: **v22**",
         f"- Build: `{BUILD_VERSION}`",
         f"- Chat model: **{info.get('model') or 'not configured'}**",
         f"- Model source: {info.get('source') or 'unknown'}",

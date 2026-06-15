@@ -33,7 +33,7 @@ The LLM layer is deliberately bounded and replaceable. Prefix routing and determ
 The chatbot UI is intentionally split into two tabs:
 
 - **Chat**: the live agent interface, with the demo flow kept in a right-side panel so prompt suggestions do not consume the conversation area.
-- **Pitch**: the storytelling view for people opening the endpoint cold. It explains the problem, why this is an agent instead of a normal chatbot, the Jira/Confluence/Teams workflow principles, and the frame-by-frame demo arc.
+- **Pitch**: the storytelling view for people opening the endpoint cold. It explains the problem, why this is an agent instead of a normal chatbot, the Jira/Confluence/Teams workflow principles, and FAQ. The demo sequence stays in the Chat-side Demo flow panel.
 
 Press `/` in the chat input to open the command menu.
 
