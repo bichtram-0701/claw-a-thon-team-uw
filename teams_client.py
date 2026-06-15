@@ -34,8 +34,9 @@ def fact_set(facts: list[tuple[str, str]]) -> dict:
 
 
 # Full field order shown on a Jira issue panel.
+# Key is shown in the card header, so it's omitted from the field list below.
 ISSUE_FIELD_ORDER = [
-    ("Key", "key"), ("Type", "type"), ("Status", "status"), ("Priority", "priority"),
+    ("Type", "type"), ("Status", "status"), ("Priority", "priority"),
     ("Assignee", "assignee"), ("Reporter", "reporter"), ("Epic / Parent", "parent"),
     ("Due date", "due"), ("Start date", "start"), ("Labels", "labels"),
     ("Stale after", "stale_after"), ("Created", "created"), ("Updated", "updated"),
@@ -60,7 +61,7 @@ def issue_card(issue: dict, header: str = "Jira task") -> bool:
         body.append(text_block(f"Description: {first}"))
     else:
         body.append(text_block("Description: None", bold=True, color="Attention"))
-    return send_card(header, body, url=issue.get("url"))
+    return send_card(f"{header} — {issue.get('key')}", body, url=issue.get("url"))
 
 
 def digest_card(title: str, issues: list[dict], *, empty_msg: str | None = None,
