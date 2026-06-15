@@ -1,8 +1,8 @@
-"""Funnel performance metrics — Funnel Watchtower, Team UW.
+"""Funnel performance metrics — Funnel Agent, Team UW.
 
 Loads the synthetic row-level funnel fixture and computes monthly conversion rates
-between stages (Traffic -> Submission -> Approval -> Completion), average
-outcome value, and month-over-month deltas. Deterministic: the LLM narrates
+between stages (Traffic -> Submission -> Approval -> Disbursement), average
+ticket size, and month-over-month deltas. Deterministic: the LLM narrates
 trends, but every number here is computed, never invented.
 
 `data/funnel_synthetic.csv` is the runtime source of truth for volumes. The JSON
@@ -117,7 +117,7 @@ def _cached_rows() -> tuple[tuple[tuple[str, object], ...], ...]:
 
 
 def rows() -> list[dict]:
-    """Per-month volumes + derived rates + average outcome value.
+    """Per-month volumes + derived rates + average ticket size.
 
     Prefer the row-level CSV so daily, weekly, and monthly views reconcile. Fall
     back to the JSON fixture if the CSV is not packaged.
@@ -154,7 +154,7 @@ def summary() -> dict:
         "anomalies": anomalies(),   # significant MoM rate drops to flag
         "note": "Rates are computed from row-level CSV counts when available; do not invent figures. "
                 "submission=submission/traffic, approval=approval/submission, "
-                "completion=completion/approval, e2e=completion/traffic.",
+                "disbursement=disbursement/approval, e2e=disbursement/traffic.",
     }
 
 
@@ -165,7 +165,7 @@ DROP_REL = 20.0
 _RATE_STAGES = [
     ("submission_rate_pct", "submission", "Submission rate"),
     ("approval_rate_pct", "approval", "Approval rate"),
-    ("completion_rate_pct", "completion", "Completion rate"),
+    ("completion_rate_pct", "completion", "Disbursement rate"),
 ]
 
 
@@ -364,9 +364,9 @@ def render_markdown(month: str | None = None) -> str:
         line("Traffic (1)", [f"{x['traffic']:,}" for x in r], _signed_int(delta("traffic")), _mom_pct(latest.get("traffic"), prev.get("traffic") if prev else None)),
         line("Submission (2)", [f"{x['submission']:,}" for x in r], _signed_int(delta("submission")), _mom_pct(latest.get("submission"), prev.get("submission") if prev else None)),
         line("Approval (3)", [f"{x['approval']:,}" for x in r], _signed_int(delta("approval")), _mom_pct(latest.get("approval"), prev.get("approval") if prev else None)),
-        line("Completion (4)", [f"{x['completion']:,}" for x in r], _signed_int(delta("completion")), _mom_pct(latest.get("completion"), prev.get("completion") if prev else None)),
-        line("Completion Amount", [_b(x["completion_amount_vnd"]) for x in r], _signed_amount(delta("completion_amount_vnd")), _mom_pct(latest.get("completion_amount_vnd"), prev.get("completion_amount_vnd") if prev else None)),
-        line("AVG Outcome Value", [_m(x["avg_ticket_vnd"]) for x in r], _signed_m(delta("avg_ticket_vnd")), _mom_pct(latest.get("avg_ticket_vnd"), prev.get("avg_ticket_vnd") if prev else None)),
+        line("Disbursement (4)", [f"{x['completion']:,}" for x in r], _signed_int(delta("completion")), _mom_pct(latest.get("completion"), prev.get("completion") if prev else None)),
+        line("Disbursement Volume", [_b(x["completion_amount_vnd"]) for x in r], _signed_amount(delta("completion_amount_vnd")), _mom_pct(latest.get("completion_amount_vnd"), prev.get("completion_amount_vnd") if prev else None)),
+        line("AVG Ticket Size", [_m(x["avg_ticket_vnd"]) for x in r], _signed_m(delta("avg_ticket_vnd")), _mom_pct(latest.get("avg_ticket_vnd"), prev.get("avg_ticket_vnd") if prev else None)),
     ]
 
     rate_head = head.replace("Metric", "Rate")
@@ -374,7 +374,7 @@ def render_markdown(month: str | None = None) -> str:
         rate_head, sep,
         line("Submission rate (2)/(1)", [f"{x['submission_rate_pct']}%" for x in r], _mom_pp(latest.get("submission_rate_pct"), prev.get("submission_rate_pct") if prev else None), _mom_pct(latest.get("submission_rate_pct"), prev.get("submission_rate_pct") if prev else None)),
         line("Approval rate (3)/(2)", [f"{x['approval_rate_pct']}%" for x in r], _mom_pp(latest.get("approval_rate_pct"), prev.get("approval_rate_pct") if prev else None), _mom_pct(latest.get("approval_rate_pct"), prev.get("approval_rate_pct") if prev else None)),
-        line("Completion rate (4)/(3)", [f"{x['completion_rate_pct']}%" for x in r], _mom_pp(latest.get("completion_rate_pct"), prev.get("completion_rate_pct") if prev else None), _mom_pct(latest.get("completion_rate_pct"), prev.get("completion_rate_pct") if prev else None)),
+        line("Disbursement rate (4)/(3)", [f"{x['completion_rate_pct']}%" for x in r], _mom_pp(latest.get("completion_rate_pct"), prev.get("completion_rate_pct") if prev else None), _mom_pct(latest.get("completion_rate_pct"), prev.get("completion_rate_pct") if prev else None)),
         line("Traffic E2E (4)/(1)", [f"{x['e2e_rate_pct']}%" for x in r], _mom_pp(latest.get("e2e_rate_pct"), prev.get("e2e_rate_pct") if prev else None), _mom_pct(latest.get("e2e_rate_pct"), prev.get("e2e_rate_pct") if prev else None)),
     ]
 

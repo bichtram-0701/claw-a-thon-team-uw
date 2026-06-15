@@ -1,0 +1,801 @@
+loan_id,customer_id,product_type,segment,province,origination_date,principal_vnd,interest_rate_pct,term_months,outstanding_vnd,days_past_due,status
+LN00001,CU00224,motorbike_loan,salaried,HCMC,2025-09-25,21000000,30.1,6,3439862,138,npl
+LN00002,CU00433,personal_loan,self_employed,Da Nang,2024-07-15,199000000,22.1,18,15169335,172,npl
+LN00003,CU00471,personal_loan,gig_worker,HCMC,2025-06-01,46000000,20.5,18,20194294,0,current
+LN00004,CU00297,motorbike_loan,salaried,Dong Nai,2024-10-23,55000000,24.4,6,20991863,0,current
+LN00005,CU00074,salary_advance,gig_worker,Binh Duong,2025-04-17,8000000,16.9,18,4049139,0,current
+LN00006,CU00058,motorbike_loan,self_employed,HCMC,2025-11-25,39000000,26.4,12,21960008,0,current
+LN00007,CU00470,personal_loan,salaried,HCMC,2025-08-10,36000000,19.7,24,24626208,0,current
+LN00008,CU00506,personal_loan,self_employed,HCMC,2024-11-06,87000000,21.2,12,93062,0,current
+LN00009,CU00258,personal_loan,salaried,HCMC,2024-08-07,60000000,15.1,24,13890454,0,current
+LN00010,CU00465,salary_advance,salaried,Dong Nai,2026-01-14,7000000,27.8,18,5997256,0,current
+LN00011,CU00166,personal_loan,self_employed,Binh Duong,2024-12-15,65000000,19.4,36,37583387,0,current
+LN00012,CU00315,motorbike_loan,self_employed,Binh Duong,2026-05-11,35000000,16.0,18,33149882,0,current
+LN00013,CU00563,personal_loan,self_employed,HCMC,2026-02-20,41000000,23.6,12,34323594,0,current
+LN00014,CU00124,personal_loan,self_employed,Da Nang,2025-10-07,158000000,19.6,18,103560922,0,current
+LN00015,CU00339,personal_loan,salaried,HCMC,2024-10-21,78000000,15.3,6,24057016,0,current
+LN00016,CU00195,personal_loan,self_employed,HCMC,2025-10-04,158000000,24.4,12,61741368,0,current
+LN00017,CU00112,personal_loan,salaried,Can Tho,2025-03-17,139000000,31.7,6,52229935,0,current
+LN00018,CU00564,personal_loan,salaried,HCMC,2025-03-05,66000000,29.7,6,14701348,0,current
+LN00019,CU00169,personal_loan,self_employed,Can Tho,2026-04-26,43000000,22.7,12,39610667,0,current
+LN00020,CU00195,motorbike_loan,salaried,Dong Nai,2025-01-31,42000000,31.9,36,25858027,0,current
+LN00021,CU00059,personal_loan,self_employed,Dong Nai,2024-11-02,35000000,24.5,36,17123417,0,current
+LN00022,CU00635,salary_advance,salaried,HCMC,2024-09-09,9000000,16.2,36,5332947,0,current
+LN00023,CU00308,personal_loan,self_employed,Can Tho,2025-06-22,86000000,19.7,18,46146368,0,current
+LN00024,CU00071,motorbike_loan,gig_worker,Dong Nai,2026-05-02,54000000,15.3,12,50389407,269,npl
+LN00025,CU00107,salary_advance,salaried,Hanoi,2024-11-01,15000000,25.8,6,1992820,0,current
+LN00026,CU00271,salary_advance,salaried,HCMC,2026-01-22,7000000,24.9,18,5939983,0,current
+LN00027,CU00269,motorbike_loan,gig_worker,HCMC,2026-03-20,55000000,14.8,18,49448375,0,current
+LN00028,CU00566,personal_loan,self_employed,Hanoi,2024-10-14,22000000,30.3,36,14490529,0,current
+LN00029,CU00417,personal_loan,salaried,HCMC,2026-04-01,111000000,26.0,18,99751426,0,current
+LN00030,CU00255,salary_advance,gig_worker,Binh Duong,2025-09-11,3000000,17.2,18,1630568,0,current
+LN00031,CU00409,personal_loan,salaried,Binh Duong,2026-04-02,140000000,20.3,12,123919380,0,current
+LN00032,CU00183,personal_loan,gig_worker,Dong Nai,2025-07-30,109000000,26.2,36,86822740,224,npl
+LN00033,CU00046,motorbike_loan,salaried,Dong Nai,2024-09-08,37000000,19.6,36,15552763,74,overdue
+LN00034,CU00128,consumer_durable,gig_worker,HCMC,2024-11-06,11000000,21.8,18,1658116,0,current
+LN00035,CU00179,consumer_durable,salaried,Hanoi,2025-03-19,27000000,24.0,12,6259179,0,current
+LN00036,CU00453,motorbike_loan,self_employed,Hanoi,2026-05-11,33000000,28.1,36,32209941,0,current
+LN00037,CU00241,consumer_durable,self_employed,Hanoi,2025-11-19,14000000,25.9,36,12287157,0,current
+LN00038,CU00590,consumer_durable,salaried,HCMC,2026-04-16,20000000,29.3,6,17392778,0,current
+LN00039,CU00531,personal_loan,self_employed,Can Tho,2025-09-04,57000000,30.1,6,5052014,0,current
+LN00040,CU00454,motorbike_loan,gig_worker,Da Nang,2026-01-07,23000000,26.0,36,20322477,0,current
+LN00041,CU00534,motorbike_loan,self_employed,Can Tho,2024-10-27,25000000,22.1,12,1601371,0,current
+LN00042,CU00157,motorbike_loan,salaried,HCMC,2025-07-23,32000000,30.1,6,11028812,0,current
+LN00043,CU00021,consumer_durable,salaried,HCMC,2024-11-02,6000000,29.0,24,1430806,0,current
+LN00044,CU00618,salary_advance,salaried,Binh Duong,2026-05-05,9000000,29.4,24,8694266,0,current
+LN00045,CU00131,salary_advance,salaried,Hanoi,2024-12-30,13000000,26.2,24,4807598,0,current
+LN00046,CU00267,salary_advance,gig_worker,Da Nang,2024-09-12,4000000,25.6,12,213037,0,current
+LN00047,CU00230,motorbike_loan,salaried,HCMC,2025-04-18,41000000,22.5,36,31808204,0,current
+LN00048,CU00263,consumer_durable,self_employed,Binh Duong,2026-04-10,5000000,16.7,12,4342146,28,overdue
+LN00049,CU00385,consumer_durable,self_employed,HCMC,2026-01-14,8000000,14.5,18,6523877,0,current
+LN00050,CU00580,motorbike_loan,salaried,Can Tho,2024-08-07,21000000,19.4,36,9164956,0,current
+LN00051,CU00371,consumer_durable,salaried,Hanoi,2025-04-27,25000000,14.2,24,12420707,0,current
+LN00052,CU00607,motorbike_loan,self_employed,Binh Duong,2025-02-20,48000000,25.1,36,29802868,0,current
+LN00053,CU00507,personal_loan,gig_worker,Binh Duong,2026-02-12,91000000,22.4,36,84423161,0,current
+LN00054,CU00088,salary_advance,salaried,HCMC,2025-08-20,14000000,29.8,36,11885788,0,current
+LN00055,CU00250,personal_loan,self_employed,Hanoi,2025-09-07,196000000,22.8,6,71104617,0,current
+LN00056,CU00124,personal_loan,self_employed,Da Nang,2024-11-14,108000000,20.0,24,47434658,0,current
+LN00057,CU00290,consumer_durable,self_employed,Hanoi,2025-11-03,28000000,19.0,36,22606500,0,current
+LN00058,CU00130,salary_advance,salaried,Binh Duong,2025-05-07,14000000,23.6,18,7749247,240,npl
+LN00059,CU00411,motorbike_loan,salaried,Binh Duong,2026-04-29,33000000,21.9,12,30287952,85,overdue
+LN00060,CU00611,motorbike_loan,self_employed,Da Nang,2025-12-07,51000000,31.9,6,9015310,0,current
+LN00061,CU00102,consumer_durable,self_employed,HCMC,2025-02-04,23000000,19.5,36,16620391,0,current
+LN00062,CU00609,salary_advance,salaried,HCMC,2024-07-04,5000000,23.9,12,1994648,0,current
+LN00063,CU00203,motorbike_loan,salaried,HCMC,2025-07-26,44000000,18.2,18,21630125,0,current
+LN00064,CU00296,motorbike_loan,self_employed,Da Nang,2025-08-12,19000000,28.3,36,14252200,0,current
+LN00065,CU00331,motorbike_loan,salaried,Hanoi,2025-03-25,47000000,21.9,36,35741906,0,current
+LN00066,CU00180,motorbike_loan,salaried,HCMC,2024-06-20,52000000,26.1,18,8814062,0,current
+LN00067,CU00108,motorbike_loan,gig_worker,Can Tho,2025-11-07,42000000,31.4,24,32944990,0,current
+LN00068,CU00414,salary_advance,self_employed,Hanoi,2025-07-20,11000000,14.7,6,3016124,0,current
+LN00069,CU00053,salary_advance,salaried,Binh Duong,2024-11-02,6000000,23.3,36,3141838,0,current
+LN00070,CU00319,personal_loan,gig_worker,Da Nang,2025-02-17,198000000,31.5,36,122122646,0,current
+LN00071,CU00250,motorbike_loan,salaried,Da Nang,2026-01-15,22000000,23.0,18,18071539,62,overdue
+LN00072,CU00274,motorbike_loan,salaried,HCMC,2024-09-05,23000000,27.9,24,8189004,0,current
+LN00073,CU00557,consumer_durable,salaried,HCMC,2024-09-17,20000000,22.0,24,7084132,0,current
+LN00074,CU00391,motorbike_loan,gig_worker,Dong Nai,2025-09-09,39000000,21.4,18,21491299,0,current
+LN00075,CU00451,motorbike_loan,gig_worker,Can Tho,2025-12-07,17000000,31.4,18,11628679,0,current
+LN00076,CU00083,personal_loan,salaried,Dong Nai,2025-12-15,124000000,22.5,18,98668711,0,current
+LN00077,CU00233,salary_advance,gig_worker,Binh Duong,2025-04-17,15000000,22.8,36,11672218,238,npl
+LN00078,CU00301,consumer_durable,salaried,Hanoi,2024-08-01,19000000,26.5,6,7250468,0,current
+LN00079,CU00247,motorbike_loan,salaried,Hanoi,2025-03-16,58000000,17.1,6,9059790,0,current
+LN00080,CU00162,motorbike_loan,salaried,Da Nang,2024-07-27,44000000,14.2,24,5260487,0,current
+LN00081,CU00495,personal_loan,gig_worker,Dong Nai,2025-07-09,183000000,22.2,18,106988359,0,current
+LN00082,CU00051,personal_loan,salaried,Hanoi,2025-07-13,199000000,21.1,6,34552050,0,current
+LN00083,CU00141,salary_advance,gig_worker,Binh Duong,2025-07-22,8000000,17.9,12,2344290,0,current
+LN00084,CU00426,motorbike_loan,self_employed,Dong Nai,2025-06-29,17000000,27.2,6,614530,0,current
+LN00085,CU00347,personal_loan,self_employed,HCMC,2025-05-02,155000000,18.6,24,72137018,0,current
+LN00086,CU00466,consumer_durable,salaried,Hanoi,2025-09-22,17000000,24.0,6,1423362,154,npl
+LN00087,CU00336,motorbike_loan,salaried,Binh Duong,2025-04-16,38000000,18.2,6,5782887,0,current
+LN00088,CU00505,salary_advance,salaried,HCMC,2025-01-21,9000000,16.1,6,193458,0,current
+LN00089,CU00159,personal_loan,self_employed,HCMC,2025-04-09,136000000,26.5,36,95399807,0,current
+LN00090,CU00372,salary_advance,gig_worker,Can Tho,2024-08-19,14000000,20.7,24,4017227,0,current
+LN00091,CU00094,personal_loan,self_employed,Can Tho,2024-07-20,111000000,17.4,6,2263921,0,current
+LN00092,CU00213,consumer_durable,self_employed,Can Tho,2026-04-20,12000000,28.2,12,11372555,0,current
+LN00093,CU00027,motorbike_loan,salaried,Binh Duong,2025-12-11,15000000,31.8,36,13249345,0,current
+LN00094,CU00488,personal_loan,self_employed,Hanoi,2024-09-16,102000000,14.9,24,29668746,0,current
+LN00095,CU00032,motorbike_loan,self_employed,Hanoi,2025-02-03,29000000,27.1,36,19711594,0,current
+LN00096,CU00600,personal_loan,salaried,Hanoi,2026-01-21,145000000,30.2,18,117826388,36,overdue
+LN00097,CU00565,motorbike_loan,gig_worker,Hanoi,2024-11-14,44000000,21.7,6,2590847,0,current
+LN00098,CU00262,consumer_durable,self_employed,HCMC,2025-09-20,19000000,21.5,6,5224632,0,current
+LN00099,CU00601,motorbike_loan,gig_worker,HCMC,2026-03-04,20000000,15.7,18,16917640,0,current
+LN00100,CU00361,salary_advance,self_employed,Da Nang,2025-03-17,9000000,29.6,6,113764,0,current
+LN00101,CU00575,personal_loan,salaried,Hanoi,2025-01-03,77000000,20.6,18,16666735,0,current
+LN00102,CU00317,salary_advance,self_employed,Binh Duong,2024-07-22,13000000,28.9,18,5049443,0,current
+LN00103,CU00386,salary_advance,salaried,Hanoi,2025-12-16,4000000,16.6,6,1877656,0,current
+LN00104,CU00498,motorbike_loan,salaried,Hanoi,2025-06-13,53000000,16.8,36,42048345,57,overdue
+LN00105,CU00047,motorbike_loan,salaried,Hanoi,2024-12-03,37000000,19.1,36,22298917,0,current
+LN00106,CU00180,personal_loan,salaried,Dong Nai,2025-10-14,97000000,27.8,18,69415664,311,npl
+LN00107,CU00080,personal_loan,salaried,Da Nang,2024-10-16,191000000,29.5,6,43072822,0,current
+LN00108,CU00472,salary_advance,self_employed,Da Nang,2024-07-25,9000000,14.4,18,2981256,0,current
+LN00109,CU00227,consumer_durable,salaried,Dong Nai,2026-01-23,23000000,23.4,24,19365195,0,current
+LN00110,CU00203,personal_loan,self_employed,HCMC,2026-01-15,155000000,20.3,12,119117110,0,current
+LN00111,CU00579,personal_loan,self_employed,HCMC,2026-02-23,65000000,27.6,36,60777371,0,current
+LN00112,CU00361,motorbike_loan,salaried,Dong Nai,2024-08-07,24000000,22.4,18,1955235,0,current
+LN00113,CU00474,motorbike_loan,self_employed,Hanoi,2026-03-14,33000000,29.6,6,23693963,0,current
+LN00114,CU00462,motorbike_loan,self_employed,Dong Nai,2026-03-30,51000000,19.8,24,47597675,0,current
+LN00115,CU00625,personal_loan,salaried,Dong Nai,2026-02-14,149000000,18.5,24,130442154,0,current
+LN00116,CU00259,personal_loan,salaried,Hanoi,2025-03-19,106000000,28.2,18,54359706,87,overdue
+LN00117,CU00402,consumer_durable,gig_worker,Can Tho,2025-12-09,23000000,16.5,18,17448622,0,current
+LN00118,CU00521,personal_loan,salaried,Can Tho,2024-10-16,116000000,28.6,36,74924323,0,current
+LN00119,CU00104,motorbike_loan,salaried,Hanoi,2025-10-04,46000000,32.0,12,26653441,0,current
+LN00120,CU00640,motorbike_loan,self_employed,Da Nang,2024-11-18,57000000,25.1,36,35605393,0,current
+LN00121,CU00460,consumer_durable,salaried,HCMC,2025-03-17,28000000,31.5,36,19670336,0,current
+LN00122,CU00515,personal_loan,gig_worker,HCMC,2025-01-16,69000000,31.7,24,24632476,0,current
+LN00123,CU00292,motorbike_loan,gig_worker,Dong Nai,2024-08-30,31000000,22.7,18,5523694,67,overdue
+LN00124,CU00406,personal_loan,salaried,HCMC,2024-12-02,57000000,28.7,18,1585240,0,current
+LN00125,CU00484,motorbike_loan,gig_worker,HCMC,2025-04-23,16000000,29.1,18,5408729,37,overdue
+LN00126,CU00541,consumer_durable,self_employed,HCMC,2025-02-06,7000000,18.6,12,1263348,0,current
+LN00127,CU00512,motorbike_loan,salaried,Binh Duong,2026-01-07,30000000,28.3,24,26092982,0,current
+LN00128,CU00088,motorbike_loan,self_employed,HCMC,2025-09-06,33000000,25.1,12,12500429,0,current
+LN00129,CU00383,motorbike_loan,gig_worker,Hanoi,2024-10-31,47000000,21.0,24,24027062,0,current
+LN00130,CU00347,personal_loan,self_employed,HCMC,2025-05-23,81000000,27.9,18,45718352,0,current
+LN00131,CU00038,consumer_durable,self_employed,HCMC,2025-01-21,25000000,28.6,6,2839549,0,current
+LN00132,CU00293,personal_loan,salaried,HCMC,2026-03-30,100000000,31.8,36,95614667,188,npl
+LN00133,CU00396,motorbike_loan,gig_worker,Binh Duong,2025-06-06,22000000,21.9,24,12129446,0,current
+LN00134,CU00185,personal_loan,self_employed,HCMC,2025-04-30,152000000,27.1,6,34619085,0,current
+LN00135,CU00044,motorbike_loan,salaried,Hanoi,2024-07-04,34000000,26.9,12,4219198,0,current
+LN00136,CU00164,consumer_durable,self_employed,Dong Nai,2025-02-20,30000000,15.4,24,16025166,0,current
+LN00137,CU00034,salary_advance,self_employed,HCMC,2025-02-17,6000000,28.0,18,2275698,0,current
+LN00138,CU00117,motorbike_loan,gig_worker,Can Tho,2025-04-26,19000000,23.5,24,11530779,0,current
+LN00139,CU00503,personal_loan,self_employed,HCMC,2024-10-13,50000000,26.7,12,72697,0,current
+LN00140,CU00564,personal_loan,salaried,HCMC,2025-11-16,133000000,31.4,18,94556974,0,current
+LN00141,CU00506,motorbike_loan,gig_worker,Dong Nai,2024-07-27,38000000,16.2,12,3160601,0,current
+LN00142,CU00589,personal_loan,salaried,Da Nang,2024-10-24,53000000,19.6,24,19002074,0,current
+LN00143,CU00133,personal_loan,self_employed,Dong Nai,2025-02-05,139000000,16.3,36,86123314,0,current
+LN00144,CU00291,motorbike_loan,salaried,Dong Nai,2026-01-04,24000000,16.9,12,16615907,0,current
+LN00145,CU00595,consumer_durable,self_employed,HCMC,2024-10-24,25000000,25.1,6,4974268,0,current
+LN00146,CU00586,personal_loan,self_employed,Can Tho,2024-08-30,106000000,15.5,36,62354177,0,current
+LN00147,CU00496,motorbike_loan,self_employed,Can Tho,2024-08-07,33000000,22.7,24,11251050,88,overdue
+LN00148,CU00126,motorbike_loan,salaried,Hanoi,2025-06-19,40000000,20.7,36,32147545,0,current
+LN00149,CU00321,personal_loan,salaried,HCMC,2025-07-18,118000000,31.3,12,27003204,0,current
+LN00150,CU00221,personal_loan,gig_worker,HCMC,2025-01-18,147000000,15.6,24,68386577,0,current
+LN00151,CU00375,motorbike_loan,salaried,HCMC,2024-09-07,58000000,23.7,6,13202475,0,current
+LN00152,CU00287,consumer_durable,salaried,Hanoi,2024-10-05,16000000,19.2,24,5310637,0,current
+LN00153,CU00204,consumer_durable,self_employed,Can Tho,2025-12-31,16000000,31.8,36,13832045,0,current
+LN00154,CU00144,motorbike_loan,salaried,Hanoi,2026-04-02,60000000,22.5,24,56702118,0,current
+LN00155,CU00487,personal_loan,salaried,Da Nang,2024-08-18,96000000,28.9,36,49304931,0,current
+LN00156,CU00593,consumer_durable,self_employed,Hanoi,2025-03-11,30000000,29.7,6,4837084,0,current
+LN00157,CU00033,motorbike_loan,self_employed,Binh Duong,2025-11-18,55000000,27.9,24,45937233,0,current
+LN00158,CU00483,motorbike_loan,salaried,Can Tho,2025-02-14,41000000,26.4,24,19113440,0,current
+LN00159,CU00178,salary_advance,salaried,Binh Duong,2025-12-21,8000000,32.0,24,6649681,0,current
+LN00160,CU00305,motorbike_loan,self_employed,Da Nang,2024-07-22,31000000,17.5,12,8940320,0,current
+LN00161,CU00557,consumer_durable,self_employed,Can Tho,2024-12-27,16000000,30.8,18,5193806,0,current
+LN00162,CU00220,motorbike_loan,gig_worker,Dong Nai,2025-12-13,17000000,15.4,24,13945706,0,current
+LN00163,CU00232,personal_loan,gig_worker,Da Nang,2025-08-06,55000000,24.6,12,26569300,0,current
+LN00164,CU00488,motorbike_loan,salaried,HCMC,2025-01-13,58000000,14.1,36,30853111,0,current
+LN00165,CU00039,motorbike_loan,gig_worker,HCMC,2025-06-17,56000000,15.6,36,44143915,0,current
+LN00166,CU00344,salary_advance,gig_worker,HCMC,2025-11-12,10000000,17.4,18,6302843,145,npl
+LN00167,CU00264,personal_loan,self_employed,Dong Nai,2024-12-22,54000000,17.5,6,14457223,0,current
+LN00168,CU00089,consumer_durable,salaried,HCMC,2025-07-13,29000000,17.2,24,16628170,0,current
+LN00169,CU00310,motorbike_loan,gig_worker,HCMC,2025-01-08,30000000,20.9,24,10843068,0,current
+LN00170,CU00319,motorbike_loan,salaried,Da Nang,2025-05-08,30000000,16.1,18,15615787,0,current
+LN00171,CU00426,consumer_durable,gig_worker,Can Tho,2025-04-30,12000000,22.6,24,6155889,0,current
+LN00172,CU00371,consumer_durable,self_employed,Dong Nai,2024-06-30,26000000,24.7,6,4934730,0,current
+LN00173,CU00211,personal_loan,salaried,Da Nang,2024-10-28,149000000,16.7,18,8672633,0,current
+LN00174,CU00316,consumer_durable,gig_worker,Hanoi,2025-02-09,9000000,21.5,36,6507621,0,current
+LN00175,CU00484,consumer_durable,gig_worker,Hanoi,2025-09-30,6000000,20.2,6,1101207,126,npl
+LN00176,CU00553,personal_loan,self_employed,Hanoi,2024-07-24,185000000,22.1,24,57768711,0,current
+LN00177,CU00475,personal_loan,salaried,Dong Nai,2024-11-07,120000000,31.6,6,11703388,0,current
+LN00178,CU00630,consumer_durable,self_employed,Da Nang,2025-09-18,16000000,19.0,6,6193809,0,current
+LN00179,CU00240,consumer_durable,salaried,Dong Nai,2025-10-12,24000000,22.0,6,7250552,315,npl
+LN00180,CU00329,motorbike_loan,self_employed,Binh Duong,2025-12-19,33000000,24.4,36,29153817,0,current
+LN00181,CU00642,personal_loan,gig_worker,Dong Nai,2024-11-24,76000000,15.1,36,39828348,0,current
+LN00182,CU00189,consumer_durable,salaried,Da Nang,2025-05-24,17000000,23.4,24,10511918,0,current
+LN00183,CU00339,consumer_durable,gig_worker,Hanoi,2025-07-08,6000000,21.4,24,3736984,32,overdue
+LN00184,CU00193,motorbike_loan,gig_worker,Dong Nai,2026-02-06,27000000,20.8,36,24476493,0,current
+LN00185,CU00121,consumer_durable,self_employed,Da Nang,2025-10-01,15000000,31.2,6,4729153,0,current
+LN00186,CU00368,consumer_durable,gig_worker,Binh Duong,2024-08-31,17000000,23.9,18,4211500,0,current
+LN00187,CU00150,personal_loan,gig_worker,Hanoi,2025-01-19,45000000,30.5,18,15993247,204,npl
+LN00188,CU00346,personal_loan,self_employed,Da Nang,2025-03-10,95000000,18.1,36,58055090,0,current
+LN00189,CU00189,personal_loan,gig_worker,Binh Duong,2024-07-23,145000000,28.3,12,49882405,0,current
+LN00190,CU00237,salary_advance,self_employed,Da Nang,2026-03-12,13000000,14.9,6,8027780,0,current
+LN00191,CU00017,personal_loan,salaried,HCMC,2025-01-30,115000000,26.0,36,65672636,0,current
+LN00192,CU00110,personal_loan,salaried,Da Nang,2024-11-15,90000000,23.0,24,24274220,0,current
+LN00193,CU00579,salary_advance,salaried,Da Nang,2024-08-15,7000000,28.3,6,1755455,0,current
+LN00194,CU00010,personal_loan,salaried,Can Tho,2026-02-18,187000000,15.7,24,169448464,0,current
+LN00195,CU00581,consumer_durable,gig_worker,HCMC,2024-07-20,8000000,30.5,12,2523465,0,current
+LN00196,CU00148,motorbike_loan,salaried,HCMC,2025-07-28,51000000,17.2,18,33822541,0,current
+LN00197,CU00394,consumer_durable,salaried,Can Tho,2026-02-22,23000000,24.2,24,20496409,0,current
+LN00198,CU00610,consumer_durable,gig_worker,HCMC,2026-02-20,6000000,21.9,6,3791288,0,current
+LN00199,CU00390,motorbike_loan,salaried,Binh Duong,2025-08-05,46000000,24.0,24,31189165,0,current
+LN00200,CU00110,personal_loan,self_employed,Da Nang,2026-02-25,41000000,26.8,12,31817413,0,current
+LN00201,CU00027,personal_loan,salaried,Dong Nai,2025-08-08,46000000,21.8,36,35497995,0,current
+LN00202,CU00249,personal_loan,self_employed,Da Nang,2025-06-13,118000000,21.0,6,12987370,0,current
+LN00203,CU00496,motorbike_loan,salaried,HCMC,2025-12-20,34000000,16.6,12,23036834,0,current
+LN00204,CU00341,consumer_durable,gig_worker,Hanoi,2024-08-09,24000000,22.2,12,6675283,0,current
+LN00205,CU00491,consumer_durable,gig_worker,Hanoi,2025-02-15,25000000,16.5,18,6304788,0,current
+LN00206,CU00403,personal_loan,gig_worker,Dong Nai,2025-07-17,197000000,28.1,18,114870467,0,current
+LN00207,CU00299,motorbike_loan,salaried,Dong Nai,2024-10-30,58000000,14.5,24,13130694,0,current
+LN00208,CU00387,consumer_durable,gig_worker,HCMC,2025-03-19,9000000,19.5,18,2955743,0,current
+LN00209,CU00609,personal_loan,self_employed,Dong Nai,2025-03-27,156000000,23.8,18,49147349,0,current
+LN00210,CU00410,motorbike_loan,self_employed,HCMC,2024-07-07,37000000,25.0,36,13516104,0,current
+LN00211,CU00227,salary_advance,self_employed,Hanoi,2026-01-23,6000000,23.2,36,5451201,0,current
+LN00212,CU00088,motorbike_loan,self_employed,Hanoi,2024-09-16,47000000,32.0,24,20605163,0,current
+LN00213,CU00464,personal_loan,salaried,Dong Nai,2025-06-26,107000000,23.4,18,55312371,0,current
+LN00214,CU00529,personal_loan,gig_worker,Hanoi,2026-01-14,25000000,26.2,12,16900258,0,current
+LN00215,CU00203,personal_loan,self_employed,HCMC,2025-01-23,79000000,17.4,24,39066397,0,current
+LN00216,CU00550,motorbike_loan,salaried,Hanoi,2025-10-04,32000000,28.6,6,5409946,0,current
+LN00217,CU00357,personal_loan,self_employed,Hanoi,2025-08-16,191000000,19.6,24,130511013,0,current
+LN00218,CU00120,motorbike_loan,salaried,Hanoi,2024-06-21,34000000,15.5,12,9340673,0,current
+LN00219,CU00178,personal_loan,self_employed,Can Tho,2025-03-09,172000000,21.6,24,80173429,0,current
+LN00220,CU00576,motorbike_loan,salaried,Hanoi,2025-06-23,54000000,31.1,24,37798306,0,current
+LN00221,CU00551,motorbike_loan,self_employed,Hanoi,2025-03-12,46000000,24.2,12,13025545,0,current
+LN00222,CU00043,personal_loan,self_employed,Binh Duong,2024-12-20,160000000,16.1,36,89785230,0,current
+LN00223,CU00090,consumer_durable,salaried,Hanoi,2025-03-02,29000000,19.4,6,6383104,0,current
+LN00224,CU00143,motorbike_loan,self_employed,Dong Nai,2025-09-11,52000000,29.5,36,40909592,0,current
+LN00225,CU00587,consumer_durable,gig_worker,Binh Duong,2024-10-05,13000000,23.7,18,109199,0,current
+LN00226,CU00254,personal_loan,gig_worker,Binh Duong,2026-02-03,54000000,29.6,12,38149729,19,overdue
+LN00227,CU00096,consumer_durable,self_employed,Can Tho,2024-09-27,25000000,20.8,6,3663722,0,current
+LN00228,CU00367,motorbike_loan,self_employed,Binh Duong,2025-04-29,46000000,14.0,6,4950852,0,current
+LN00229,CU00050,salary_advance,salaried,Binh Duong,2025-02-26,8000000,28.9,18,2540505,63,overdue
+LN00230,CU00136,personal_loan,gig_worker,Can Tho,2026-04-25,51000000,14.0,24,49553029,0,current
+LN00231,CU00240,salary_advance,gig_worker,Hanoi,2025-08-04,7000000,15.5,12,3379163,0,current
+LN00232,CU00124,motorbike_loan,salaried,HCMC,2025-10-05,19000000,18.1,24,15176473,0,current
+LN00233,CU00141,salary_advance,salaried,Hanoi,2026-02-28,14000000,28.5,6,8922615,0,current
+LN00234,CU00219,motorbike_loan,gig_worker,Binh Duong,2024-07-24,24000000,24.1,36,11386548,0,current
+LN00235,CU00440,motorbike_loan,salaried,HCMC,2025-02-12,20000000,27.5,36,12071078,0,current
+LN00236,CU00309,personal_loan,salaried,HCMC,2026-02-14,83000000,27.0,18,70389701,0,current
+LN00237,CU00512,personal_loan,salaried,Da Nang,2025-04-05,95000000,30.2,12,19194266,0,current
+LN00238,CU00177,motorbike_loan,gig_worker,HCMC,2026-04-29,35000000,29.5,36,34252997,0,current
+LN00239,CU00294,consumer_durable,self_employed,Dong Nai,2026-04-24,5000000,17.9,6,4183773,0,current
+LN00240,CU00160,motorbike_loan,salaried,Hanoi,2025-03-26,55000000,25.1,18,27902894,27,overdue
+LN00241,CU00624,motorbike_loan,self_employed,Hanoi,2024-07-15,56000000,26.6,12,21102906,89,overdue
+LN00242,CU00530,personal_loan,self_employed,Can Tho,2025-11-13,50000000,26.6,12,30035870,0,current
+LN00243,CU00509,consumer_durable,salaried,Binh Duong,2026-01-02,29000000,20.0,24,24717713,130,npl
+LN00244,CU00522,motorbike_loan,self_employed,Hanoi,2024-10-08,38000000,27.9,36,19640760,0,current
+LN00245,CU00430,personal_loan,salaried,Binh Duong,2026-03-25,140000000,17.2,6,101679857,0,current
+LN00246,CU00048,personal_loan,gig_worker,HCMC,2025-06-18,89000000,16.1,6,29215341,0,current
+LN00247,CU00312,salary_advance,self_employed,HCMC,2025-07-26,11000000,22.2,18,6842803,0,current
+LN00248,CU00010,consumer_durable,salaried,HCMC,2024-12-22,29000000,18.4,6,784188,268,npl
+LN00249,CU00287,salary_advance,self_employed,HCMC,2025-07-01,6000000,21.6,6,65857,0,current
+LN00250,CU00404,personal_loan,gig_worker,Dong Nai,2024-11-25,125000000,31.5,6,20961468,0,current
+LN00251,CU00326,personal_loan,salaried,Da Nang,2025-12-29,80000000,30.7,24,65328495,0,current
+LN00252,CU00213,motorbike_loan,gig_worker,HCMC,2025-12-23,21000000,17.0,24,17825441,274,npl
+LN00253,CU00152,motorbike_loan,gig_worker,Hanoi,2026-02-08,58000000,26.5,6,31474345,0,current
+LN00254,CU00464,personal_loan,salaried,HCMC,2024-12-02,32000000,28.8,12,12402149,0,current
+LN00255,CU00382,motorbike_loan,salaried,Da Nang,2026-01-27,22000000,28.9,12,17216568,0,current
+LN00256,CU00052,consumer_durable,salaried,Dong Nai,2024-09-18,5000000,17.6,24,958727,88,overdue
+LN00257,CU00287,personal_loan,gig_worker,Da Nang,2025-04-02,147000000,21.7,18,68580316,0,current
+LN00258,CU00539,motorbike_loan,self_employed,HCMC,2024-08-18,56000000,21.4,36,28909265,86,overdue
+LN00259,CU00330,personal_loan,self_employed,Dong Nai,2026-04-22,117000000,23.8,24,113404133,0,current
+LN00260,CU00239,motorbike_loan,salaried,HCMC,2025-09-29,32000000,31.8,36,26716635,0,current
+LN00261,CU00178,salary_advance,self_employed,HCMC,2025-08-12,6000000,24.4,24,4145195,0,current
+LN00262,CU00193,personal_loan,gig_worker,Da Nang,2025-05-09,171000000,20.3,36,120028919,0,current
+LN00263,CU00001,consumer_durable,gig_worker,Binh Duong,2024-11-02,20000000,15.6,12,3186697,335,npl
+LN00264,CU00374,personal_loan,gig_worker,Da Nang,2025-05-28,65000000,16.7,12,5866471,0,current
+LN00265,CU00499,salary_advance,gig_worker,Hanoi,2025-04-01,7000000,19.8,12,749414,0,current
+LN00266,CU00131,motorbike_loan,gig_worker,HCMC,2024-08-21,29000000,28.7,24,10660744,0,current
+LN00267,CU00509,personal_loan,self_employed,HCMC,2024-10-02,120000000,24.8,36,74109459,0,current
+LN00268,CU00256,personal_loan,salaried,Binh Duong,2025-06-18,62000000,26.1,18,32497741,0,current
+LN00269,CU00388,consumer_durable,self_employed,Hanoi,2026-05-10,19000000,21.6,12,17489783,0,current
+LN00270,CU00108,motorbike_loan,gig_worker,Hanoi,2024-09-27,58000000,22.1,6,16358120,0,current
+LN00271,CU00169,personal_loan,salaried,HCMC,2026-02-24,160000000,31.7,24,142363962,0,current
+LN00272,CU00244,motorbike_loan,salaried,Hanoi,2025-06-06,27000000,24.0,36,20645046,0,current
+LN00273,CU00492,personal_loan,self_employed,Hanoi,2024-12-25,59000000,21.7,18,7202911,0,current
+LN00274,CU00094,personal_loan,salaried,HCMC,2025-07-17,40000000,28.1,24,26739354,0,current
+LN00275,CU00578,motorbike_loan,salaried,Hanoi,2025-04-16,26000000,18.7,24,15302035,0,current
+LN00276,CU00536,personal_loan,self_employed,Binh Duong,2026-02-13,191000000,21.5,36,180001502,289,npl
+LN00277,CU00586,motorbike_loan,gig_worker,Da Nang,2025-01-10,30000000,15.4,6,5974782,0,current
+LN00278,CU00446,consumer_durable,salaried,Can Tho,2025-02-06,11000000,17.5,6,2537150,0,current
+LN00279,CU00283,personal_loan,salaried,Binh Duong,2024-09-09,86000000,15.2,24,24103437,0,current
+LN00280,CU00103,motorbike_loan,salaried,Dong Nai,2024-08-11,48000000,16.0,12,16354564,0,current
+LN00281,CU00177,salary_advance,salaried,Da Nang,2025-07-23,7000000,20.9,24,4582639,0,current
+LN00282,CU00021,personal_loan,self_employed,HCMC,2025-03-26,29000000,18.3,24,12619016,0,current
+LN00283,CU00427,personal_loan,salaried,Binh Duong,2024-12-24,198000000,16.4,24,70426866,0,current
+LN00284,CU00414,motorbike_loan,salaried,HCMC,2025-03-21,48000000,23.3,12,17940154,0,current
+LN00285,CU00204,personal_loan,gig_worker,Binh Duong,2026-04-12,64000000,18.5,24,62346070,0,current
+LN00286,CU00486,personal_loan,self_employed,Binh Duong,2024-07-30,51000000,20.7,36,26738577,0,current
+LN00287,CU00220,motorbike_loan,salaried,Hanoi,2025-08-20,20000000,21.0,12,5877072,0,current
+LN00288,CU00178,salary_advance,self_employed,Can Tho,2025-08-09,3000000,29.6,6,631083,0,current
+LN00289,CU00534,motorbike_loan,salaried,HCMC,2025-07-03,32000000,29.3,24,21721607,0,current
+LN00290,CU00066,consumer_durable,salaried,Hanoi,2024-12-04,22000000,24.7,18,6173411,0,current
+LN00291,CU00059,personal_loan,salaried,HCMC,2025-08-01,86000000,19.4,12,28170917,0,current
+LN00292,CU00429,consumer_durable,self_employed,Binh Duong,2024-07-04,9000000,14.5,24,383731,0,current
+LN00293,CU00368,motorbike_loan,self_employed,Binh Duong,2024-10-03,36000000,18.0,36,18893491,0,current
+LN00294,CU00188,motorbike_loan,gig_worker,Binh Duong,2024-10-17,33000000,16.3,18,3627536,0,current
+LN00295,CU00475,salary_advance,self_employed,Dong Nai,2025-09-26,7000000,21.6,18,4670795,0,current
+LN00296,CU00543,salary_advance,gig_worker,Hanoi,2024-09-21,10000000,30.0,36,6400409,0,current
+LN00297,CU00185,personal_loan,gig_worker,HCMC,2025-12-22,71000000,30.1,24,61277590,0,current
+LN00298,CU00163,consumer_durable,self_employed,Hanoi,2025-11-11,6000000,22.1,12,2834329,0,current
+LN00299,CU00383,motorbike_loan,salaried,Binh Duong,2024-08-20,55000000,21.7,24,18746158,193,npl
+LN00300,CU00320,salary_advance,self_employed,Dong Nai,2024-11-14,3000000,25.3,12,928481,0,current
+LN00301,CU00138,personal_loan,self_employed,Hanoi,2025-11-21,36000000,22.2,36,30968712,0,current
+LN00302,CU00174,personal_loan,salaried,Dong Nai,2025-10-31,62000000,18.0,12,37244781,349,npl
+LN00303,CU00021,personal_loan,self_employed,Can Tho,2025-04-22,183000000,25.2,36,117057285,0,current
+LN00304,CU00533,personal_loan,salaried,HCMC,2026-01-05,160000000,16.8,6,63940455,0,current
+LN00305,CU00270,personal_loan,salaried,Da Nang,2026-01-24,150000000,16.1,6,70090437,0,current
+LN00306,CU00241,consumer_durable,salaried,Dong Nai,2025-03-18,6000000,22.9,12,748310,0,current
+LN00307,CU00468,personal_loan,gig_worker,Can Tho,2024-10-01,191000000,28.0,6,21119739,33,overdue
+LN00308,CU00047,salary_advance,self_employed,HCMC,2026-01-29,8000000,28.4,18,6630403,0,current
+LN00309,CU00117,personal_loan,self_employed,HCMC,2025-06-09,111000000,29.8,6,27855576,0,current
+LN00310,CU00061,motorbike_loan,salaried,Dong Nai,2025-04-12,45000000,25.7,12,15964981,0,current
+LN00311,CU00134,salary_advance,salaried,Binh Duong,2024-09-14,10000000,17.3,24,2022924,0,current
+LN00312,CU00579,motorbike_loan,gig_worker,Hanoi,2025-02-14,19000000,19.7,36,11340791,0,current
+LN00313,CU00395,personal_loan,gig_worker,Dong Nai,2024-11-26,153000000,15.7,12,31705903,0,current
+LN00314,CU00077,personal_loan,gig_worker,Binh Duong,2024-08-22,33000000,23.1,24,5835888,0,current
+LN00315,CU00459,consumer_durable,salaried,Hanoi,2025-07-31,12000000,25.6,24,7365793,57,overdue
+LN00316,CU00619,personal_loan,salaried,Hanoi,2024-12-18,187000000,21.4,36,114621277,0,current
+LN00317,CU00466,salary_advance,gig_worker,Can Tho,2024-10-13,10000000,31.1,18,698756,0,current
+LN00318,CU00649,personal_loan,self_employed,Binh Duong,2024-07-08,113000000,15.8,12,45100697,0,current
+LN00319,CU00193,salary_advance,self_employed,HCMC,2026-01-23,5000000,28.8,24,4464346,0,current
+LN00320,CU00469,personal_loan,salaried,Binh Duong,2025-10-28,106000000,14.8,36,92617459,0,current
+LN00321,CU00521,consumer_durable,salaried,Dong Nai,2024-12-17,28000000,24.0,24,8353944,0,current
+LN00322,CU00624,consumer_durable,self_employed,Dong Nai,2025-11-15,17000000,24.8,18,12457350,0,current
+LN00323,CU00307,salary_advance,salaried,Binh Duong,2025-05-25,5000000,16.5,36,3533323,0,current
+LN00324,CU00136,consumer_durable,salaried,Da Nang,2024-10-22,11000000,25.2,18,1378910,0,current
+LN00325,CU00428,salary_advance,gig_worker,Can Tho,2024-12-12,8000000,26.8,18,1400703,0,current
+LN00326,CU00165,consumer_durable,self_employed,Dong Nai,2025-03-05,8000000,20.9,6,1055186,0,current
+LN00327,CU00576,salary_advance,salaried,Can Tho,2026-03-09,15000000,23.7,18,12685973,0,current
+LN00328,CU00321,salary_advance,self_employed,Binh Duong,2025-09-10,14000000,26.0,24,10036135,0,current
+LN00329,CU00618,salary_advance,self_employed,HCMC,2025-10-16,13000000,26.7,18,8439671,0,current
+LN00330,CU00570,personal_loan,salaried,Binh Duong,2025-02-06,65000000,31.3,36,46287467,233,npl
+LN00331,CU00641,personal_loan,gig_worker,HCMC,2026-05-06,104000000,14.7,18,99153876,0,current
+LN00332,CU00070,motorbike_loan,self_employed,Can Tho,2024-10-02,37000000,26.7,36,22858090,0,current
+LN00333,CU00634,consumer_durable,self_employed,HCMC,2025-03-24,12000000,25.9,18,5053021,0,current
+LN00334,CU00041,motorbike_loan,gig_worker,Dong Nai,2024-07-16,22000000,22.0,36,8402052,0,current
+LN00335,CU00521,consumer_durable,gig_worker,Hanoi,2026-01-15,22000000,19.1,36,19729493,0,current
+LN00336,CU00216,motorbike_loan,gig_worker,HCMC,2025-10-26,47000000,17.0,36,39567503,0,current
+LN00337,CU00158,consumer_durable,gig_worker,Binh Duong,2025-03-03,22000000,29.8,24,10193913,0,current
+LN00338,CU00418,personal_loan,salaried,Can Tho,2026-02-25,33000000,24.0,36,30446218,0,current
+LN00339,CU00047,motorbike_loan,salaried,Can Tho,2026-04-24,58000000,14.1,36,56992580,0,current
+LN00340,CU00032,consumer_durable,gig_worker,HCMC,2026-01-23,14000000,15.6,24,12244013,0,current
+LN00341,CU00127,motorbike_loan,salaried,Da Nang,2025-04-06,33000000,19.4,18,7770779,163,npl
+LN00342,CU00525,personal_loan,salaried,Da Nang,2024-10-28,41000000,27.3,18,12927514,0,current
+LN00343,CU00563,personal_loan,self_employed,HCMC,2025-08-26,69000000,28.4,6,4101698,0,current
+LN00344,CU00241,motorbike_loan,salaried,Da Nang,2026-03-04,21000000,24.5,18,18400006,0,current
+LN00345,CU00324,personal_loan,gig_worker,Da Nang,2025-06-20,144000000,25.9,36,114917848,0,current
+LN00346,CU00368,salary_advance,salaried,HCMC,2025-09-27,8000000,16.4,18,4618117,0,current
+LN00347,CU00079,consumer_durable,salaried,Hanoi,2024-07-19,13000000,30.0,12,3831179,0,current
+LN00348,CU00557,consumer_durable,gig_worker,Dong Nai,2024-08-03,23000000,27.8,12,862007,0,current
+LN00349,CU00093,salary_advance,self_employed,Da Nang,2025-12-10,15000000,24.6,18,11732237,0,current
+LN00350,CU00150,motorbike_loan,self_employed,Hanoi,2024-08-21,25000000,16.5,12,8208548,0,current
+LN00351,CU00370,consumer_durable,salaried,Hanoi,2025-09-29,7000000,20.6,6,927960,0,current
+LN00352,CU00386,motorbike_loan,gig_worker,Dong Nai,2026-04-01,35000000,31.4,18,31367976,70,overdue
+LN00353,CU00494,consumer_durable,self_employed,Hanoi,2026-02-21,17000000,23.3,18,14373798,0,current
+LN00354,CU00122,salary_advance,gig_worker,HCMC,2025-02-15,11000000,25.6,12,3738942,78,overdue
+LN00355,CU00250,consumer_durable,salaried,Hanoi,2026-01-15,20000000,17.8,12,14273975,0,current
+LN00356,CU00416,personal_loan,salaried,Da Nang,2024-08-05,151000000,15.0,18,4684209,0,current
+LN00357,CU00421,motorbike_loan,salaried,Da Nang,2024-07-03,20000000,24.9,24,1850681,0,current
+LN00358,CU00071,motorbike_loan,gig_worker,Binh Duong,2025-11-06,57000000,17.0,18,35521812,0,current
+LN00359,CU00630,personal_loan,salaried,Hanoi,2025-10-16,153000000,28.9,36,134004046,0,current
+LN00360,CU00442,motorbike_loan,self_employed,Dong Nai,2026-01-11,45000000,30.2,36,39181195,0,current
+LN00361,CU00590,motorbike_loan,salaried,Hanoi,2024-11-15,29000000,28.2,24,12006078,0,current
+LN00362,CU00008,personal_loan,self_employed,HCMC,2025-09-15,41000000,21.4,12,24540200,0,current
+LN00363,CU00260,motorbike_loan,salaried,HCMC,2024-07-10,59000000,21.4,6,19947225,0,current
+LN00364,CU00380,personal_loan,self_employed,Da Nang,2024-08-23,90000000,17.7,36,42040443,0,current
+LN00365,CU00166,motorbike_loan,gig_worker,Hanoi,2024-09-27,60000000,16.5,6,6052459,0,current
+LN00366,CU00149,personal_loan,self_employed,Hanoi,2024-10-25,177000000,14.9,24,38860837,137,npl
+LN00367,CU00534,motorbike_loan,salaried,Da Nang,2025-08-15,38000000,14.7,24,24145095,0,current
+LN00368,CU00529,personal_loan,salaried,Dong Nai,2025-11-13,183000000,17.6,36,161210720,352,npl
+LN00369,CU00405,consumer_durable,self_employed,Da Nang,2025-05-08,5000000,15.6,18,1707139,0,current
+LN00370,CU00284,motorbike_loan,salaried,HCMC,2026-03-02,50000000,28.9,36,46919841,0,current
+LN00371,CU00349,personal_loan,self_employed,Dong Nai,2025-03-24,167000000,21.3,6,29483468,0,current
+LN00372,CU00348,salary_advance,gig_worker,Binh Duong,2024-11-07,10000000,31.4,36,5812336,0,current
+LN00373,CU00324,salary_advance,self_employed,Hanoi,2024-09-18,7000000,15.2,12,904643,0,current
+LN00374,CU00488,motorbike_loan,self_employed,Hanoi,2025-08-15,33000000,26.1,18,22598209,0,current
+LN00375,CU00208,personal_loan,self_employed,HCMC,2025-11-05,194000000,17.6,12,86593856,0,current
+LN00376,CU00044,consumer_durable,salaried,Binh Duong,2026-01-22,26000000,22.9,6,10301240,0,current
+LN00377,CU00132,consumer_durable,salaried,Hanoi,2024-09-30,10000000,30.5,18,2408482,0,current
+LN00378,CU00009,personal_loan,self_employed,Binh Duong,2024-11-04,28000000,29.5,12,6079404,67,overdue
+LN00379,CU00352,personal_loan,self_employed,HCMC,2025-06-12,112000000,23.9,12,32730511,0,current
+LN00380,CU00103,motorbike_loan,salaried,Hanoi,2025-04-25,40000000,17.2,12,331640,0,current
+LN00381,CU00646,consumer_durable,self_employed,Binh Duong,2025-04-16,30000000,16.7,6,9880712,0,current
+LN00382,CU00488,motorbike_loan,self_employed,Binh Duong,2025-07-08,50000000,21.2,12,21399333,0,current
+LN00383,CU00360,consumer_durable,self_employed,HCMC,2025-08-18,22000000,30.8,18,13885782,0,current
+LN00384,CU00500,salary_advance,salaried,Dong Nai,2024-09-29,5000000,31.6,18,1289781,0,current
+LN00385,CU00415,consumer_durable,salaried,Hanoi,2024-08-21,25000000,29.6,18,5781835,0,current
+LN00386,CU00456,consumer_durable,salaried,HCMC,2025-09-20,25000000,26.8,36,20234123,0,current
+LN00387,CU00082,consumer_durable,self_employed,Dong Nai,2024-11-24,10000000,29.4,12,1088910,0,current
+LN00388,CU00087,personal_loan,salaried,Hanoi,2025-01-12,160000000,21.1,6,57348582,0,current
+LN00389,CU00334,consumer_durable,salaried,Dong Nai,2025-08-31,25000000,16.4,12,13535715,0,current
+LN00390,CU00578,salary_advance,gig_worker,Hanoi,2025-08-06,14000000,23.7,36,10737091,0,current
+LN00391,CU00311,motorbike_loan,self_employed,Can Tho,2025-05-21,49000000,15.6,18,24620431,0,current
+LN00392,CU00010,personal_loan,self_employed,Da Nang,2025-12-23,108000000,14.1,24,85977382,0,current
+LN00393,CU00400,consumer_durable,self_employed,Binh Duong,2026-05-04,11000000,29.9,24,10652628,0,current
+LN00394,CU00276,consumer_durable,salaried,HCMC,2024-08-09,29000000,30.4,18,8297748,0,current
+LN00395,CU00156,motorbike_loan,salaried,Binh Duong,2025-07-19,55000000,22.1,36,42826691,0,current
+LN00396,CU00506,personal_loan,salaried,Da Nang,2026-01-27,92000000,21.9,6,49488382,0,current
+LN00397,CU00058,personal_loan,self_employed,Hanoi,2024-12-17,115000000,14.6,6,7196870,0,current
+LN00398,CU00254,personal_loan,self_employed,Hanoi,2025-11-07,69000000,16.2,12,38654753,0,current
+LN00399,CU00044,consumer_durable,self_employed,HCMC,2026-02-04,11000000,21.0,18,8617922,0,current
+LN00400,CU00445,consumer_durable,salaried,Da Nang,2025-01-04,11000000,30.0,12,117594,0,current
+LN00401,CU00092,personal_loan,salaried,HCMC,2026-01-09,121000000,24.5,24,98933567,0,current
+LN00402,CU00239,personal_loan,self_employed,Hanoi,2025-05-30,180000000,25.6,36,125004810,0,current
+LN00403,CU00573,personal_loan,self_employed,Da Nang,2025-05-21,132000000,20.8,12,39563238,315,npl
+LN00404,CU00071,personal_loan,salaried,Can Tho,2025-11-01,159000000,22.4,36,129141004,0,current
+LN00405,CU00635,motorbike_loan,gig_worker,Hanoi,2024-11-03,44000000,25.5,24,12877702,0,current
+LN00406,CU00290,salary_advance,salaried,Binh Duong,2026-03-08,6000000,23.4,24,5320279,0,current
+LN00407,CU00102,personal_loan,salaried,Can Tho,2024-11-22,188000000,17.2,6,60003657,0,current
+LN00408,CU00014,personal_loan,salaried,Can Tho,2024-12-26,154000000,18.6,18,53892172,0,current
+LN00409,CU00060,salary_advance,self_employed,HCMC,2026-02-19,8000000,24.0,24,7071189,0,current
+LN00410,CU00539,consumer_durable,salaried,HCMC,2026-02-28,11000000,15.7,12,8765172,0,current
+LN00411,CU00438,consumer_durable,gig_worker,Da Nang,2024-10-17,28000000,27.8,36,16439339,0,current
+LN00412,CU00323,salary_advance,salaried,HCMC,2025-03-26,5000000,23.6,36,3488768,0,current
+LN00413,CU00564,motorbike_loan,gig_worker,Dong Nai,2025-03-15,42000000,25.0,36,27680616,0,current
+LN00414,CU00220,salary_advance,gig_worker,HCMC,2025-02-07,3000000,31.7,36,2191305,86,overdue
+LN00415,CU00160,salary_advance,gig_worker,HCMC,2025-08-02,12000000,30.7,12,5622851,0,current
+LN00416,CU00495,personal_loan,self_employed,Hanoi,2025-09-15,85000000,21.2,12,34356638,0,current
+LN00417,CU00343,personal_loan,self_employed,Binh Duong,2024-09-28,44000000,14.7,36,25602660,0,current
+LN00418,CU00327,personal_loan,salaried,Binh Duong,2026-01-08,78000000,25.4,24,67898168,0,current
+LN00419,CU00093,motorbike_loan,self_employed,HCMC,2025-09-27,18000000,32.0,24,12593183,0,current
+LN00420,CU00134,personal_loan,salaried,HCMC,2025-12-27,106000000,27.4,36,94815873,65,overdue
+LN00421,CU00590,consumer_durable,salaried,Hanoi,2025-04-02,11000000,25.1,36,8011979,56,overdue
+LN00422,CU00453,personal_loan,salaried,Can Tho,2025-05-20,68000000,25.8,18,37730837,0,current
+LN00423,CU00295,motorbike_loan,gig_worker,Hanoi,2025-09-14,58000000,27.6,6,20592975,166,npl
+LN00424,CU00265,personal_loan,salaried,Can Tho,2025-02-05,140000000,27.3,12,44587124,0,current
+LN00425,CU00633,motorbike_loan,gig_worker,Can Tho,2024-06-26,39000000,23.5,18,12943013,0,current
+LN00426,CU00237,personal_loan,gig_worker,Hanoi,2026-03-04,119000000,29.3,18,100243360,288,npl
+LN00427,CU00023,salary_advance,self_employed,Hanoi,2025-06-22,4000000,17.4,36,2794013,0,current
+LN00428,CU00514,personal_loan,salaried,Dong Nai,2024-12-26,120000000,26.3,18,23656196,0,current
+LN00429,CU00628,personal_loan,salaried,HCMC,2025-04-10,27000000,16.7,24,13411329,49,overdue
+LN00430,CU00595,salary_advance,salaried,Can Tho,2024-10-02,12000000,19.9,36,7648607,0,current
+LN00431,CU00162,motorbike_loan,gig_worker,Binh Duong,2025-06-29,60000000,21.7,12,12562901,0,current
+LN00432,CU00422,personal_loan,gig_worker,Da Nang,2026-01-10,67000000,14.5,18,49281240,0,current
+LN00433,CU00632,personal_loan,gig_worker,Binh Duong,2024-07-28,90000000,15.9,12,35056864,0,current
+LN00434,CU00481,personal_loan,salaried,Da Nang,2025-09-16,79000000,15.4,24,61787620,0,current
+LN00435,CU00423,consumer_durable,gig_worker,Hanoi,2024-12-24,10000000,18.1,24,3583806,229,npl
+LN00436,CU00438,personal_loan,salaried,Can Tho,2025-10-14,36000000,22.8,18,22746060,0,current
+LN00437,CU00040,motorbike_loan,self_employed,HCMC,2025-04-17,40000000,24.3,36,28298668,0,current
+LN00438,CU00646,motorbike_loan,gig_worker,Hanoi,2026-03-29,48000000,31.7,6,34830713,0,current
+LN00439,CU00475,salary_advance,salaried,HCMC,2025-07-04,9000000,19.3,6,1116169,0,current
+LN00440,CU00605,consumer_durable,self_employed,Hanoi,2026-01-16,27000000,16.4,24,23717770,323,npl
+LN00441,CU00650,salary_advance,gig_worker,Dong Nai,2026-02-08,13000000,30.3,12,9154817,15,overdue
+LN00442,CU00154,motorbike_loan,salaried,Da Nang,2024-12-04,25000000,20.9,12,877472,0,current
+LN00443,CU00135,personal_loan,self_employed,HCMC,2026-03-20,127000000,27.8,24,119427495,0,current
+LN00444,CU00603,salary_advance,self_employed,HCMC,2026-04-29,11000000,28.5,36,10708780,0,current
+LN00445,CU00190,consumer_durable,salaried,Hanoi,2024-09-03,12000000,19.0,36,5503660,0,current
+LN00446,CU00183,personal_loan,salaried,Can Tho,2026-04-08,190000000,20.0,6,150757872,0,current
+LN00447,CU00389,personal_loan,self_employed,HCMC,2024-09-09,166000000,27.5,18,4549739,39,overdue
+LN00448,CU00215,consumer_durable,gig_worker,Binh Duong,2026-03-06,9000000,26.5,18,7902474,0,current
+LN00449,CU00266,consumer_durable,salaried,Da Nang,2024-08-05,20000000,26.4,18,4583571,0,current
+LN00450,CU00298,motorbike_loan,salaried,Dong Nai,2025-12-30,51000000,27.1,24,42531856,79,overdue
+LN00451,CU00218,salary_advance,salaried,HCMC,2024-08-09,12000000,32.0,24,5199834,0,current
+LN00452,CU00406,personal_loan,salaried,HCMC,2026-03-03,98000000,19.8,6,66368799,0,current
+LN00453,CU00494,consumer_durable,salaried,Da Nang,2025-11-13,15000000,22.6,24,11554118,0,current
+LN00454,CU00569,personal_loan,gig_worker,Hanoi,2025-06-02,138000000,29.0,18,62010110,0,current
+LN00455,CU00585,motorbike_loan,self_employed,HCMC,2025-05-14,24000000,20.1,24,12942143,0,current
+LN00456,CU00463,motorbike_loan,salaried,HCMC,2025-06-30,35000000,18.9,6,7041237,0,current
+LN00457,CU00513,consumer_durable,self_employed,Hanoi,2025-11-13,30000000,28.0,6,6674710,338,npl
+LN00458,CU00038,personal_loan,self_employed,Hanoi,2024-11-21,99000000,29.7,36,55900997,0,current
+LN00459,CU00320,motorbike_loan,self_employed,Can Tho,2026-05-07,17000000,29.7,18,16256957,357,npl
+LN00460,CU00280,personal_loan,self_employed,Binh Duong,2025-10-09,102000000,19.0,18,60786793,0,current
+LN00461,CU00291,personal_loan,salaried,HCMC,2024-08-12,163000000,23.8,36,90543478,0,current
+LN00462,CU00611,motorbike_loan,salaried,HCMC,2025-05-30,43000000,14.5,6,15378056,55,overdue
+LN00463,CU00477,salary_advance,self_employed,Can Tho,2025-02-09,8000000,28.7,36,5754957,0,current
+LN00464,CU00148,motorbike_loan,gig_worker,HCMC,2025-01-17,44000000,25.6,24,20878928,0,current
+LN00465,CU00116,salary_advance,gig_worker,Da Nang,2025-04-05,8000000,28.2,18,3138495,334,npl
+LN00466,CU00310,motorbike_loan,salaried,Hanoi,2025-05-20,51000000,15.9,6,13752257,0,current
+LN00467,CU00442,motorbike_loan,salaried,Hanoi,2024-08-14,50000000,20.9,18,15835237,0,current
+LN00468,CU00611,consumer_durable,self_employed,Hanoi,2024-10-31,10000000,26.1,36,5066864,0,current
+LN00469,CU00507,motorbike_loan,gig_worker,Da Nang,2025-11-12,40000000,16.0,36,32933598,0,current
+LN00470,CU00201,motorbike_loan,salaried,HCMC,2025-12-20,55000000,27.6,12,37097734,79,overdue
+LN00471,CU00131,personal_loan,salaried,Dong Nai,2025-07-04,131000000,24.5,36,91189626,0,current
+LN00472,CU00605,salary_advance,gig_worker,HCMC,2026-03-18,8000000,16.0,18,7158869,0,current
+LN00473,CU00369,motorbike_loan,salaried,Hanoi,2025-04-16,49000000,17.1,12,15910753,0,current
+LN00474,CU00448,consumer_durable,gig_worker,HCMC,2024-06-24,5000000,25.7,12,557321,0,current
+LN00475,CU00461,salary_advance,salaried,HCMC,2025-03-12,9000000,25.2,24,4478816,0,current
+LN00476,CU00376,motorbike_loan,salaried,HCMC,2026-05-04,46000000,26.8,18,44046699,0,current
+LN00477,CU00287,personal_loan,self_employed,HCMC,2025-04-29,48000000,15.4,36,30780518,0,current
+LN00478,CU00594,motorbike_loan,gig_worker,HCMC,2026-02-10,45000000,25.9,6,18791111,0,current
+LN00479,CU00302,personal_loan,salaried,HCMC,2026-04-30,140000000,24.3,18,134023505,0,current
+LN00480,CU00299,personal_loan,gig_worker,HCMC,2025-07-04,164000000,22.5,12,39352018,0,current
+LN00481,CU00264,consumer_durable,salaried,Can Tho,2026-02-16,7000000,19.0,12,5518941,0,current
+LN00482,CU00186,personal_loan,salaried,HCMC,2024-09-13,58000000,28.5,18,5045357,0,current
+LN00483,CU00451,consumer_durable,salaried,Dong Nai,2026-02-14,9000000,27.5,24,7978334,0,current
+LN00484,CU00309,consumer_durable,self_employed,HCMC,2025-05-23,13000000,28.8,6,4328477,0,current
+LN00485,CU00296,motorbike_loan,gig_worker,Dong Nai,2025-09-14,58000000,22.5,12,26595828,0,current
+LN00486,CU00280,salary_advance,self_employed,Hanoi,2024-11-15,11000000,25.5,24,3648475,0,current
+LN00487,CU00200,personal_loan,salaried,HCMC,2024-07-10,169000000,26.2,12,17960410,0,current
+LN00488,CU00457,motorbike_loan,gig_worker,Can Tho,2025-06-25,15000000,29.0,6,3532507,0,current
+LN00489,CU00123,motorbike_loan,salaried,Binh Duong,2026-04-07,54000000,30.9,12,45178239,0,current
+LN00490,CU00465,personal_loan,salaried,Da Nang,2024-07-17,164000000,17.3,18,34967714,0,current
+LN00491,CU00062,salary_advance,salaried,HCMC,2024-06-27,15000000,15.3,6,3703205,0,current
+LN00492,CU00442,personal_loan,salaried,Binh Duong,2026-03-01,145000000,17.2,24,133338879,0,current
+LN00493,CU00153,personal_loan,gig_worker,Can Tho,2025-08-19,46000000,24.3,18,25049418,345,npl
+LN00494,CU00503,consumer_durable,salaried,HCMC,2025-04-07,27000000,30.3,36,20684444,0,current
+LN00495,CU00368,motorbike_loan,self_employed,Hanoi,2026-03-01,29000000,31.2,24,26649254,0,current
+LN00496,CU00208,personal_loan,salaried,Hanoi,2024-07-18,43000000,15.4,24,5740198,0,current
+LN00497,CU00449,personal_loan,salaried,HCMC,2025-10-28,96000000,25.4,18,66334880,0,current
+LN00498,CU00461,consumer_durable,salaried,HCMC,2024-09-11,17000000,28.3,18,3402147,0,current
+LN00499,CU00550,salary_advance,salaried,HCMC,2025-05-31,6000000,28.5,36,4433303,0,current
+LN00500,CU00134,personal_loan,gig_worker,Da Nang,2026-04-04,56000000,22.5,36,54076335,0,current
+LN00501,CU00631,personal_loan,gig_worker,Can Tho,2026-02-01,136000000,15.2,6,77459083,0,current
+LN00502,CU00047,personal_loan,salaried,Binh Duong,2025-03-26,103000000,23.8,18,28130491,0,current
+LN00503,CU00137,motorbike_loan,salaried,Hanoi,2025-12-18,25000000,24.0,24,21367407,0,current
+LN00504,CU00291,personal_loan,self_employed,Binh Duong,2025-12-01,24000000,14.1,6,2815284,0,current
+LN00505,CU00512,motorbike_loan,self_employed,Binh Duong,2026-01-02,24000000,23.4,24,20521492,86,overdue
+LN00506,CU00634,motorbike_loan,gig_worker,HCMC,2025-07-07,41000000,18.2,6,219702,0,current
+LN00507,CU00164,motorbike_loan,self_employed,Binh Duong,2025-09-29,55000000,19.0,12,31347372,61,overdue
+LN00508,CU00551,consumer_durable,self_employed,HCMC,2025-07-24,13000000,25.1,24,9656145,0,current
+LN00509,CU00334,personal_loan,self_employed,Binh Duong,2026-01-13,38000000,24.7,18,31517820,0,current
+LN00510,CU00149,personal_loan,salaried,HCMC,2025-09-11,125000000,15.3,36,100194903,0,current
+LN00511,CU00583,personal_loan,salaried,Da Nang,2025-04-24,54000000,25.4,18,27445510,0,current
+LN00512,CU00627,personal_loan,gig_worker,HCMC,2025-01-27,127000000,18.0,18,32009148,0,current
+LN00513,CU00286,salary_advance,self_employed,Da Nang,2025-09-18,10000000,29.5,12,4422451,0,current
+LN00514,CU00006,personal_loan,gig_worker,Hanoi,2025-08-31,103000000,30.1,36,77803600,0,current
+LN00515,CU00572,motorbike_loan,gig_worker,HCMC,2024-12-11,42000000,22.6,6,9198985,0,current
+LN00516,CU00166,consumer_durable,salaried,Can Tho,2025-09-30,14000000,25.7,6,5510791,0,current
+LN00517,CU00642,consumer_durable,self_employed,Binh Duong,2026-04-17,29000000,29.7,24,28185609,0,current
+LN00518,CU00628,motorbike_loan,gig_worker,Can Tho,2026-02-28,59000000,14.6,24,52353980,0,current
+LN00519,CU00477,motorbike_loan,self_employed,Binh Duong,2026-02-18,36000000,23.3,18,30268853,278,npl
+LN00520,CU00117,motorbike_loan,salaried,Hanoi,2024-10-16,19000000,27.9,12,142487,0,current
+LN00521,CU00464,motorbike_loan,self_employed,Binh Duong,2025-10-09,35000000,23.1,24,26706655,267,npl
+LN00522,CU00090,motorbike_loan,salaried,Da Nang,2024-11-13,49000000,25.2,6,15908269,0,current
+LN00523,CU00643,personal_loan,salaried,Dong Nai,2026-02-22,47000000,26.5,24,43121329,0,current
+LN00524,CU00533,personal_loan,self_employed,Hanoi,2025-12-27,141000000,27.3,6,56798710,30,overdue
+LN00525,CU00136,motorbike_loan,salaried,Hanoi,2024-07-19,46000000,26.5,36,23132431,0,current
+LN00526,CU00171,salary_advance,self_employed,Hanoi,2025-09-21,15000000,29.2,12,7587516,0,current
+LN00527,CU00589,motorbike_loan,self_employed,HCMC,2025-11-06,60000000,28.3,12,35669325,253,npl
+LN00528,CU00309,personal_loan,salaried,HCMC,2024-10-13,28000000,16.7,24,8961245,0,current
+LN00529,CU00303,personal_loan,gig_worker,HCMC,2025-12-14,137000000,31.5,36,118157925,0,current
+LN00530,CU00143,motorbike_loan,gig_worker,HCMC,2024-10-01,24000000,27.1,24,9290524,62,overdue
+LN00531,CU00228,consumer_durable,salaried,HCMC,2024-08-17,16000000,19.9,36,7625088,0,current
+LN00532,CU00618,consumer_durable,salaried,Binh Duong,2026-02-15,26000000,31.2,36,24358166,0,current
+LN00533,CU00316,motorbike_loan,gig_worker,Dong Nai,2025-05-07,24000000,20.7,18,13515477,0,current
+LN00534,CU00602,salary_advance,salaried,Dong Nai,2025-02-11,5000000,28.5,24,2028525,0,current
+LN00535,CU00425,motorbike_loan,salaried,HCMC,2024-11-20,19000000,20.8,6,4488099,0,current
+LN00536,CU00600,personal_loan,self_employed,Hanoi,2025-12-22,71000000,24.0,6,16027085,0,current
+LN00537,CU00295,personal_loan,self_employed,Da Nang,2026-04-14,20000000,31.2,24,19458607,0,current
+LN00538,CU00493,motorbike_loan,self_employed,Hanoi,2025-09-03,22000000,22.9,6,3529756,0,current
+LN00539,CU00060,motorbike_loan,self_employed,Dong Nai,2025-01-09,22000000,27.2,6,1361535,0,current
+LN00540,CU00079,personal_loan,self_employed,Hanoi,2025-05-11,61000000,21.6,18,33708201,0,current
+LN00541,CU00372,motorbike_loan,salaried,Binh Duong,2026-02-04,25000000,29.7,18,21063424,0,current
+LN00542,CU00105,personal_loan,gig_worker,Da Nang,2026-04-28,55000000,28.0,24,53313046,0,current
+LN00543,CU00120,personal_loan,gig_worker,Hanoi,2024-10-16,177000000,26.8,6,41251884,0,current
+LN00544,CU00177,consumer_durable,self_employed,Dong Nai,2025-06-26,9000000,30.0,36,6774566,0,current
+LN00545,CU00436,consumer_durable,gig_worker,HCMC,2025-09-26,9000000,18.1,12,4896381,0,current
+LN00546,CU00260,consumer_durable,salaried,Binh Duong,2025-01-01,11000000,14.6,36,6650845,0,current
+LN00547,CU00285,personal_loan,salaried,Hanoi,2026-02-02,51000000,30.2,12,36239915,165,npl
+LN00548,CU00197,salary_advance,salaried,Hanoi,2024-12-15,12000000,15.2,36,6568214,0,current
+LN00549,CU00110,salary_advance,self_employed,HCMC,2026-05-07,14000000,22.5,36,13737869,0,current
+LN00550,CU00140,personal_loan,salaried,Hanoi,2025-10-04,151000000,27.7,18,107414946,0,current
+LN00551,CU00418,motorbike_loan,salaried,Hanoi,2026-03-31,35000000,20.9,24,32549545,57,overdue
+LN00552,CU00536,personal_loan,salaried,Binh Duong,2026-03-01,141000000,14.2,24,125686726,0,current
+LN00553,CU00347,consumer_durable,salaried,HCMC,2025-03-27,8000000,30.7,12,2992926,0,current
+LN00554,CU00410,personal_loan,salaried,Binh Duong,2025-09-15,128000000,26.8,36,104178915,0,current
+LN00555,CU00644,motorbike_loan,gig_worker,Can Tho,2024-12-31,32000000,22.2,6,9591169,0,current
+LN00556,CU00099,salary_advance,self_employed,HCMC,2026-03-03,5000000,20.9,18,4449087,0,current
+LN00557,CU00554,consumer_durable,self_employed,Can Tho,2024-12-23,14000000,23.0,36,9341374,0,current
+LN00558,CU00169,motorbike_loan,salaried,Dong Nai,2025-02-25,39000000,29.4,24,19893351,246,npl
+LN00559,CU00161,motorbike_loan,self_employed,HCMC,2024-12-28,51000000,25.9,36,31037708,0,current
+LN00560,CU00132,motorbike_loan,self_employed,Hanoi,2025-04-20,58000000,31.6,18,31837473,0,current
+LN00561,CU00320,consumer_durable,self_employed,Hanoi,2026-04-14,17000000,21.7,18,16277715,32,overdue
+LN00562,CU00582,motorbike_loan,salaried,Dong Nai,2025-07-03,36000000,23.7,6,7762904,0,current
+LN00563,CU00103,motorbike_loan,salaried,Hanoi,2025-01-16,16000000,24.3,18,3472655,0,current
+LN00564,CU00078,consumer_durable,self_employed,HCMC,2024-06-27,24000000,20.5,24,8343820,0,current
+LN00565,CU00607,consumer_durable,salaried,Da Nang,2026-03-24,17000000,18.1,6,11973197,0,current
+LN00566,CU00553,personal_loan,gig_worker,HCMC,2025-01-10,129000000,15.4,18,31307233,0,current
+LN00567,CU00192,personal_loan,salaried,Hanoi,2024-11-30,136000000,17.3,6,20245289,0,current
+LN00568,CU00062,motorbike_loan,gig_worker,HCMC,2025-01-18,55000000,25.1,24,19292006,0,current
+LN00569,CU00274,motorbike_loan,salaried,Hanoi,2025-12-08,34000000,19.7,6,4978586,0,current
+LN00570,CU00476,consumer_durable,salaried,Can Tho,2024-09-03,12000000,16.7,6,3621184,0,current
+LN00571,CU00498,motorbike_loan,salaried,Dong Nai,2026-04-04,25000000,14.5,18,22601476,6,overdue
+LN00572,CU00144,consumer_durable,gig_worker,HCMC,2025-06-24,7000000,30.1,6,1688693,0,current
+LN00573,CU00338,personal_loan,self_employed,Da Nang,2026-01-08,153000000,30.8,18,119060331,87,overdue
+LN00574,CU00604,consumer_durable,gig_worker,Binh Duong,2025-09-12,9000000,17.2,18,5508944,0,current
+LN00575,CU00372,personal_loan,self_employed,Da Nang,2026-01-16,101000000,26.3,18,79637974,0,current
+LN00576,CU00246,motorbike_loan,salaried,Hanoi,2024-07-20,17000000,28.4,6,2103359,0,current
+LN00577,CU00262,personal_loan,self_employed,Hanoi,2025-05-05,195000000,29.4,24,131292657,0,current
+LN00578,CU00083,personal_loan,self_employed,Dong Nai,2025-07-11,73000000,19.7,24,42361302,0,current
+LN00579,CU00617,consumer_durable,self_employed,Dong Nai,2025-03-15,18000000,28.8,18,5961992,0,current
+LN00580,CU00313,consumer_durable,salaried,Da Nang,2026-04-13,25000000,25.3,12,23747436,0,current
+LN00581,CU00137,personal_loan,salaried,HCMC,2024-11-29,186000000,21.4,18,40809151,0,current
+LN00582,CU00230,personal_loan,gig_worker,Can Tho,2025-07-27,70000000,17.3,24,41477833,0,current
+LN00583,CU00615,personal_loan,self_employed,HCMC,2024-08-23,180000000,17.6,12,68415626,0,current
+LN00584,CU00230,personal_loan,salaried,HCMC,2024-10-08,50000000,21.8,24,11212375,0,current
+LN00585,CU00290,consumer_durable,gig_worker,HCMC,2025-08-12,17000000,21.8,12,5099530,0,current
+LN00586,CU00470,consumer_durable,salaried,HCMC,2025-12-13,13000000,25.1,12,8949118,0,current
+LN00587,CU00483,personal_loan,gig_worker,Hanoi,2025-03-30,195000000,26.8,36,141727823,86,overdue
+LN00588,CU00136,salary_advance,gig_worker,Dong Nai,2024-09-06,11000000,25.2,18,98894,0,current
+LN00589,CU00444,salary_advance,self_employed,Da Nang,2025-08-18,8000000,29.8,12,4184844,0,current
+LN00590,CU00271,personal_loan,salaried,HCMC,2026-01-01,147000000,30.7,18,107754386,0,current
+LN00591,CU00168,motorbike_loan,salaried,Hanoi,2024-12-24,50000000,28.4,6,16221600,87,overdue
+LN00592,CU00152,consumer_durable,gig_worker,Hanoi,2024-12-21,16000000,24.1,24,6965118,0,current
+LN00593,CU00005,personal_loan,gig_worker,HCMC,2025-11-08,63000000,30.0,36,54609258,0,current
+LN00594,CU00125,motorbike_loan,salaried,Da Nang,2026-02-22,46000000,30.0,6,29584612,0,current
+LN00595,CU00609,motorbike_loan,gig_worker,Da Nang,2025-06-14,16000000,29.0,24,9747022,0,current
+LN00596,CU00290,consumer_durable,salaried,Hanoi,2024-08-12,28000000,30.3,36,16848208,0,current
+LN00597,CU00167,personal_loan,salaried,HCMC,2024-09-02,117000000,17.2,24,51922738,0,current
+LN00598,CU00368,motorbike_loan,self_employed,Hanoi,2024-07-11,22000000,28.4,18,847138,0,current
+LN00599,CU00378,consumer_durable,self_employed,Binh Duong,2024-12-26,20000000,24.1,24,10988740,0,current
+LN00600,CU00538,motorbike_loan,salaried,Hanoi,2026-03-31,36000000,18.0,12,30166397,0,current
+LN00601,CU00049,personal_loan,salaried,Hanoi,2025-01-07,96000000,30.3,12,18313265,0,current
+LN00602,CU00600,motorbike_loan,self_employed,Dong Nai,2024-12-05,41000000,25.9,36,22034836,0,current
+LN00603,CU00305,personal_loan,salaried,Hanoi,2024-07-03,138000000,29.2,6,50602360,0,current
+LN00604,CU00266,personal_loan,self_employed,Binh Duong,2025-02-05,179000000,17.4,12,65999410,0,current
+LN00605,CU00617,salary_advance,self_employed,HCMC,2026-05-06,5000000,25.8,24,4817349,0,current
+LN00606,CU00193,consumer_durable,gig_worker,Hanoi,2024-08-18,26000000,26.2,18,9488594,85,overdue
+LN00607,CU00486,salary_advance,self_employed,HCMC,2024-07-15,15000000,23.7,6,4194492,0,current
+LN00608,CU00402,motorbike_loan,gig_worker,HCMC,2025-02-10,45000000,24.5,12,12693034,0,current
+LN00609,CU00498,personal_loan,self_employed,HCMC,2025-02-23,126000000,24.7,36,73520446,295,npl
+LN00610,CU00485,motorbike_loan,gig_worker,Binh Duong,2024-12-28,60000000,14.3,36,39420364,304,npl
+LN00611,CU00520,personal_loan,self_employed,Can Tho,2025-02-06,198000000,19.2,12,42036157,0,current
+LN00612,CU00369,personal_loan,salaried,Dong Nai,2024-09-02,188000000,27.0,24,26144938,0,current
+LN00613,CU00426,consumer_durable,gig_worker,Binh Duong,2024-08-13,27000000,15.6,24,10871944,78,overdue
+LN00614,CU00516,salary_advance,salaried,Hanoi,2024-10-18,7000000,20.4,12,2310798,0,current
+LN00615,CU00571,personal_loan,salaried,HCMC,2024-08-17,78000000,22.8,18,6711562,0,current
+LN00616,CU00114,personal_loan,self_employed,HCMC,2024-11-30,174000000,14.9,24,53992884,0,current
+LN00617,CU00161,salary_advance,self_employed,Binh Duong,2026-01-27,4000000,17.0,6,1471072,0,current
+LN00618,CU00426,consumer_durable,self_employed,Can Tho,2024-12-17,25000000,20.0,12,8770165,0,current
+LN00619,CU00645,consumer_durable,gig_worker,HCMC,2025-01-11,21000000,15.5,18,3426082,0,current
+LN00620,CU00529,consumer_durable,self_employed,HCMC,2025-03-06,30000000,21.4,24,12014510,0,current
+LN00621,CU00169,consumer_durable,salaried,Hanoi,2025-12-13,30000000,31.0,6,11616963,0,current
+LN00622,CU00567,motorbike_loan,salaried,Hanoi,2024-07-24,51000000,31.6,36,20174157,0,current
+LN00623,CU00558,salary_advance,salaried,Binh Duong,2025-05-24,12000000,30.6,24,7329146,0,current
+LN00624,CU00130,motorbike_loan,salaried,Da Nang,2025-05-23,40000000,29.9,6,15408477,0,current
+LN00625,CU00553,motorbike_loan,salaried,Da Nang,2024-12-04,34000000,27.6,12,13281464,0,current
+LN00626,CU00049,motorbike_loan,self_employed,HCMC,2025-03-05,22000000,29.1,18,6402076,0,current
+LN00627,CU00643,consumer_durable,salaried,Dong Nai,2024-10-02,15000000,28.5,36,8114675,0,current
+LN00628,CU00254,consumer_durable,salaried,Binh Duong,2025-07-09,30000000,24.3,12,5642139,0,current
+LN00629,CU00457,personal_loan,salaried,Hanoi,2025-05-07,136000000,21.7,24,89385290,17,overdue
+LN00630,CU00502,personal_loan,salaried,Can Tho,2024-10-16,152000000,23.0,24,25510070,0,current
+LN00631,CU00218,consumer_durable,salaried,Hanoi,2024-12-10,27000000,16.3,36,14238333,0,current
+LN00632,CU00121,motorbike_loan,salaried,HCMC,2024-10-16,22000000,16.0,18,3768470,169,npl
+LN00633,CU00291,motorbike_loan,salaried,Dong Nai,2024-12-30,24000000,24.6,6,606521,0,current
+LN00634,CU00346,personal_loan,self_employed,Binh Duong,2026-01-06,160000000,21.5,36,143913761,0,current
+LN00635,CU00334,consumer_durable,self_employed,Hanoi,2024-08-29,21000000,22.3,24,5070927,0,current
+LN00636,CU00170,personal_loan,self_employed,Can Tho,2025-04-10,79000000,14.8,24,37784674,0,current
+LN00637,CU00055,consumer_durable,self_employed,Da Nang,2025-06-29,8000000,24.1,12,798172,0,current
+LN00638,CU00594,salary_advance,self_employed,Da Nang,2024-12-13,11000000,17.2,6,3190164,0,current
+LN00639,CU00325,motorbike_loan,self_employed,Binh Duong,2025-03-26,17000000,20.1,12,3978432,0,current
+LN00640,CU00174,motorbike_loan,gig_worker,HCMC,2024-11-03,33000000,18.6,6,11164198,0,current
+LN00641,CU00124,personal_loan,salaried,Dong Nai,2026-03-13,96000000,16.6,18,88499480,0,current
+LN00642,CU00567,personal_loan,self_employed,HCMC,2025-09-11,146000000,20.9,6,42673608,0,current
+LN00643,CU00129,motorbike_loan,salaried,Hanoi,2025-09-14,32000000,26.2,12,12689251,0,current
+LN00644,CU00434,personal_loan,salaried,Hanoi,2024-07-29,148000000,20.7,12,12904199,0,current
+LN00645,CU00390,salary_advance,salaried,Da Nang,2025-01-21,5000000,14.0,24,2635596,0,current
+LN00646,CU00126,salary_advance,salaried,Binh Duong,2024-12-05,14000000,23.6,6,3916425,0,current
+LN00647,CU00464,consumer_durable,gig_worker,Binh Duong,2025-02-23,21000000,19.7,18,6053810,0,current
+LN00648,CU00005,personal_loan,salaried,Can Tho,2025-10-08,137000000,30.5,12,58583271,334,npl
+LN00649,CU00456,salary_advance,salaried,Can Tho,2024-12-27,15000000,29.8,6,2768104,0,current
+LN00650,CU00198,consumer_durable,gig_worker,Hanoi,2024-09-03,10000000,28.6,6,3500944,0,current
+LN00651,CU00227,motorbike_loan,salaried,HCMC,2025-07-28,60000000,15.6,36,45831756,0,current
+LN00652,CU00114,personal_loan,salaried,Hanoi,2025-07-28,146000000,17.8,12,25099174,0,current
+LN00653,CU00131,salary_advance,self_employed,Da Nang,2024-10-23,12000000,26.1,36,6768311,17,overdue
+LN00654,CU00465,personal_loan,salaried,Da Nang,2024-11-22,90000000,31.9,36,51939782,0,current
+LN00655,CU00045,personal_loan,self_employed,Hanoi,2024-07-15,33000000,18.9,36,16415118,0,current
+LN00656,CU00026,salary_advance,salaried,HCMC,2025-03-07,3000000,21.1,18,1418191,0,current
+LN00657,CU00025,salary_advance,self_employed,HCMC,2026-02-24,8000000,19.6,6,5555403,0,current
+LN00658,CU00243,motorbike_loan,salaried,Can Tho,2025-08-28,21000000,31.3,6,1498276,0,current
+LN00659,CU00067,salary_advance,self_employed,Binh Duong,2026-02-03,4000000,15.5,6,1422171,0,current
+LN00660,CU00391,consumer_durable,gig_worker,HCMC,2026-03-16,25000000,15.2,6,18135806,0,current
+LN00661,CU00348,motorbike_loan,salaried,Da Nang,2024-09-05,54000000,20.9,24,9019168,0,current
+LN00662,CU00199,consumer_durable,salaried,Can Tho,2024-11-28,11000000,15.8,36,6130741,0,current
+LN00663,CU00320,salary_advance,self_employed,HCMC,2025-05-13,12000000,22.0,12,4139171,156,npl
+LN00664,CU00378,motorbike_loan,self_employed,Hanoi,2025-05-10,52000000,16.6,24,31622268,0,current
+LN00665,CU00207,salary_advance,self_employed,Hanoi,2025-12-14,11000000,29.5,24,9309835,0,current
+LN00666,CU00167,consumer_durable,self_employed,Hanoi,2025-01-18,15000000,24.2,18,3714116,0,current
+LN00667,CU00340,personal_loan,gig_worker,Dong Nai,2024-12-20,76000000,26.5,24,30264922,0,current
+LN00668,CU00647,consumer_durable,salaried,Hanoi,2026-05-05,7000000,14.5,6,6233545,0,current
+LN00669,CU00201,motorbike_loan,salaried,Binh Duong,2026-04-11,27000000,17.9,18,24337395,71,overdue
+LN00670,CU00382,personal_loan,gig_worker,Binh Duong,2026-04-20,193000000,28.2,6,169346135,59,overdue
+LN00671,CU00326,consumer_durable,gig_worker,Dong Nai,2024-08-11,7000000,16.6,12,574285,49,overdue
+LN00672,CU00130,motorbike_loan,salaried,Dong Nai,2026-03-25,52000000,19.3,12,45664040,234,npl
+LN00673,CU00522,salary_advance,gig_worker,Dong Nai,2025-10-09,13000000,25.1,12,6036805,0,current
+LN00674,CU00598,motorbike_loan,salaried,Hanoi,2025-04-24,59000000,31.2,24,36394778,0,current
+LN00675,CU00384,motorbike_loan,gig_worker,HCMC,2025-02-03,40000000,21.7,24,17905382,0,current
+LN00676,CU00462,personal_loan,self_employed,HCMC,2025-07-13,133000000,24.5,24,83934342,0,current
+LN00677,CU00085,motorbike_loan,gig_worker,Hanoi,2025-06-21,39000000,22.0,18,18547617,0,current
+LN00678,CU00338,personal_loan,self_employed,Hanoi,2026-02-20,90000000,15.3,6,53171530,0,current
+LN00679,CU00289,personal_loan,self_employed,Binh Duong,2025-08-03,68000000,32.0,36,49773109,244,npl
+LN00680,CU00215,consumer_durable,salaried,Binh Duong,2025-03-22,5000000,25.8,12,269067,0,current
+LN00681,CU00428,motorbike_loan,self_employed,Hanoi,2025-01-17,36000000,19.6,12,8225381,0,current
+LN00682,CU00364,personal_loan,self_employed,Hanoi,2025-04-23,55000000,31.0,6,11004395,0,current
+LN00683,CU00158,personal_loan,self_employed,Hanoi,2025-03-24,196000000,24.6,36,126321979,0,current
+LN00684,CU00487,salary_advance,self_employed,Dong Nai,2024-09-01,9000000,17.7,24,4074315,0,current
+LN00685,CU00028,personal_loan,self_employed,Da Nang,2025-07-04,43000000,24.0,6,2984632,0,current
+LN00686,CU00176,personal_loan,gig_worker,HCMC,2025-07-25,72000000,23.4,24,53310561,0,current
+LN00687,CU00134,personal_loan,salaried,Dong Nai,2026-01-18,53000000,27.4,24,44325324,0,current
+LN00688,CU00470,salary_advance,gig_worker,Hanoi,2024-06-30,12000000,30.9,36,6777549,0,current
+LN00689,CU00590,personal_loan,salaried,HCMC,2026-03-07,122000000,23.5,36,112324426,0,current
+LN00690,CU00426,personal_loan,self_employed,HCMC,2025-01-29,108000000,19.4,36,63390151,0,current
+LN00691,CU00281,personal_loan,self_employed,Dong Nai,2025-01-28,118000000,24.2,24,48815978,171,npl
+LN00692,CU00108,salary_advance,self_employed,Da Nang,2026-03-04,9000000,31.9,36,8513630,0,current
+LN00693,CU00473,motorbike_loan,salaried,Binh Duong,2025-11-24,28000000,22.3,6,4044693,0,current
+LN00694,CU00497,motorbike_loan,gig_worker,Binh Duong,2025-03-31,15000000,26.8,12,4037337,0,current
+LN00695,CU00128,motorbike_loan,self_employed,HCMC,2025-02-17,45000000,17.1,6,7074205,0,current
+LN00696,CU00546,motorbike_loan,salaried,Hanoi,2026-04-30,32000000,20.4,12,29637960,0,current
+LN00697,CU00613,personal_loan,gig_worker,Can Tho,2024-11-22,184000000,30.1,24,63092861,0,current
+LN00698,CU00197,personal_loan,self_employed,Binh Duong,2025-08-29,115000000,14.3,6,492631,0,current
+LN00699,CU00576,consumer_durable,gig_worker,HCMC,2026-02-02,28000000,14.8,36,25999326,0,current
+LN00700,CU00324,motorbike_loan,gig_worker,Can Tho,2025-04-02,22000000,15.9,18,10544990,0,current
+LN00701,CU00512,personal_loan,salaried,HCMC,2024-07-07,91000000,14.8,12,21436075,0,current
+LN00702,CU00137,salary_advance,self_employed,HCMC,2024-10-06,12000000,19.8,24,3288397,0,current
+LN00703,CU00239,personal_loan,gig_worker,Can Tho,2025-06-20,190000000,14.3,36,144741942,0,current
+LN00704,CU00511,motorbike_loan,salaried,Can Tho,2026-04-20,22000000,27.3,12,20445504,282,npl
+LN00705,CU00041,personal_loan,salaried,HCMC,2026-04-03,80000000,29.8,12,70516658,0,current
+LN00706,CU00255,motorbike_loan,self_employed,Dong Nai,2025-07-20,29000000,20.2,12,9286653,0,current
+LN00707,CU00210,consumer_durable,salaried,Can Tho,2025-04-16,10000000,25.3,6,520533,86,overdue
+LN00708,CU00435,personal_loan,self_employed,HCMC,2025-10-14,80000000,27.0,18,59290468,0,current
+LN00709,CU00452,personal_loan,salaried,HCMC,2025-02-06,182000000,22.7,18,59162490,0,current
+LN00710,CU00610,motorbike_loan,salaried,Da Nang,2025-12-03,16000000,21.7,6,1543306,0,current
+LN00711,CU00481,motorbike_loan,salaried,Da Nang,2025-04-17,34000000,20.8,36,24271853,0,current
+LN00712,CU00603,personal_loan,salaried,Dong Nai,2024-12-15,115000000,30.9,18,28334278,0,current
+LN00713,CU00357,personal_loan,gig_worker,Dong Nai,2026-01-04,118000000,27.7,18,88221121,0,current
+LN00714,CU00647,motorbike_loan,self_employed,Hanoi,2026-03-13,39000000,18.4,24,37005140,0,current
+LN00715,CU00166,consumer_durable,self_employed,HCMC,2025-12-11,19000000,16.7,12,11011832,0,current
+LN00716,CU00438,personal_loan,self_employed,Binh Duong,2025-04-13,121000000,23.3,12,6001301,0,current
+LN00717,CU00353,personal_loan,gig_worker,Hanoi,2024-07-06,117000000,21.4,6,41685973,0,current
+LN00718,CU00428,consumer_durable,salaried,HCMC,2025-03-30,5000000,28.7,6,1806258,0,current
+LN00719,CU00462,motorbike_loan,self_employed,Can Tho,2025-11-18,38000000,16.4,24,31608459,0,current
+LN00720,CU00082,motorbike_loan,salaried,HCMC,2025-11-05,31000000,25.3,36,27120050,0,current
+LN00721,CU00008,personal_loan,salaried,Hanoi,2025-05-26,27000000,22.7,6,10697328,0,current
+LN00722,CU00346,consumer_durable,salaried,Binh Duong,2025-10-07,17000000,23.4,18,9649567,0,current
+LN00723,CU00339,motorbike_loan,self_employed,Hanoi,2025-05-25,30000000,21.2,36,23771033,0,current
+LN00724,CU00255,consumer_durable,gig_worker,HCMC,2025-03-26,24000000,29.6,18,5698737,0,current
+LN00725,CU00047,motorbike_loan,self_employed,Da Nang,2025-01-10,41000000,14.1,18,17509081,0,current
+LN00726,CU00488,salary_advance,self_employed,Binh Duong,2025-09-14,14000000,25.0,6,3649329,0,current
+LN00727,CU00517,salary_advance,gig_worker,Binh Duong,2025-04-12,14000000,16.6,36,8825090,0,current
+LN00728,CU00217,personal_loan,salaried,Hanoi,2024-06-21,160000000,31.2,24,27357950,0,current
+LN00729,CU00226,personal_loan,self_employed,Dong Nai,2026-01-23,131000000,30.7,18,103022492,0,current
+LN00730,CU00230,consumer_durable,gig_worker,Can Tho,2024-06-24,9000000,25.4,24,3512975,0,current
+LN00731,CU00448,salary_advance,self_employed,Binh Duong,2024-07-21,14000000,27.2,24,2943212,0,current
+LN00732,CU00377,consumer_durable,salaried,HCMC,2026-02-11,15000000,24.7,12,11633073,0,current
+LN00733,CU00374,personal_loan,salaried,Hanoi,2026-05-10,99000000,17.4,24,94908248,0,current
+LN00734,CU00304,consumer_durable,salaried,Dong Nai,2024-07-01,12000000,21.1,36,4786089,0,current
+LN00735,CU00127,consumer_durable,self_employed,Hanoi,2024-09-03,28000000,29.3,6,4492540,0,current
+LN00736,CU00216,personal_loan,self_employed,Binh Duong,2024-08-03,75000000,31.4,6,565716,0,current
+LN00737,CU00346,consumer_durable,salaried,Dong Nai,2026-03-19,28000000,19.4,12,23350015,0,current
+LN00738,CU00100,motorbike_loan,salaried,Hanoi,2025-04-06,19000000,19.1,12,2271574,0,current
+LN00739,CU00149,personal_loan,self_employed,Binh Duong,2026-03-17,97000000,24.4,24,89899743,0,current
+LN00740,CU00173,personal_loan,salaried,Binh Duong,2024-07-14,22000000,15.8,12,5486309,0,current
+LN00741,CU00414,salary_advance,gig_worker,HCMC,2025-11-09,13000000,20.1,24,9254247,0,current
+LN00742,CU00392,personal_loan,salaried,HCMC,2025-07-06,196000000,27.4,6,17425904,0,current
+LN00743,CU00587,personal_loan,salaried,Can Tho,2026-01-09,49000000,25.5,36,44304343,0,current
+LN00744,CU00551,motorbike_loan,salaried,Can Tho,2024-09-11,39000000,26.6,18,6685799,9,overdue
+LN00745,CU00128,personal_loan,salaried,Binh Duong,2024-10-19,157000000,23.3,36,89419081,0,current
+LN00746,CU00132,consumer_durable,self_employed,HCMC,2026-01-11,27000000,14.1,24,21823845,0,current
+LN00747,CU00001,motorbike_loan,salaried,Can Tho,2025-08-22,20000000,19.4,36,16656793,0,current
+LN00748,CU00361,personal_loan,gig_worker,HCMC,2025-07-15,188000000,24.4,18,95047248,0,current
+LN00749,CU00222,motorbike_loan,self_employed,Hanoi,2024-07-02,30000000,16.6,12,510924,0,current
+LN00750,CU00147,motorbike_loan,self_employed,HCMC,2025-03-05,50000000,20.9,12,11998812,33,overdue
+LN00751,CU00158,motorbike_loan,self_employed,HCMC,2024-08-01,56000000,20.7,36,27185645,0,current
+LN00752,CU00092,personal_loan,salaried,Binh Duong,2024-08-31,83000000,23.6,36,46072002,0,current
+LN00753,CU00127,motorbike_loan,salaried,Hanoi,2025-09-22,15000000,31.6,12,7485470,0,current
+LN00754,CU00050,personal_loan,salaried,Binh Duong,2024-12-26,44000000,24.3,18,9898809,0,current
+LN00755,CU00160,personal_loan,salaried,Dong Nai,2025-05-23,193000000,29.9,24,116693131,2,overdue
+LN00756,CU00450,consumer_durable,self_employed,HCMC,2025-08-11,16000000,28.0,36,12589788,0,current
+LN00757,CU00321,salary_advance,self_employed,Binh Duong,2025-08-02,6000000,19.5,6,126108,0,current
+LN00758,CU00011,consumer_durable,salaried,Can Tho,2025-09-08,23000000,15.5,18,13550865,0,current
+LN00759,CU00632,salary_advance,self_employed,Hanoi,2025-12-23,13000000,32.0,36,11412640,0,current
+LN00760,CU00173,personal_loan,salaried,Binh Duong,2025-03-02,199000000,18.4,36,126561409,320,npl
+LN00761,CU00383,consumer_durable,self_employed,Dong Nai,2025-09-23,16000000,23.2,6,3694577,0,current
+LN00762,CU00404,salary_advance,self_employed,Hanoi,2024-11-05,10000000,19.3,12,3991062,0,current
+LN00763,CU00337,personal_loan,gig_worker,Hanoi,2024-07-22,151000000,29.3,6,38913058,0,current
+LN00764,CU00158,personal_loan,salaried,HCMC,2025-11-02,122000000,21.8,12,76887627,0,current
+LN00765,CU00276,motorbike_loan,salaried,Dong Nai,2024-07-08,29000000,20.7,18,6631238,0,current
+LN00766,CU00137,personal_loan,gig_worker,Hanoi,2025-11-27,55000000,14.1,12,37282677,0,current
+LN00767,CU00131,motorbike_loan,gig_worker,Binh Duong,2025-11-28,27000000,31.7,6,6252170,0,current
+LN00768,CU00243,personal_loan,gig_worker,Binh Duong,2024-12-14,119000000,28.3,12,40196201,0,current
+LN00769,CU00157,personal_loan,salaried,Binh Duong,2024-09-07,22000000,19.1,6,2104080,0,current
+LN00770,CU00106,consumer_durable,salaried,HCMC,2026-01-14,12000000,28.8,12,8841771,0,current
+LN00771,CU00150,consumer_durable,salaried,Hanoi,2024-09-13,9000000,16.2,24,4154145,0,current
+LN00772,CU00063,motorbike_loan,salaried,Da Nang,2026-03-20,41000000,26.6,12,36293814,0,current
+LN00773,CU00001,motorbike_loan,salaried,Can Tho,2025-08-09,32000000,21.5,18,14968133,0,current
+LN00774,CU00100,personal_loan,salaried,Binh Duong,2025-01-13,91000000,17.3,24,42950663,0,current
+LN00775,CU00283,consumer_durable,self_employed,Can Tho,2025-12-29,28000000,20.5,36,24843992,0,current
+LN00776,CU00102,personal_loan,gig_worker,Hanoi,2025-12-29,181000000,24.6,12,129930020,0,current
+LN00777,CU00574,personal_loan,salaried,Da Nang,2025-01-11,71000000,14.8,12,16522763,0,current
+LN00778,CU00281,salary_advance,salaried,Dong Nai,2026-01-11,9000000,23.4,36,7854557,0,current
+LN00779,CU00077,consumer_durable,salaried,HCMC,2024-10-09,11000000,28.7,24,2989454,0,current
+LN00780,CU00010,personal_loan,salaried,Binh Duong,2025-04-07,122000000,17.3,12,20891378,0,current
+LN00781,CU00547,salary_advance,self_employed,Binh Duong,2024-11-20,7000000,26.7,36,4733255,0,current
+LN00782,CU00119,personal_loan,salaried,HCMC,2025-07-31,54000000,25.6,12,9188347,0,current
+LN00783,CU00333,personal_loan,self_employed,Hanoi,2025-04-29,103000000,18.8,12,24376273,0,current
+LN00784,CU00598,salary_advance,salaried,Can Tho,2025-05-12,7000000,31.5,36,4818712,0,current
+LN00785,CU00596,personal_loan,salaried,Binh Duong,2024-07-11,85000000,23.9,24,28935844,0,current
+LN00786,CU00181,motorbike_loan,salaried,Binh Duong,2025-02-09,42000000,30.2,6,8467852,0,current
+LN00787,CU00147,personal_loan,self_employed,Hanoi,2024-07-17,92000000,29.9,24,14858863,0,current
+LN00788,CU00022,personal_loan,gig_worker,HCMC,2025-03-25,45000000,27.5,6,7140716,0,current
+LN00789,CU00109,personal_loan,gig_worker,HCMC,2026-03-28,53000000,18.8,36,51217436,0,current
+LN00790,CU00557,motorbike_loan,gig_worker,Binh Duong,2026-02-13,23000000,24.1,24,20337215,85,overdue
+LN00791,CU00025,consumer_durable,salaried,Can Tho,2026-03-27,14000000,23.2,24,13233810,0,current
+LN00792,CU00230,personal_loan,salaried,Hanoi,2025-07-22,77000000,29.9,6,15651926,0,current
+LN00793,CU00343,personal_loan,salaried,Dong Nai,2024-08-19,105000000,30.1,36,62621690,0,current
+LN00794,CU00378,motorbike_loan,salaried,Can Tho,2024-06-27,34000000,20.3,6,9913131,0,current
+LN00795,CU00490,salary_advance,self_employed,Binh Duong,2026-02-22,13000000,16.6,12,10542220,0,current
+LN00796,CU00493,consumer_durable,salaried,HCMC,2025-07-30,15000000,17.3,24,10368478,0,current
+LN00797,CU00550,consumer_durable,self_employed,Hanoi,2025-06-04,12000000,21.5,24,7107006,0,current
+LN00798,CU00003,consumer_durable,self_employed,Hanoi,2025-03-06,29000000,28.6,12,3444117,0,current
+LN00799,CU00432,personal_loan,salaried,Binh Duong,2025-01-11,54000000,20.5,12,15234538,71,overdue
+LN00800,CU00056,personal_loan,salaried,Binh Duong,2025-12-21,50000000,20.8,6,13397957,0,current

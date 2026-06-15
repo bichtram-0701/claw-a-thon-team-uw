@@ -1,4 +1,4 @@
-"""Briefing composition — Funnel Watchtower, Team UW.
+"""Briefing composition — Funnel Agent, Team UW.
 
 Deterministic data shaping from Jira/Confluence; the LLM narrates only from
 this structured JSON. The centerpiece is manager_digest(): the business lead's
@@ -188,6 +188,8 @@ def _is_generated_weekly_page(page: dict) -> bool:
     return any(k in title for k in [
         "weekly funnel watchtower summary",
         "funnel watchtower weekly readout",
+        "weekly funnel agent summary",
+        "funnel agent weekly readout",
         "weekly funnel review brief",
     ])
 
@@ -216,7 +218,7 @@ def _safe_recent_pages(limit: int = 8) -> list[dict]:
 
 def _safe_decisions() -> list[dict]:
     try:
-        return _filter_context_pages(cf.search_pages("decision funnel approval submission completion weekly meeting", limit=8))
+        return _filter_context_pages(cf.search_pages("decision funnel approval submission disbursement weekly meeting", limit=8))
     except Exception as e:  # noqa: BLE001
         return [{"error": str(e)[:160]}]
 
@@ -255,11 +257,11 @@ def render_weekly_summary(pack: dict) -> str:
     digest = pack.get("execution_digest") or {}
     totals = digest.get("totals") or {}
     lines = [
-        f"# Funnel Watchtower Weekly Readout - {pack.get('as_of')}",
+        f"# Funnel Agent Weekly Readout - {pack.get('as_of')}",
         "",
         "## Executive summary",
         f"- Latest month: {fm_sum.get('latest_month')}.",
-        f"- E2E conversion: {latest.get('e2e_rate_pct')}%; completion amount: {latest.get('completion_amount_vnd', 0):,} VND.",
+        f"- E2E conversion: {latest.get('e2e_rate_pct')}%; disbursement volume: {latest.get('completion_amount_vnd', 0):,} VND.",
         f"- Jira execution: {totals.get('open', 0)} open, {totals.get('off_track', 0)} off-track, {totals.get('due_soon', 0)} due soon.",
     ]
     if ranks:

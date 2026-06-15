@@ -1,8 +1,8 @@
-# Funnel Watchtower - pitch
+# Funnel Agent - pitch
 
 ## One-line pitch
 
-**Funnel Watchtower turns funnel drift into ranked, owned recovery actions.**
+**Funnel Agent turns funnel drift into ranked, owned recovery actions.**
 
 ## Core insight
 
@@ -14,7 +14,7 @@ The bottleneck is turning metric drift into accountable recovery work: deciding 
 
 Every business team owns a funnel: marketing leads, product onboarding, sales pipeline, merchant activation, operations requests, or application flows. Dashboards show when metrics move, but managers still have to connect metrics, Jira work, Confluence decisions, and team follow-up manually.
 
-Funnel Watchtower closes that loop. It detects target drift, estimates value at risk, ranks the highest-impact funnel problem, finds the owner and execution risk in Jira, summarizes relevant Confluence context, and creates or updates the recovery action. It also prepares the weekly meeting readout so the team can follow through.
+Funnel Agent closes that loop. It detects target drift, estimates value at risk, ranks the highest-impact funnel problem, finds the owner and execution risk in Jira, summarizes relevant Confluence context, and creates or updates the recovery action. It also prepares the weekly meeting readout so the team can follow through.
 
 The LLM is a replaceable interface layer. It understands the user's question and explains verified facts. Deterministic tools compute the numbers, rankings, SQL diagnostics, and write guards.
 
@@ -22,15 +22,15 @@ The LLM is a replaceable interface layer. It understands the user's question and
 
 Business teams do not only need to know that a funnel metric moved. They need to know which movement matters most, how much value is at risk, who owns recovery, what work is already in flight, whether that work is blocked, and what should be discussed in the weekly meeting.
 
-**Funnel Watchtower** is an execution intelligence layer for owned business funnels. It computes funnel conversion, target gaps, month-over-month anomalies, and estimated value at risk from synthetic data. It then connects those signals to Jira initiatives, Confluence decisions, Teams notifications, and weekly meeting summaries. When a metric slips, it ranks the issue by business impact and execution risk, identifies the stage owner, and can open or update one Jira investigation for that stage, metric, and month.
+**Funnel Agent** is an execution intelligence layer for owned business funnels. It computes funnel conversion, target gaps, month-over-month anomalies, and estimated value at risk from synthetic data. It then connects those signals to Jira initiatives, Confluence decisions, Teams notifications, and weekly meeting summaries. When a metric slips, it ranks the issue by business impact and execution risk, identifies the stage owner, and can open or update one Jira investigation for that stage, metric, and month.
 
-The model only routes, extracts bounded fields, and narrates verified facts. The math, issue keys, owners, SQL templates, duplicate-ticket prevention, and write decisions are validated by code. Generic chat can answer questions. Funnel Watchtower runs the recovery workflow.
+The model only routes, extracts bounded fields, and narrates verified facts. The math, issue keys, owners, SQL templates, duplicate-ticket prevention, and write decisions are validated by code. Generic chat can answer questions. Funnel Agent runs the recovery workflow.
 
 ## Why agent, not normal Claude/ChatGPT?
 
 Normal chat is good at answering a one-off question. This problem is a recurring operating loop across multiple systems.
 
-| Normal chat | Funnel Watchtower |
+| Normal chat | Funnel Agent |
 |---|---|
 | Answers when asked | Runs a repeatable recovery workflow |
 | Needs pasted context | Pulls metrics, Jira, and Confluence context |
@@ -125,4 +125,4 @@ No, and it should not claim to. Root-cause drilldowns are contribution analysis:
 
 ## Final positioning
 
-**Funnel Watchtower is not another dashboard and not just a chatbot. It is an execution layer for owned business /metrics it detects drift, ranks what matters, assigns ownership, and keeps the recovery loop moving.**
+**Funnel Agent is not another dashboard and not just a chatbot. It is an execution layer for owned business metrics: it detects drift, ranks what matters, assigns ownership, and keeps the recovery loop moving.**

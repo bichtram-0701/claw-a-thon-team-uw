@@ -1,4 +1,4 @@
-"""Funnel Watchtower — Team UW, Claw-a-thon 2026.
+"""Funnel Agent — Team UW, Claw-a-thon 2026.
 
 Execution intelligence for a business funnel. The LLM routes and narrates; Python
 and SQL own the business facts: conversion math, value-at-risk ranking, issue
@@ -63,14 +63,14 @@ app.router.routes.append(Route("/version", _version, methods=["GET"]))
 
 JIRA_EVENT_TOKEN = os.environ.get("JIRA_EVENT_TOKEN", "")
 ALLOW_WRITES = os.environ.get("ALLOW_WRITES", "true").lower() in ("1", "true", "yes")
-APP_VERSION = os.environ.get("APP_VERSION", "demo-v13")
+APP_VERSION = os.environ.get("APP_VERSION", "demo-v14")
 BUILD_VERSION = os.environ.get("GIT_SHA", "dev")[:7]
 
 STAGE_TO_EPIC = {
     "traffic": "Traffic",
     "submission": "Submission",
     "approval": "Approval",
-    "completion": "Completion",
+    "completion": "Disbursement",
     "crosscut": "Data & Platform",
 }
 
@@ -314,7 +314,13 @@ def _handle(payload: dict) -> dict:
                     answer += "\n\n_SQL:_ `" + result["sql"] + "`"
     elif intent == "metrics":
         cmp_months = _comparison_months_from_message(message)
-        if cmp_months:
+        if _is_target_disbursement_question(message):
+            result = _metrics_result(route_info)
+            answer = _render_target_disbursement_answer(result)
+        elif _is_investigation_result_question(message):
+            result = _metrics_result(route_info)
+            answer = _render_investigation_result_answer(message, result)
+        elif cmp_months:
             result = _month_comparison_result(cmp_months, route_info)
             answer = _render_month_comparison_answer(result)
         else:
@@ -334,7 +340,9 @@ def _handle(payload: dict) -> dict:
     elif intent == "oversight":
         result = bf.manager_digest()
         result["route"] = route_info
-        if _is_unassigned_work_question(message):
+        if _is_epic_assignment_question(message):
+            answer = _render_epic_assignment_answer(result)
+        elif _is_unassigned_work_question(message):
             answer = _render_unassigned_work_answer(result)
         elif _is_epic_owner_question(message):
             answer = _render_epic_owner_answer(result)
@@ -357,7 +365,7 @@ def _handle(payload: dict) -> dict:
             answer = sa.schema_guide_markdown()
         else:
             answer = (
-                "Hi, I am Funnel Watchtower. I track the business funnel, rank target misses by value at risk, "
+                "Hi, I am Funnel Agent. I track the business funnel, rank target misses by value at risk, "
                 "connect them to Jira ownership, answer safe query-style breakdowns, summarize Confluence decisions, "
                 "draft weekly meeting briefs, post Jira digests to Teams, and create or update Jira recovery work.\n\n"
                 "Best prompt pattern: **slash command + action + stage/metric + time period**. Slash commands give exact routing: "
@@ -368,7 +376,7 @@ def _handle(payload: dict) -> dict:
                 "`/query break May approval drop down by reason`, `/jira flag the drops and assign owners to investigate`, "
                 "`/teams post off-track blockers`, `/confluence weekly meeting summary`, or "
                 "`/confluence publish weekly meeting summary to Confluence`.\n\n"
-                "Funnel stages: **Traffic → Submission → Approval → Completion**. Jira work follows an "
+                "Funnel stages: **Traffic → Submission → Approval → Disbursement**. Jira work follows an "
                 "**Epic → stage owner → task assignee** structure: when a Jira write does not name an assignee, "
                 "Watchtower defaults to that stage's operational owner. Read-only questions without a slash command "
                 "still work with an interpretation warning; writes require the explicit command. "
@@ -379,7 +387,7 @@ def _handle(payload: dict) -> dict:
         sys_extra = NARRATE_SYS.get(intent, "")
         lang_line = "Answer in Vietnamese." if lang == "vi" else "Answer in the user's language, default English."
         out = rp.llm_chat(
-            "You are Funnel Watchtower, a business-funnel execution intelligence assistant. "
+            "You are Funnel Agent, a business-funnel execution intelligence assistant. "
             "Use ONLY the JSON data provided. Never invent issue keys, owners, page titles, URLs, numbers, or decisions. "
             "Answer the user's actual question first. For a narrow factual question, use 1-2 sentences. "
             "If the user asks about 'blocked', explain that it can be a Jira label/flag while the workflow status may still be To Do/In Progress. "
@@ -412,7 +420,7 @@ def _analyst_intro(result: dict) -> str:
     if template == "submission_drop_reason_breakdown" and rows:
         return "**Traffic → Submission drop breakdown.** The table below explains traffic rows that did not submit."
     if template == "completion_drop_reason_breakdown" and rows:
-        return "**Approval → Completion drop breakdown.** The table below explains approved rows that did not complete."
+        return "**Approval → Disbursement drop breakdown.** The table below explains approved rows that did not disburse."
     if template == "daily_volume" and rows:
         try:
             cols = result.get("columns") or []
@@ -420,9 +428,10 @@ def _analyst_intro(result: dict) -> str:
             apps = sum(int(r[idx["applications"]] or 0) for r in rows)
             submitted = sum(int(r[idx["submitted"]] or 0) for r in rows)
             approved = sum(int(r[idx["approved"]] or 0) for r in rows)
-            completed = sum(int(r[idx["completed"]] or 0) for r in rows)
+            disbursed_col = idx.get("disbursed", idx.get("completed"))
+            disbursed = sum(int(r[disbursed_col] or 0) for r in rows) if disbursed_col is not None else 0
             return (f"**Daily funnel volume.** Totals reconcile to the monthly funnel: "
-                    f"{apps} Traffic, {submitted} Submission, {approved} Approval, {completed} Completion.")
+                    f"{apps} Traffic, {submitted} Submission, {approved} Approval, {disbursed} Disbursement.")
         except Exception:  # noqa: BLE001
             return "**Daily funnel volume.** Counts are grouped by entry date and include all funnel stages."
     return ""
@@ -452,7 +461,7 @@ def _metrics_result(route_info: dict | None = None, month: str | None = None) ->
 def _render_metrics_answer(result: dict, lang: str, month: str | None = None) -> str:
     lang_hint = "Reply in Vietnamese." if lang == "vi" else "Reply in English."
     headline = rp.llm_chat(
-        "You are Funnel Watchtower. In 1-2 sentences give the lead the headline trend from this funnel data. "
+        "You are Funnel Agent. In 1-2 sentences give the lead the headline trend from this funnel data. "
         "Name the latest month, end-to-end rate, top target miss/value-at-risk if present, and the most notable MoM change. "
         "Use ONLY the JSON numbers. " + lang_hint,
         json.dumps({k: result.get(k) for k in ["latest_month", "latest", "mom_pp", "target_misses", "impact_ranking"]}, ensure_ascii=False),
@@ -531,6 +540,86 @@ def _scoped_metric_month_from_message(message: str) -> str | None:
     return ordered[-1] if len(set(ordered)) == 1 else None
 
 
+
+def _is_target_disbursement_question(message: str) -> bool:
+    q = message.lower()
+    return ("target" in q and any(k in q for k in ["disbursement", "disburse", "completion", "complete"]) 
+            and any(k in q for k in ["volume", "count", "amount", "value", "target"]))
+
+
+def _render_target_disbursement_answer(result: dict) -> str:
+    row = result["summary"]["latest"] if "summary" in result else fm.summary()["latest"]
+    targets = fm.targets()
+    traffic = row.get("traffic") or 0
+    approvals = row.get("approval") or 0
+    disb = row.get("completion") or 0
+    amount = row.get("completion_amount_vnd") or 0
+    avg = row.get("avg_ticket_vnd") or 0
+    e2e_target = targets.get("e2e_rate_pct")
+    disb_rate_target = targets.get("completion_rate_pct")
+    e2e_target_count = round(traffic * (e2e_target or 0) / 100) if e2e_target is not None else None
+    rate_target_count = round(approvals * (disb_rate_target or 0) / 100) if disb_rate_target is not None else None
+    lines = [
+        "There is **no standalone Disbursement volume OKR** configured in the demo data. Watchtower has rate targets, so the target volume depends on which target you mean.",
+        "",
+        f"For **{row.get('month')}**:",
+        f"- Actual Disbursement count: **{disb:,}**",
+        f"- Actual Disbursement volume: **{amount:,.0f} VND**",
+    ]
+    if e2e_target_count is not None:
+        lines.append(f"- Implied volume to hit the **Traffic E2E target ({e2e_target}%)**: about **{e2e_target_count:,} disbursements** from {traffic:,} traffic")
+    if rate_target_count is not None:
+        lines.append(f"- Implied volume to hit the **Disbursement rate target ({disb_rate_target}%)**: about **{rate_target_count:,} disbursements** from {approvals:,} approvals")
+    lines += [
+        "",
+        "So if you mean the board-style count row, use **Disbursement (4)**. If you mean money, use **Disbursement Volume**.",
+    ]
+    return "\n".join(lines)
+
+
+def _is_investigation_result_question(message: str) -> bool:
+    q = message.lower()
+    return ("investigat" in q or "result" in q or "outcome" in q) and any(k in q for k in ["submission", "approval", "traffic", "disbursement", "completion"])
+
+
+def _render_investigation_result_answer(message: str, result: dict) -> str:
+    q = message.lower()
+    stage = "submission" if "submission" in q else ("approval" if "approval" in q else ("traffic" if "traffic" in q else "disbursement"))
+    rows = fm.rows()
+    row_by_month = {r["month"]: r for r in rows}
+    apr = row_by_month.get("2026-04")
+    may = row_by_month.get("2026-05")
+    if stage == "submission" and apr and may:
+        delta = round((may.get("submission_rate_pct") or 0) - (apr.get("submission_rate_pct") or 0), 1)
+        return (
+            "Submission had already been identified as an issue in April, but this demo does **not yet have closed-loop outcome tracking** that proves which investigation fixed or failed to fix it.\n\n"
+            f"What the data shows: April Submission rate was **{apr['submission_rate_pct']}%** vs 30.0% target; May fell to **{may['submission_rate_pct']}%** (**{delta:+.1f}pp**). "
+            "That means the issue persisted into May rather than being fully recovered.\n\n"
+            "What Watchtower can do now: use `/jira flag the drops and assign owners to investigate` to create/update the Submission recovery task and default it to the Submission stage owner. "
+            "What is still missing as a product feature: after the Jira task is completed, Watchtower should compare before/after metrics and mark the initiative as worked / partially worked / inconclusive."
+        )
+    return (
+        "I can show the metric trend and Jira recovery work, but this demo does not yet store closed-loop investigation outcomes for that stage. "
+        "Use `/metrics compare April and May performance` for the trend and `/jira what is critical or off track right now?` for current recovery work."
+    )
+
+
+def _is_epic_assignment_question(message: str) -> bool:
+    q = message.lower()
+    return ("epic" in q and any(k in q for k in ["unassigned", "assigned", "assign", "assignee"]))
+
+
+def _render_epic_assignment_answer(result: dict) -> str:
+    return (
+        "Yes. The Jira Epic issue itself **can** be assigned, but Watchtower separates two concepts:\n\n"
+        "- **Jira Epic assignee:** the assignee field on the Epic ticket itself. In the demo this may be Unassigned.\n"
+        "- **Operational stage owner:** inferred from owner labels / assignees on open work under that Epic. This is what Watchtower uses when defaulting Jira investigation assignees.\n\n"
+        "For the demo, keeping Epic issues unassigned is acceptable because ownership is demonstrated at the stage/task layer. If you want cleaner Jira hygiene, assign each Epic to its operational stage owner:\n\n"
+        "| Epic / Stage | Suggested default owner |\n|---|---|\n"
+        "| Traffic | Dat Nguyen |\n| Submission | Rino Tran |\n| Approval | bichtram |\n| Disbursement | Dat Nguyen |\n| Data & Platform | Dat Nguyen |\n\n"
+        "Demo explanation: **Epic → stage owner → task assignee**. If `/jira create` or `/jira flag` does not mention an assignee, Funnel Agent defaults to the operational stage owner."
+    )
+
 def _is_unassigned_work_question(message: str) -> bool:
     q = message.lower()
     return any(k in q for k in [
@@ -551,13 +640,13 @@ def _render_epic_owner_answer(result: dict) -> str:
         ("traffic", "Traffic"),
         ("submission", "Submission"),
         ("approval", "Approval"),
-        ("completion", "Completion"),
+        ("completion", "Disbursement"),
         ("crosscut", "Data & Platform"),
     ]
     lines = [
         "Watchtower uses an **Epic → stage owner → task assignee** structure.",
         "",
-        "- Each funnel stage has a Jira Epic: Traffic, Submission, Approval, Completion, and Data & Platform.",
+        "- Each funnel stage has a Jira Epic: Traffic, Submission, Approval, Disbursement, and Data & Platform.",
         "- The Jira Epic issue itself may be unassigned.",
         "- The **operational stage owner** is inferred from owner labels / assignees on open work under that stage.",
         "- When `/jira create ...` or `/jira flag ...` does not name an assignee, Watchtower defaults to the operational stage owner instead of leaving the task unassigned.",
@@ -708,7 +797,7 @@ def _month_comparison_result(months: list[str], route_info: dict | None = None) 
     rate_defs = [
         ("submission_rate_pct", "Submission", "submission_rate_pct"),
         ("approval_rate_pct", "Approval", "approval_rate_pct"),
-        ("completion_rate_pct", "Completion", "completion_rate_pct"),
+        ("completion_rate_pct", "Disbursement", "completion_rate_pct"),
         ("e2e_rate_pct", "Traffic E2E", "e2e_rate_pct"),
     ]
     rates = []
@@ -725,7 +814,7 @@ def _month_comparison_result(months: list[str], route_info: dict | None = None) 
             status = f"meets {target}% target"
         rates.append({"metric": label, "from_pct": a, "to_pct": b, "delta_pp": delta, "target_pct": target, "status": status})
     volumes = []
-    for key, label in [("traffic", "Traffic"), ("submission", "Submission"), ("approval", "Approval"), ("completion", "Completion")]:
+    for key, label in [("traffic", "Traffic"), ("submission", "Submission"), ("approval", "Approval"), ("completion", "Disbursement")]:
         a, b = prev.get(key), curr.get(key)
         volumes.append({"metric": label, "from": a, "to": b, "delta": (b or 0) - (a or 0)})
     result.update({"from_month": selected[0], "to_month": selected[1], "from": prev, "to": curr,
@@ -802,7 +891,7 @@ def _handle_teams(message: str, route_info: dict) -> dict:
     """
     q = message.lower()
     mode = "off-track"
-    title = "Funnel Watchtower: off-track work"
+    title = "Funnel Agent: off-track work"
     empty = "No blocked or overdue open items right now."
     accent = "Attention"
 
@@ -810,20 +899,20 @@ def _handle_teams(message: str, route_info: dict) -> dict:
         if "due" in q and "soon" in q:
             mode = "due-soon"
             issues = jc.due_tomorrow_issues()
-            title = "Funnel Watchtower: due-soon work"
+            title = "Funnel Agent: due-soon work"
             empty = "No due-soon open items right now."
             accent = "Warning"
             digest = {"route": route_info, "source": "jira_due_tomorrow"}
         elif "overdue" in q:
             mode = "overdue"
             issues = jc.overdue_issues()
-            title = "Funnel Watchtower: overdue work"
+            title = "Funnel Agent: overdue work"
             empty = "No overdue open items right now."
             digest = {"route": route_info, "source": "jira_overdue"}
         elif "blocked" in q:
             mode = "blocked"
             issues = jc.blocked_issues()
-            title = "Funnel Watchtower: blocked work"
+            title = "Funnel Agent: blocked work"
             empty = "No blocked open items right now."
             digest = {"route": route_info, "source": "jira_blocked"}
         else:
@@ -934,7 +1023,7 @@ def _handle_flag(message: str, route_info: dict) -> dict:
                 existing = None
             if existing:
                 try:
-                    jc.comment_issue(existing["key"], "Funnel Watchtower refreshed this investigation.\n\n" + description)
+                    jc.comment_issue(existing["key"], "Funnel Agent refreshed this investigation.\n\n" + description)
                 except Exception:  # noqa: BLE001
                     pass
                 if owner:

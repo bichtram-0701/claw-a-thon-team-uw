@@ -1,0 +1,56 @@
+# Poll Jira -> Teams (near real-time, no Jira admin needed). Team UW.
+#
+# Every ~2 min, scripts/jira_poll.py checks Jira for new/changed issues and posts
+# Teams cards. State (already-notified versions) is kept in actions/cache so
+# overlapping look-back windows never double-notify.
+#
+# NOTE: GitHub cron is best-effort — it can lag or coalesce runs (often ~5 min),
+# so POLL_WINDOW_MIN is generous (20 min) and dedupe handles the overlap.
+#
+# Required repo secrets: ATLASSIAN_SITE, ATLASSIAN_EMAIL, ATLASSIAN_TOKEN,
+#                        TEAMS_WEBHOOK_URL
+
+name: Teams poll (Jira changes)
+
+on:
+  schedule:
+    # GitHub's effective minimum is ~5 min; "*/2" gets coalesced/dropped.
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: teams-poll
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      ATLASSIAN_SITE: ${{ secrets.ATLASSIAN_SITE }}
+      ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
+      ATLASSIAN_TOKEN: ${{ secrets.ATLASSIAN_TOKEN }}
+      TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+      POLL_STATE_FILE: .poll_state/state.json
+      # Wide look-back so changes are never lost if GitHub delays a run.
+      # Dedupe (per-issue seen state) prevents repeat notifications.
+      POLL_WINDOW_MIN: "720"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install --quiet httpx
+
+      - name: Restore poll state
+        uses: actions/cache@v4
+        with:
+          path: .poll_state
+          key: poll-state-${{ github.run_id }}
+          restore-keys: |
+            poll-state-
+
+      - name: Poll Jira and notify Teams
+        run: python scripts/jira_poll.py

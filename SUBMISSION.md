@@ -1,7 +1,7 @@
 # Submission form draft - Team UW
 
 ## Agent name
-Funnel Watchtower
+Funnel Agent
 
 ## Tagline
 Turns funnel drift into ranked, owned recovery actions.
@@ -15,7 +15,7 @@ Business teams already have dashboards, Jira, Confluence, and chat. But when a f
 The real bottleneck is metric-to-action translation.
 
 ## Solution
-Funnel Watchtower is an execution intelligence agent for owned business funnels. Ask `/metrics show me the funnel metrics` and it computes conversion, target gaps, month-over-month anomalies, and estimated value at risk. Ask `/jira what is critical or off track right now?` and it links those risks to Jira owners, blockers, overdue work, and open initiatives. Ask `/jira flag it` and it creates or updates one Jira investigation per stage + metric + month with a structured initiative contract. Ask `/confluence weekly meeting summary` and it drafts, and optionally publishes, a Confluence readout with impact-ranked risks, execution follow-up, decisions, and agenda.
+Funnel Agent is an execution intelligence agent for owned business funnels. Ask `/metrics show me the funnel metrics` and it computes conversion, target gaps, month-over-month anomalies, and estimated value at risk. Ask `/jira what is critical or off track right now?` and it links those risks to Jira owners, blockers, overdue work, and open initiatives. Ask `/jira flag it` and it creates or updates one Jira investigation per stage + metric + month with a structured initiative contract. Ask `/confluence weekly meeting summary` and it drafts, and optionally publishes, a Confluence readout with impact-ranked risks, execution follow-up, decisions, and agenda.
 
 The LLM handles routing, extraction, and narration only. Python and SQL compute numbers, rankings, SQL templates, Jira writes, duplicate-ticket prevention, and Confluence publishing guards.
 
@@ -43,7 +43,7 @@ All demo data is synthetic. The row-level daily fixture is now the source of tru
 ## 100-200 word use case description
 Business teams do not only need to know that a funnel metric moved. They need to know which movement matters most, how much value is at risk, who owns recovery, whether work is blocked, and what should be discussed in the weekly meeting.
 
-Funnel Watchtower is an execution intelligence agent for owned funnels. The demo uses a simple four-stage funnel: Traffic -> Submission -> Approval -> Completion, but the pattern applies to marketing acquisition, product onboarding, sales pipeline, merchant activation, and operations workflows. It computes conversion, OKR target gaps, month-over-month drops, and estimated value at risk deterministically from synthetic data. It then links those signals to Jira initiatives, owners, blockers, Confluence decisions, Teams follow-up, and weekly meeting summaries. When a metric slips, Watchtower ranks the issue by business impact and execution risk, identifies the owner, and can open or update a Jira investigation with a structured initiative contract.
+Funnel Agent is an execution intelligence agent for owned funnels. The demo uses a simple four-stage funnel: Traffic -> Submission -> Approval -> Disbursement, but the pattern applies to marketing acquisition, product onboarding, sales pipeline, merchant activation, and operations workflows. It computes conversion, OKR target gaps, month-over-month drops, and estimated value at risk deterministically from synthetic data. It then links those signals to Jira initiatives, owners, blockers, Confluence decisions, Teams follow-up, and weekly meeting summaries. When a metric slips, Funnel Agent ranks the issue by business impact and execution risk, identifies the owner, and can open or update a Jira investigation with a structured initiative contract.
 
 The LLM only routes, extracts bounded fields, and narrates verified JSON. The math, issue keys, owners, SQL templates, and write decisions are validated by code.
 
@@ -59,6 +59,6 @@ The LLM only routes, extracts bounded fields, and narrates verified JSON. The ma
 - [ ] Set `ALLOW_WRITES=true` only for the demo workspace.
 - [ ] Run `python tests/test_offline.py`.
 - [ ] Verify `daily volume` and `day over day in May` route to analyst, and `draft my standup` routes to standup.
-- [ ] Verify May daily totals reconcile to Traffic 800 -> Submission 216 -> Approval 24 -> Completion 23.
+- [ ] Verify May daily totals reconcile to Traffic 800 -> Submission 216 -> Approval 24 -> Disbursement 23.
 - [ ] Verify `/confluence weekly meeting summary` drafts a meeting readout.
 - [ ] Verify Confluence publishing only when writes are intentionally enabled.
