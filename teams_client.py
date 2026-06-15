@@ -38,7 +38,7 @@ ISSUE_FIELD_ORDER = [
     ("Key", "key"), ("Type", "type"), ("Status", "status"), ("Priority", "priority"),
     ("Assignee", "assignee"), ("Reporter", "reporter"), ("Epic / Parent", "parent"),
     ("Due date", "due"), ("Start date", "start"), ("Labels", "labels"),
-    ("Team", "team"), ("Created", "created"), ("Updated", "updated"),
+    ("Stale after", "stale_after"), ("Created", "created"), ("Updated", "updated"),
 ]
 
 
