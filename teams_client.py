@@ -55,8 +55,9 @@ def issue_card(issue: dict, header: str = "Jira task") -> bool:
         else:
             body.append(text_block(f"{label}: {v}"))
     desc = issue.get("description")
-    if desc:
-        body.append(text_block(f"Description: {desc[:500]}"))
+    first = desc.splitlines()[0].strip() if desc else None  # first line only — keep card compact
+    if first:
+        body.append(text_block(f"Description: {first}"))
     else:
         body.append(text_block("Description: None", bold=True, color="Attention"))
     return send_card(header, body, url=issue.get("url"))
