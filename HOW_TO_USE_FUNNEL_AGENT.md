@@ -1,22 +1,26 @@
 # How to use Funnel Agent
 
-Funnel Agent supports natural language, but slash commands make routing auditable and safe. Use this pattern:
+Funnel Agent follows a simple rule:
 
-```text
-/slash-command + action + stage/metric + time period
-```
+> Ask naturally for read-only insight. Use slash commands when the agent touches an external workflow.
 
-## Commands
+## Main commands
 
 | Command | Use for |
 |---|---|
-| `/funnel` | Funnel KPIs, MoM comparison, top risk, value at risk, and safe data drilldowns such as daily volume/drop reasons |
 | `/jira` | Owners, blockers, off-track work, create/update Jira investigations |
-| `/confluence` | Weekly meeting summaries and Confluence publishing |
+| `/confluence` | Publish/search/update Confluence pages |
 | `/teams` | Teams reminders for blocked/overdue/off-track work |
 | `/model` | Runtime/model info |
 | `/help` | Usage and database guidance |
-| `/query` | Optional alias for data drilldowns; `/funnel` is preferred for the demo |
+
+Optional advanced commands:
+
+| Command | Use for |
+|---|---|
+| Ask naturally | Funnel KPIs, MoM, top risk, value at risk, and drilldowns |
+| `/query` | Advanced audit/debug data queries and SQL templates |
+
 
 ## Funnel stages
 
@@ -34,18 +38,15 @@ Traffic -> Submission -> Approval -> Disbursement
 ## Recommended demo prompts
 
 ```text
-/funnel show me the funnel metrics
-/funnel why is approval the top risk?
-/funnel break May approval drop down by reason
-/jira explain stage ownership structure
+show me the funnel metrics
+why is approval the top risk?
+break May approval drop down by reason
 /jira flag the drops and assign owners to investigate
 /jira what is critical or off track right now?
 /jira what does blocked mean here and what is it blocking?
-/confluence weekly meeting summary
+weekly meeting summary
 /confluence publish weekly meeting summary to Confluence
 /teams post off-track blockers
-/funnel what was done in March to improve approval?
-/model
 ```
 
 ## Ownership model
@@ -61,9 +62,9 @@ Funnel Agent uses an **Epic -> stage owner -> task assignee** convention.
 
 | Word | Could mean | Safer prompt |
 |---|---|---|
-| volume | traffic count, stage counts, or VND value | `/funnel show daily volume in May` |
-| drop | any transition or MoM rate decline | `/funnel break May approval drop down by reason` |
+| volume | traffic count, stage counts, or VND value | `show daily volume in May` |
+| drop | any transition or MoM rate decline | `break May approval drop down by reason` |
 | owner | Epic assignee or operational stage owner | `/jira explain stage ownership structure` |
 | blocked | Jira label/flag or workflow status | `/jira what does blocked mean here and what is it blocking?` |
 
-Read-only prompts without a slash command still work in `ROUTING_MODE=warn`, but the bot shows an interpretation warning. Write actions require the explicit command.
+Read-only funnel and weekly-summary prompts work naturally. Write actions require `/jira`, `/confluence`, or `/teams`.

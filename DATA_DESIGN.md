@@ -38,9 +38,9 @@ Traffic -> Submission -> Approval -> Disbursement
 Counting rules:
 
 ```text
-Traffic    = COUNT(*)
+Traffic  = COUNT(*)
 Submission = COUNT(stage_rank >= 2)
-Approval   = COUNT(stage_rank >= 3)
+Approval  = COUNT(stage_rank >= 3)
 Disbursement = COUNT(stage_rank = 4)
 ```
 
@@ -48,9 +48,9 @@ Conversion rates:
 
 ```text
 submission_rate = Submission / Traffic
-approval_rate   = Approval / Submission
+approval_rate  = Approval / Submission
 completion_rate (internal key) = Disbursement / Approval
-e2e_rate        = Disbursement / Traffic
+e2e_rate    = Disbursement / Traffic
 ```
 
 ## CSV schema
@@ -78,7 +78,7 @@ e2e_rate        = Disbursement / Traffic
 | `approved` | `approval_to_disbursement` | `customer_withdrew`, `offer_expired`, `ops_timeout`, `partner_unavailable` |
 | `completed` (internal) / `disbursed` | blank | blank |
 
-This means `/funnel break May approval drop down by reason` can answer the Submission -> Approval loss directly:
+This means `break May approval drop down by reason` can answer the Submission -> Approval loss directly:
 
 ```text
 May submitted: 216
@@ -138,14 +138,14 @@ In the demo Jira data, `blocked` is an execution flag, usually a Jira label. It 
 
 ```text
 workflow status = To Do
-labels          = blocked
+labels     = blocked
 ```
 
 That means the task has not started or cannot progress because of a dependency. When blocker context is available, the issue also carries:
 
 ```text
 blocked_by = the dependency that prevents progress
-blocks     = the downstream work or metric confidence affected by the blocker
+blocks   = the downstream work or metric confidence affected by the blocker
 ```
 
 Example seeded blockers:

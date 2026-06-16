@@ -125,4 +125,4 @@ The main future feature is closed-loop outcome learning: after a Jira recovery t
 
 ## Final positioning
 
-**Funnel Agent is not another dashboard and not just a chatbot. It is an execution layer for owned business metrics: it detects drift, ranks what matters, assigns ownership, and keeps the recovery loop moving.**
+**Funnel Agent is not another dashboard and not just a chatbot. It is an execution layer for owned business funnel: it detects drift, ranks what matters, assigns ownership, and keeps the recovery loop moving.**

@@ -14,16 +14,16 @@ Think of the final stage as the business outcome. In another team, that could be
 
 Funnel Agent does more than summarize Jira. It detects target drift, estimates business value at risk, ranks the affected funnel stage, checks Jira ownership and execution risk, drafts or updates the recovery task, and prepares weekly meeting notes from metrics, Jira, and Confluence.
 
-The LLM layer is deliberately bounded and replaceable. Prefix routing and deterministic guards own workflow selection for `/funnel`, `/jira`, `/confluence`, `/teams`, `/help`, and `/model`. The LLM helps with semantic fallback, field extraction, and manager-ready narration. Python and SQL own the facts: conversion math, target gaps, value-at-risk sizing, SQL templates, Jira issue keys, owners, write guards, and Confluence publishing.
+The LLM layer is deliberately bounded and replaceable. Natural funnel questions work without a command; deterministic guards own workflow selection for external actions through `/jira`, `/confluence`, and `/teams`, plus utility commands `/help` and `/model`. The LLM helps with semantic fallback, field extraction, and manager-ready narration. Python and SQL own the facts: conversion math, target gaps, value-at-risk sizing, SQL templates, Jira issue keys, owners, write guards, and Confluence publishing.
 
 ## What changed in this upgraded version
 
-- **Slash-command routing with guardrails**: `/funnel`, `/jira`, `/confluence`, `/teams`, `/help`, and `/model` force exact routing. Non-slash-command read-only prompts get a routing warning; non-prefixed writes require the prefix.
+- **Routing with guardrails**: natural funnel questions answer without a command. `/jira`, `/confluence`, and `/teams` protect external actions. `/help` and `/model` are utility commands; `/query` is available only for explicit audit/debug SQL.
 - **Impact Ranking Engine** (`impact.py`): ranks target misses by value at risk, trend severity, and Jira execution risk.
 - **Initiative contracts** (`contracts.py`): Jira issues include structured stage, metric, owner, due date, confidence, expected value, evidence, and success check.
 - **Template-first SQL analyst** (`sql_analyst.py`): common breakdowns use deterministic SQL templates; LLM SQL is only fallback and still read-only validated. Daily and monthly views now reconcile from the same row-level fixture.
 - **Idempotent investigations**: `/jira flag it` searches for an existing open investigation by stage, metric, and month before creating a new Jira issue.
-- **Weekly Confluence summary**: `/confluence weekly meeting summary` drafts a manager-ready weekly readout; `/confluence publish weekly meeting summary to Confluence` creates or updates a Confluence page.
+- **Weekly Confluence summary**: `weekly meeting summary` drafts a manager-ready weekly readout; `/confluence publish weekly meeting summary to Confluence` creates or updates a Confluence page.
 - **Legacy portfolio cleanup**: the old portfolio watchdog project is excluded from this clean package so it does not mix with Funnel Agent runtime code.
 - **Synthetic partner cleanup**: Jira seed tickets use fictional partner names only.
 
@@ -35,7 +35,7 @@ The chatbot UI is intentionally split into two tabs:
 - **Chat**: the live agent interface, with the demo flow kept in a right-side panel so prompt suggestions do not consume the conversation area.
 - **Pitch**: the storytelling view for people opening the endpoint cold. It explains the problem, why this is an agent instead of a normal chatbot, the Jira/Confluence/Teams workflow principles, and FAQ. The demo sequence stays in the Chat-side Demo flow panel.
 
-Press `/` in the chat input to open the command menu.
+Press `/` in the chat input to open the command menu for exact routing and external actions.
 
 ## Demo script
 
@@ -44,19 +44,18 @@ See `DEMO_PROMPTS.md` for the recommended demo prompts and exact expected output
 ## Example questions
 
 ```text
-/funnel show me the funnel metrics
-/funnel why is approval the top risk?
-/funnel break May approval drop down by reason
-/jira explain stage ownership structure
+show me the funnel metrics
+why is approval the top risk?
+break May approval drop down by reason
 /jira flag the drops and assign owners to investigate
 /jira what is critical or off track right now?
 /jira what does blocked mean here and what is it blocking?
 /teams post off-track blockers
-/confluence weekly meeting summary
+weekly meeting summary
 /confluence publish weekly meeting summary to Confluence
-/funnel compare April and May performance
-/funnel what was done in March to improve approval?
-/funnel show daily volume in May
+compare April and May performance
+what was done in March to improve approval?
+show daily volume in May
 /model
 /help how should I ask questions?
 ```
@@ -76,16 +75,16 @@ A dashboard can show that approval dropped. Funnel Agent answers the operational
 
 ```text
 User message
-  -> router.py                 slash-command routing + semantic fallback + deterministic guards
-  -> deterministic handlers
-      -> funnel_metrics.py     monthly conversion, MoM anomalies, OKR target misses
-      -> impact.py             value-at-risk ranking + execution-risk scoring
-      -> sql_analyst.py        template-first application breakdowns
-      -> jira_client.py        Jira read/create/assign/comment/search
-      -> confluence_client.py  search decisions + publish weekly summaries
-      -> briefing.py           manager, sprint, standup, weekly packets
-      -> contracts.py          validated initiative/investigation contracts
-  -> report.py                 LLM narration from verified JSON only
+ -> router.py         natural read routing + external-action slash guards
+ -> deterministic handlers
+   -> funnel_metrics.py   monthly conversion, MoM anomalies, OKR target misses
+   -> impact.py       value-at-risk ranking + execution-risk scoring
+   -> sql_analyst.py    template-first application breakdowns
+   -> jira_client.py    Jira read/create/assign/comment/search
+   -> confluence_client.py search decisions + publish weekly summaries
+   -> briefing.py      manager, sprint, standup, weekly packets
+   -> contracts.py     validated initiative/investigation contracts
+ -> report.py         LLM narration from verified JSON only
 ```
 
 ### Why the model layer is swappable
@@ -125,7 +124,7 @@ Execution risk comes from Jira signals such as blocked issues, overdue work, and
 Ask:
 
 ```text
-/confluence weekly meeting summary
+weekly meeting summary
 ```
 
 The agent returns a weekly meeting brief with:

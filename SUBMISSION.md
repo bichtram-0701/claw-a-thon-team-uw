@@ -15,9 +15,9 @@ Business teams already have dashboards, Jira, Confluence, and chat. But when a f
 The real bottleneck is metric-to-action translation.
 
 ## Solution
-Funnel Agent is an execution intelligence agent for owned business funnels. Ask `/funnel show me the funnel metrics` and it computes conversion, target gaps, month-over-month anomalies, and estimated value at risk. Ask `/jira what is critical or off track right now?` and it links those risks to Jira owners, blockers, overdue work, and open initiatives. Ask `/jira flag it` and it creates or updates one Jira investigation per stage + metric + month with a structured initiative contract. Ask `/confluence weekly meeting summary` and it drafts, and optionally publishes, a Confluence readout with impact-ranked risks, execution follow-up, decisions, and agenda.
+Funnel Agent is an execution intelligence agent for owned business funnels. Ask `show me the funnel metrics` and it computes conversion, target gaps, month-over-month anomalies, and estimated value at risk. Ask `/jira what is critical or off track right now?` and it links those risks to Jira owners, blockers, overdue work, and open initiatives. Ask `/jira flag it` and it creates or updates one Jira investigation per stage + metric + month with a structured initiative contract. Ask `weekly meeting summary` and it drafts, and optionally publishes, a Confluence readout with impact-ranked risks, execution follow-up, decisions, and agenda.
 
-Slash commands and deterministic guards handle primary routing. The LLM handles semantic fallback, bounded extraction, and narration only. Python and SQL compute numbers, rankings, SQL templates, Jira writes, duplicate-ticket prevention, and Confluence publishing guards.
+Natural read-only prompts handle funnel intelligence, while slash commands and deterministic guards handle external actions. The LLM handles semantic fallback, bounded extraction, and narration only. Python and SQL compute numbers, rankings, SQL templates, Jira writes, duplicate-ticket prevention, and Confluence publishing guards.
 
 ## Value
 Funnel Agent compresses the manager's operating loop from dashboard -> Jira -> Confluence -> Teams into one accountable workflow: detect target drift, estimate business value at risk, rank the priority, identify the owner, open/update recovery work, and prepare the weekly readout. It is useful even with a replaceable internal model layer because the business truth is deterministic and auditable.
@@ -26,15 +26,14 @@ Funnel Agent compresses the manager's operating loop from dashboard -> Jira -> C
 Try:
 
 ```text
-/funnel show me the funnel metrics
-/funnel why is approval the top risk?
-/funnel break May approval drop down by reason
-/jira explain stage ownership structure
+show me the funnel metrics
+why is approval the top risk?
+break May approval drop down by reason
 /jira flag the drops and assign owners to investigate
 /jira what is critical or off track right now?
 /jira what does blocked mean here and what is it blocking?
 /teams post off-track blockers
-/confluence weekly meeting summary
+weekly meeting summary
 /confluence publish weekly meeting summary to Confluence
 ```
 
@@ -60,5 +59,5 @@ Slash commands route primary workflows. The LLM only provides semantic fallback,
 - [ ] Run `python tests/test_offline.py`.
 - [ ] Verify `daily volume` and `day over day in May` route to analyst, and `draft my standup` routes to standup.
 - [ ] Verify May daily totals reconcile to Traffic 800 -> Submission 216 -> Approval 24 -> Disbursement 23.
-- [ ] Verify `/confluence weekly meeting summary` drafts a meeting readout.
+- [ ] Verify `weekly meeting summary` drafts a meeting readout.
 - [ ] Verify Confluence publishing only when writes are intentionally enabled.

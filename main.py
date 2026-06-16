@@ -1,8 +1,6 @@
 """Funnel Agent — Team UW, Claw-a-thon 2026.
 
-Execution intelligence for a business funnel. Slash-command routing chooses workflows; the LLM narrates; Python
-and SQL own the business facts: conversion math, value-at-risk ranking, issue
-keys, owners, write guards, Jira idempotency, and Confluence weekly summaries.
+Execution intelligence for a business funnel. Users can ask read-only funnel questions naturally; slash commands are reserved for external tool actions. The LLM narrates; Python and SQL own the business facts: conversion math, value-at-risk ranking, issue keys, owners, write guards, Jira idempotency, and Confluence weekly summaries.
 """
 from __future__ import annotations
 
@@ -65,7 +63,7 @@ app.router.routes.append(Route("/version", _version, methods=["GET"]))
 
 JIRA_EVENT_TOKEN = os.environ.get("JIRA_EVENT_TOKEN", "")
 ALLOW_WRITES = os.environ.get("ALLOW_WRITES", "true").lower() in ("1", "true", "yes")
-APP_VERSION = os.environ.get("APP_VERSION", "demo-v24")
+APP_VERSION = os.environ.get("APP_VERSION", "demo-v26")
 BUILD_VERSION = os.environ.get("GIT_SHA", "dev")[:7]
 
 STAGE_TO_EPIC = {
@@ -307,7 +305,7 @@ def _prefix_required_answer(rr, original_message: str) -> str:
     if rr.source == "strict_guard":
         return (
             "⚠️ **Command prefix required.** Start your message with one of: "
-            "`/funnel`, `/jira`, `/confluence`, `/teams`, `/help`, `/model`.\n\n"
+            "`/jira`, `/confluence`, `/teams`, `/help`, `/model`.\n\n"
             f"Suggested rewrite: `{interpreted}`"
         )
     if rr.intent in {"create", "assign", "flag"}:
@@ -324,8 +322,7 @@ def _prefix_required_answer(rr, original_message: str) -> str:
     return (
         f"⚠️ This looks like a **{system} write/action**. For safety, I did not execute it without an explicit slash command.\n\n"
         f"Please resend as: `{interpreted}`\n\n"
-        "Read-only questions can still be answered without a slash command, but I will show an interpretation warning. "
-        "For exact routing, use `/funnel`, `/jira`, `/confluence`, `/teams`, `/help`, or `/model`."
+        "Read-only funnel questions can be asked naturally. Use slash commands when the agent writes to an external system: `/jira`, `/confluence`, or `/teams`. Utilities: `/help`, `/model`."
     )
 
 
@@ -462,41 +459,12 @@ def _handle(payload: dict) -> dict:
         result["route"] = route_info
     else:
         result = {"route": route_info,
-                  "hint": "Try: /funnel show me the funnel metrics, /funnel show daily volume in May, /jira what is critical or off track, /jira flag it, /confluence weekly meeting summary, /jira create a ticket, /model, or /help how should I ask questions."}
+                  "hint": "Try: show me the funnel metrics, break May approval drop down by reason, /jira what is critical or off track, /jira flag it, weekly meeting summary, /confluence publish weekly meeting summary, /teams post off-track blockers, /model, or /help how should I ask questions."}
         if _is_database_help_question(message) and not _is_command_help_question(message):
             answer = sa.schema_guide_markdown()
         else:
-            answer = (
-                "## What Funnel Agent solves\n"
-                "Dashboards show what changed, but managers still need to connect metric drift to Jira owners, "
-                "Confluence decisions, and Teams follow-up. Funnel Agent turns funnel drift into owned recovery work.\n\n"
-                "## Workflow principles\n"
-                "- **Metrics:** source of truth for funnel health, MoM movement, value at risk, and safe drilldowns.\n"
-                "- **Jira:** Epic → stage owner → task assignee. If `/jira create` or `/jira flag` does not name an assignee, Funnel Agent defaults to the operational stage owner.\n"
-                "- **Confluence:** weekly readout and decision memory: risks, blockers, completed work, agenda, and next actions.\n"
-                "- **Teams:** notification layer for new/updated Jira tasks, off-track blockers, 09:00 overdue/stale digest, and 17:00 due-tomorrow reminders.\n\n"
-                "## Main commands\n"
-                "`/funnel`, `/jira`, `/confluence`, `/teams`, `/model`, `/help`. `/query` still works as an advanced/audit alias; `/metrics` remains a legacy alias for `/funnel`.\n\n"
-                "## Main demo flow\n"
-                "1. `/funnel show me the funnel metrics`\n"
-                "2. `/funnel why is approval the top risk?`\n"
-                "3. `/funnel break May approval drop down by reason`\n"
-                "4. `/jira explain stage ownership structure`\n"
-                "5. `/jira flag the drops and assign owners to investigate`\n"
-                "6. `/jira what is critical or off track right now?`\n"
-                "7. `/jira what does blocked mean here and what is it blocking?`\n"
-                "8. `/confluence weekly meeting summary`\n"
-                "9. `/confluence publish weekly meeting summary to Confluence`\n"
-                "10. `/teams post off-track blockers`\n\n"
-                "## Other useful prompts\n"
-                "- `/funnel compare April and May performance`\n"
-                "- `/funnel show daily volume in May`\n"
-                "- `/funnel what was done in March to improve approval?`\n"
-                "- `/jira give me all the tasks along with assignee and due date and status`\n"
-                "- `/teams post due-soon reminders`\n"
-                "- `/model`\n\n"
-                "Funnel stages: **Traffic → Submission → Approval → Disbursement**. Read-only questions without a slash command still work with an interpretation warning; writes require the explicit command."
-            )
+            answer = _render_help_answer(message)
+
 
     if answer is None:
         sys_extra = NARRATE_SYS.get(intent, "")
@@ -660,12 +628,87 @@ def _is_recovery_priority_question(message: str) -> bool:
     return any(k in q for k in ["recovery priority", "priority", "prioritize", "prioritise", "top recovery", "what should we do first"])
 
 
+
+
+def _render_help_answer(message: str = "") -> str:
+    q = (message or "").lower()
+    if "teams" in q:
+        return (
+            "## Teams functions\n"
+            "Use `/teams` when Funnel Agent posts into Microsoft Teams.\n\n"
+            "Supported demo actions:\n"
+            "- `/teams post off-track blockers` — post blocked/overdue Jira work to Teams.\n"
+            "- `/teams post due-soon reminders` — post tasks due soon.\n"
+            "- Background workflow principle: new/updated Jira tasks can produce Teams cards; daily digests can remind the team about stale, overdue, or due-tomorrow work.\n\n"
+            "Read-only summaries can be asked naturally. Posting to Teams requires `/teams`."
+        )
+    if "jira" in q:
+        return (
+            "## Jira functions\n"
+            "Use `/jira` when Funnel Agent reads or changes the execution system of record.\n\n"
+            "Supported demo actions:\n"
+            "- `/jira flag the drops and assign owners to investigate` — create/update recovery investigations.\n"
+            "- `/jira what is critical or off track right now?` — show metric risk plus blocked/overdue Jira work.\n"
+            "- `/jira what does blocked mean here and what is it blocking?` — explain blocker dependencies.\n"
+            "- `/jira give me all the tasks along with assignee and due date and status` — list execution inventory.\n\n"
+            "Ownership principle: Epic → stage owner → task assignee. If a Jira write does not name an assignee, Funnel Agent defaults to the operational stage owner and says so."
+        )
+    if "confluence" in q:
+        return (
+            "## Confluence functions\n"
+            "Weekly summaries can be generated naturally in chat with `weekly meeting summary`.\n\n"
+            "Use `/confluence` when Funnel Agent publishes/searches/updates Confluence:\n"
+            "- `/confluence publish weekly meeting summary to Confluence` — create/update the weekly readout page.\n"
+            "- Confluence acts as meeting memory: decisions, blockers, owners, completed work, and next actions.\n\n"
+            "The read-only weekly summary does not need `/confluence`; publishing does."
+        )
+    if "funnel" in q or "query" in q or "database" in q or "sql" in q:
+        return (
+            "## Funnel intelligence and audit queries\n"
+            "Ask naturally for read-only funnel insight:\n"
+            "- `show me the funnel metrics`\n"
+            "- `why is approval the top risk?`\n"
+            "- `break May approval drop down by reason`\n"
+            "- `compare April and May performance`\n\n"
+            "Advanced audit/debug command:\n"
+            "- `/query ...` — raw tables or SQL templates when you explicitly want audit detail.\n\n"
+            "In the main demo, ask funnel questions naturally."
+        )
+    return (
+        "## What Funnel Agent solves\n"
+        "Dashboards show what changed, but managers still need to connect metric drift to Jira owners, Confluence decisions, and Teams follow-up. Funnel Agent turns funnel drift into owned recovery work.\n\n"
+        "## Workflow principles\n"
+        "- **Funnel intelligence:** ask naturally for funnel health, MoM movement, value at risk, drop reasons, and safe drilldowns.\n"
+        "- **Jira:** Epic → stage owner → task assignee. If `/jira create` or `/jira flag` does not name an assignee, Funnel Agent defaults to the operational stage owner.\n"
+        "- **Confluence:** weekly readouts can be generated naturally in chat; `/confluence` is for publishing/searching/updating Confluence pages.\n"
+        "- **Teams:** notification layer for new/updated Jira tasks, off-track blockers, 09:00 overdue/stale digest, and 17:00 due-tomorrow reminders. `/teams` is required for posting.\n\n"
+        "## Main commands\n"
+        "Use commands when the agent touches an external workflow: `/jira`, `/confluence`, `/teams`. Use `/model` for runtime info and `/help` for guidance. Advanced `/query` is available when you explicitly want raw/audit SQL.\n\n"
+        "## Main demo flow\n"
+        "1. `show me the funnel metrics`\n"
+        "2. `why is approval the top risk?`\n"
+        "3. `break May approval drop down by reason`\n"
+        "4. `/jira flag the drops and assign owners to investigate`\n"
+        "5. `/jira what is critical or off track right now?`\n"
+        "6. `/jira what does blocked mean here and what is it blocking?`\n"
+        "7. `weekly meeting summary`\n"
+        "8. `/confluence publish weekly meeting summary to Confluence`\n"
+        "9. `/teams post off-track blockers`\n\n"
+        "## Other useful prompts\n"
+        "- `compare April and May performance`\n"
+        "- `show daily volume in May`\n"
+        "- `what was done in March to improve approval?`\n"
+        "- `/jira give me all the tasks along with assignee and due date and status`\n"
+        "- `/teams post due-soon reminders`\n"
+        "- `/model`\n\n"
+        "Funnel stages: **Traffic → Submission → Approval → Disbursement**. Read-only funnel and weekly-summary questions work naturally; external writes require explicit commands."
+    )
+
 def _is_command_help_question(message: str) -> bool:
     q = message.lower()
     return any(k in q for k in [
-        "difference between metrics", "metrics and sql", "metrics vs sql",
-        "metrics and query", "metrics vs query", "funnel and query", "funnel vs query", "what is /funnel", "what is /metrics", "what is /query",
-        "what is metrics", "what is query", "slash command", "prefix",
+        "funnel and query", "funnel vs query", "what is /query",
+        "what is query", "slash command", "prefix", "commands", "function", "functions",
     ])
 
 
@@ -682,7 +725,7 @@ def _is_share_of_drop_question(message: str) -> bool:
 def _render_share_of_drop_answer() -> str:
     return (
         "**Share of drop** tells you how the lost rows at one funnel transition are distributed across reasons.\n\n"
-        "For `/funnel break May approval drop down by reason`, the transition is **Submission -> Approval**:\n\n"
+        "For `break May approval drop down by reason`, the transition is **Submission -> Approval**:\n\n"
         "- Submitted: **216**\n"
         "- Approved: **24**\n"
         "- Dropped before Approval: **192**\n\n"
@@ -779,7 +822,7 @@ def _render_investigation_result_answer(message: str, result: dict) -> str:
         )
     return (
         "I can show the metric trend and Jira recovery work, but this demo does not yet store closed-loop investigation outcomes for that stage. "
-        "Use `/funnel compare April and May performance` for the trend and `/jira what is critical or off track right now?` for current recovery work."
+        "Use `compare April and May performance` for the trend and `/jira what is critical or off track right now?` for current recovery work."
     )
 
 
@@ -916,7 +959,7 @@ def _render_top_risk_answer(result: dict, month: str | None = None) -> str:
     stage_prompt = stage.lower()
     lines += [
         "",
-        f"This is an impact ranking, not a causal claim. Use `/funnel break {diag_month} {stage_prompt} drop down by reason` or `/funnel why did {stage_prompt} drop?` for diagnostic evidence.",
+        f"This is an impact ranking, not a causal claim. Use `break {diag_month} {stage_prompt} drop down by reason` or `why did {stage_prompt} drop?` for diagnostic evidence.",
     ]
     return "\n".join(lines)
 
@@ -1763,6 +1806,17 @@ def _handle_write(intent: str, message: str, route_info: dict) -> dict:
     return _respond("assign", answer, res)
 
 
+
+def _display_intent(intent: str, route: dict | None = None) -> str:
+    prefix = (route or {}).get("prefix") if isinstance(route, dict) else None
+    if intent in {"metrics", "analyst"}:
+        return "query" if prefix == "query" else "funnel"
+    if intent == "weekly":
+        return "confluence" if prefix == "confluence" else "weekly"
+    if intent in {"create", "assign", "flag", "oversight", "briefing", "sprint", "standup"}:
+        return "jira"
+    return intent
+
 def _respond(intent: str, answer, result: dict) -> dict:
     if isinstance(answer, str):
         route = result.get("route") if isinstance(result, dict) else None
@@ -1770,9 +1824,12 @@ def _respond(intent: str, answer, result: dict) -> dict:
         if warning and not result.get("prefix_required") and not result.get("clarification_required"):
             answer = f"> ⚠️ **Routing note:** {warning}\n\n" + answer
         answer = jc.link_issue_keys(answer)
+    route = result.get("route") if isinstance(result, dict) else None
+    display_intent = _display_intent(intent, route if isinstance(route, dict) else None)
     return {
         "status": "success",
         "intent": intent,
+        "display_intent": display_intent,
         "answer": answer,
         "result": result,
         "version": BUILD_VERSION,

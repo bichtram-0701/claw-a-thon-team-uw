@@ -5,262 +5,262 @@
 # Runs on every push to main (code paths only) or manually via "Run workflow".
 #
 # Required repo secrets (Settings > Secrets and variables > Actions):
-#   GREENNODE_CLIENT_ID      - IAM service account client id
-#   GREENNODE_CLIENT_SECRET  - IAM service account client secret
+#  GREENNODE_CLIENT_ID   - IAM service account client id
+#  GREENNODE_CLIENT_SECRET - IAM service account client secret
 #
 # API endpoints taken from the BTC's greennode-agentbase-skills pack.
 
 name: Deploy to AgentBase
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "main.py"
-      - "report.py"
-      - "jira_client.py"
-      - "confluence_client.py"
-      - "teams_client.py"
-      - "briefing.py"
-      - "diagnostics.py"
-      - "weekly.py"
-      - "contracts.py"
-      - "impact.py"
-      - "router.py"
-      - "funnel_metrics.py"
-      - "sql_analyst.py"
-      - "chat.html"
-      - "data/**"
-      - "requirements.txt"
-      - "Dockerfile"
-      - ".github/workflows/deploy.yml"
-  workflow_dispatch: {}
+ push:
+  branches: [main]
+  paths:
+   - "main.py"
+   - "report.py"
+   - "jira_client.py"
+   - "confluence_client.py"
+   - "teams_client.py"
+   - "briefing.py"
+   - "diagnostics.py"
+   - "weekly.py"
+   - "contracts.py"
+   - "impact.py"
+   - "router.py"
+   - "funnel_metrics.py"
+   - "sql_analyst.py"
+   - "chat.html"
+   - "data/**"
+   - "requirements.txt"
+   - "Dockerfile"
+   - ".github/workflows/deploy.yml"
+ workflow_dispatch: {}
 
 concurrency:
-  group: deploy
-  cancel-in-progress: false
+ group: deploy
+ cancel-in-progress: false
 
 env:
-  RUNTIME_NAME: funnel-watchtower
-  IMAGE_NAME: funnel-watchtower
-  # Compute size: we want 2 vCPU / 4 GB ("2x4" per the competition guide).
-  FLAVOR_PATTERN: "2x4"
-  IAM_TOKEN_URL: https://iam.api.vngcloud.vn/accounts-api/v2/auth/token
-  CR_API: https://agentbase.api.vngcloud.vn/cr/api/v1
-  RUNTIME_API: https://agentbase.api.vngcloud.vn/runtime
-  AIP_API: https://aiplatform-hcm.api.vngcloud.vn
-  LLM_BASE_URL: https://maas-llm-aiplatform-hcm.api.vngcloud.vn/v1
-  LLM_KEY_NAME: claw-uw-llm-key
+ RUNTIME_NAME: funnel-watchtower
+ IMAGE_NAME: funnel-watchtower
+ # Compute size: we want 2 vCPU / 4 GB ("2x4" per the competition guide).
+ FLAVOR_PATTERN: "2x4"
+ IAM_TOKEN_URL: https://iam.api.vngcloud.vn/accounts-api/v2/auth/token
+ CR_API: https://agentbase.api.vngcloud.vn/cr/api/v1
+ RUNTIME_API: https://agentbase.api.vngcloud.vn/runtime
+ AIP_API: https://aiplatform-hcm.api.vngcloud.vn
+ LLM_BASE_URL: https://maas-llm-aiplatform-hcm.api.vngcloud.vn/v1
+ LLM_KEY_NAME: claw-uw-llm-key
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
+ deploy:
+  runs-on: ubuntu-latest
+  timeout-minutes: 30
+  steps:
+   - uses: actions/checkout@v4
 
-      - name: Get IAM token
-        id: token
-        run: |
-          RESP=$(curl -sf -X POST "$IAM_TOKEN_URL" \
-            -u "${{ secrets.GREENNODE_CLIENT_ID }}:${{ secrets.GREENNODE_CLIENT_SECRET }}" \
-            -H "Content-Type: application/x-www-form-urlencoded" \
-            -d "grant_type=client_credentials")
-          TOKEN=$(echo "$RESP" | jq -r '.access_token // empty')
-          if [ -z "$TOKEN" ]; then
-            echo "::error::Could not get IAM token. Check GREENNODE_CLIENT_ID/SECRET secrets."
-            echo "$RESP" | jq 'del(.access_token)' || true
-            exit 1
-          fi
-          echo "::add-mask::$TOKEN"
-          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+   - name: Get IAM token
+    id: token
+    run: |
+     RESP=$(curl -sf -X POST "$IAM_TOKEN_URL" \
+      -u "${{ secrets.GREENNODE_CLIENT_ID }}:${{ secrets.GREENNODE_CLIENT_SECRET }}" \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      -d "grant_type=client_credentials")
+     TOKEN=$(echo "$RESP" | jq -r '.access_token // empty')
+     if [ -z "$TOKEN" ]; then
+      echo "::error::Could not get IAM token. Check GREENNODE_CLIENT_ID/SECRET secrets."
+      echo "$RESP" | jq 'del(.access_token)' || true
+      exit 1
+     fi
+     echo "::add-mask::$TOKEN"
+     echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
 
-      - name: Get Container Registry info & credentials
-        id: cr
-        run: |
-          AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
-          REPO=$(curl -sf -H "$AUTH" "$CR_API/repository")
-          CRED=$(curl -sf -H "$AUTH" "$CR_API/registry-credential")
-          REGISTRY=$(echo "$REPO" | jq -r '.registryUrl')
-          REPONAME=$(echo "$REPO" | jq -r '.name')
-          CR_USER=$(echo "$CRED" | jq -r '.username')
-          CR_SECRET=$(echo "$CRED" | jq -r '.secret')
-          echo "::add-mask::$CR_SECRET"
-          {
-            echo "registry=$REGISTRY"
-            echo "repo=$REPONAME"
-            echo "user=$CR_USER"
-            echo "secret=$CR_SECRET"
-            echo "image=$REGISTRY/$REPONAME/$IMAGE_NAME:v${{ github.run_number }}"
-          } >> "$GITHUB_OUTPUT"
-          echo "Registry: $REGISTRY / repo: $REPONAME"
+   - name: Get Container Registry info & credentials
+    id: cr
+    run: |
+     AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
+     REPO=$(curl -sf -H "$AUTH" "$CR_API/repository")
+     CRED=$(curl -sf -H "$AUTH" "$CR_API/registry-credential")
+     REGISTRY=$(echo "$REPO" | jq -r '.registryUrl')
+     REPONAME=$(echo "$REPO" | jq -r '.name')
+     CR_USER=$(echo "$CRED" | jq -r '.username')
+     CR_SECRET=$(echo "$CRED" | jq -r '.secret')
+     echo "::add-mask::$CR_SECRET"
+     {
+      echo "registry=$REGISTRY"
+      echo "repo=$REPONAME"
+      echo "user=$CR_USER"
+      echo "secret=$CR_SECRET"
+      echo "image=$REGISTRY/$REPONAME/$IMAGE_NAME:v${{ github.run_number }}"
+     } >> "$GITHUB_OUTPUT"
+     echo "Registry: $REGISTRY / repo: $REPONAME"
 
-      - name: Build and push image
-        run: |
-          IMAGE="${{ steps.cr.outputs.image }}"
-          echo "${{ steps.cr.outputs.secret }}" | docker login "${{ steps.cr.outputs.registry }}" \
-            -u "${{ steps.cr.outputs.user }}" --password-stdin
-          # --provenance=false: skip the OCI attestation manifest that the VNG
-          # registry (Harbor) rejects with "unknown blob" on push.
-          docker build --platform linux/amd64 --provenance=false --build-arg GIT_SHA="${{ github.sha }}" -t "$IMAGE" .
-          docker push "$IMAGE"
-          echo "Pushed $IMAGE"
+   - name: Build and push image
+    run: |
+     IMAGE="${{ steps.cr.outputs.image }}"
+     echo "${{ steps.cr.outputs.secret }}" | docker login "${{ steps.cr.outputs.registry }}" \
+      -u "${{ steps.cr.outputs.user }}" --password-stdin
+     # --provenance=false: skip the OCI attestation manifest that the VNG
+     # registry (Harbor) rejects with "unknown blob" on push.
+     docker build --platform linux/amd64 --provenance=false --build-arg GIT_SHA="${{ github.sha }}" -t "$IMAGE" .
+     docker push "$IMAGE"
+     echo "Pushed $IMAGE"
 
-      - name: Resolve compute flavor
-        id: flavor
-        run: |
-          AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
-          FLAVORS=$(curl -sf -H "$AUTH" "$RUNTIME_API/flavors")
-          echo "Available flavors:"
-          echo "$FLAVORS" | jq -r '.. | objects | select(.id?) | "\(.id)\t\(.name // "")"' | sort -u
-          FLAVOR_ID=$(echo "$FLAVORS" | jq -r --arg p "$FLAVOR_PATTERN" \
-            '[.. | objects | select(.id?) | select((.id + (.name // "")) | test($p))] | first | .id // empty')
-          if [ -z "$FLAVOR_ID" ]; then
-            echo "::error::No flavor matching '$FLAVOR_PATTERN' found - check the list above, then set FLAVOR_PATTERN."
-            exit 1
-          fi
-          echo "Using flavor: $FLAVOR_ID"
-          echo "id=$FLAVOR_ID" >> "$GITHUB_OUTPUT"
+   - name: Resolve compute flavor
+    id: flavor
+    run: |
+     AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
+     FLAVORS=$(curl -sf -H "$AUTH" "$RUNTIME_API/flavors")
+     echo "Available flavors:"
+     echo "$FLAVORS" | jq -r '.. | objects | select(.id?) | "\(.id)\t\(.name // "")"' | sort -u
+     FLAVOR_ID=$(echo "$FLAVORS" | jq -r --arg p "$FLAVOR_PATTERN" \
+      '[.. | objects | select(.id?) | select((.id + (.name // "")) | test($p))] | first | .id // empty')
+     if [ -z "$FLAVOR_ID" ]; then
+      echo "::error::No flavor matching '$FLAVOR_PATTERN' found - check the list above, then set FLAVOR_PATTERN."
+      exit 1
+     fi
+     echo "Using flavor: $FLAVOR_ID"
+     echo "id=$FLAVOR_ID" >> "$GITHUB_OUTPUT"
 
-      - name: Provision LLM key & model (MaaS)
-        id: llm
-        run: |
-          AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
-          # 1st choice: the team's key stored as a repo secret (simple, reliable)
-          KEY="${{ secrets.LLM_API_KEY }}"
-          # Fallback: get-or-create a platform key via API (every curl guarded —
-          # 'create' returns an error when the key already exists, which is not fatal)
-          if [ -z "$KEY" ]; then
-            KEY=$(curl -sf -H "$AUTH" "$AIP_API/v1/api-keys/$LLM_KEY_NAME" | jq -r '.data.key // .key // empty' || true)
-          fi
-          if [ -z "$KEY" ]; then
-            echo "Key not found - creating $LLM_KEY_NAME"
-            KEY=$(curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" \
-              -d "{\"name\": \"$LLM_KEY_NAME\", \"isDefault\": false}" \
-              "$AIP_API/v2/api-keys" | jq -r '.data.key // .key // empty' || true)
-          fi
-          [ -n "$KEY" ] || { echo "::error::No LLM key: add repo secret LLM_API_KEY (Settings > Secrets > Actions) with the team MaaS key."; exit 1; }
-          echo "::add-mask::$KEY"
-          echo "key=$KEY" >> "$GITHUB_OUTPUT"
-          # Prefer an explicit model id. For this demo, default to GPT-OSS 20B.
-          MODEL="${{ vars.LLM_MODEL || 'openai/gpt-oss-20b' }}"
-          if [ -z "$MODEL" ]; then
-            # ask the MaaS serving endpoint for its real model ids (source of truth)
-            MODELS=$(curl -sf -H "Authorization: Bearer $KEY" "$LLM_BASE_URL/models" || true)
-            MODEL=$(echo "$MODELS" | jq -r '
-              [.data[]?.id // empty]
-              | (map(select(test("(?i)gpt-oss-20b")))
-                 + map(select(test("(?i)gpt-oss") and test("20")))
-                 + map(select(test("(?i)gpt")))
-                 + map(select(test("(?i)qwen")))
-                 + map(select(test("(?i)gemma")))
-                 + .)
-              | first // empty')
-          fi
-          if [ -z "$MODEL" ]; then
-            echo "::warning::Could not list serving models; using GPT-OSS 20B model id"
-            MODEL="openai/gpt-oss-20b"
-          fi
-          echo "Using model: $MODEL"
-          echo "model=$MODEL" >> "$GITHUB_OUTPUT"
+   - name: Provision LLM key & model (MaaS)
+    id: llm
+    run: |
+     AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
+     # 1st choice: the team's key stored as a repo secret (simple, reliable)
+     KEY="${{ secrets.LLM_API_KEY }}"
+     # Fallback: get-or-create a platform key via API (every curl guarded —
+     # 'create' returns an error when the key already exists, which is not fatal)
+     if [ -z "$KEY" ]; then
+      KEY=$(curl -sf -H "$AUTH" "$AIP_API/v1/api-keys/$LLM_KEY_NAME" | jq -r '.data.key // .key // empty' || true)
+     fi
+     if [ -z "$KEY" ]; then
+      echo "Key not found - creating $LLM_KEY_NAME"
+      KEY=$(curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" \
+       -d "{\"name\": \"$LLM_KEY_NAME\", \"isDefault\": false}" \
+       "$AIP_API/v2/api-keys" | jq -r '.data.key // .key // empty' || true)
+     fi
+     [ -n "$KEY" ] || { echo "::error::No LLM key: add repo secret LLM_API_KEY (Settings > Secrets > Actions) with the team MaaS key."; exit 1; }
+     echo "::add-mask::$KEY"
+     echo "key=$KEY" >> "$GITHUB_OUTPUT"
+     # Prefer an explicit model id. For this demo, default to GPT-OSS 20B.
+     MODEL="${{ vars.LLM_MODEL || 'openai/gpt-oss-20b' }}"
+     if [ -z "$MODEL" ]; then
+      # ask the MaaS serving endpoint for its real model ids (source of truth)
+      MODELS=$(curl -sf -H "Authorization: Bearer $KEY" "$LLM_BASE_URL/models" || true)
+      MODEL=$(echo "$MODELS" | jq -r '
+       [.data[]?.id // empty]
+       | (map(select(test("(?i)gpt-oss-20b")))
+         + map(select(test("(?i)gpt-oss") and test("20")))
+         + map(select(test("(?i)gpt")))
+         + map(select(test("(?i)qwen")))
+         + map(select(test("(?i)gemma")))
+         + .)
+       | first // empty')
+     fi
+     if [ -z "$MODEL" ]; then
+      echo "::warning::Could not list serving models; using GPT-OSS 20B model id"
+      MODEL="openai/gpt-oss-20b"
+     fi
+     echo "Using model: $MODEL"
+     echo "model=$MODEL" >> "$GITHUB_OUTPUT"
 
-      - name: Create or update runtime
-        id: runtime
-        run: |
-          AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
-          BODY=$(jq -n \
-            --arg name  "$RUNTIME_NAME" \
-            --arg desc  "Funnel Agent - Claw-a-thon 2026 Team UW (synthetic data only)" \
-            --arg image "${{ steps.cr.outputs.image }}" \
-            --arg flavor "${{ steps.flavor.outputs.id }}" \
-            --arg user  "${{ steps.cr.outputs.user }}" \
-            --arg pass  "${{ steps.cr.outputs.secret }}" \
-            --arg llmkey "${{ steps.llm.outputs.key }}" \
-            --arg llmurl "$LLM_BASE_URL" \
-            --arg llmmodel "${{ steps.llm.outputs.model }}" \
-            --arg atlsite "${{ secrets.ATLASSIAN_SITE }}" \
-            --arg atlemail "${{ secrets.ATLASSIAN_EMAIL }}" \
-            --arg atltoken "${{ secrets.ATLASSIAN_TOKEN }}" \
-            --arg allowwrites "${{ vars.ALLOW_WRITES || 'true' }}" \
-            --arg routingmode "${{ vars.ROUTING_MODE || 'warn' }}" \
-            --arg appversion "${{ vars.APP_VERSION || 'demo-v24' }}" \
-            --arg jiraproject "${{ vars.JIRA_PROJECT_KEY || 'UW' }}" \
-            --arg confspace "${{ vars.CONFLUENCE_SPACE_KEY || '' }}" \
-            --arg teamshook "${{ secrets.TEAMS_WEBHOOK_URL }}" \
-            --arg jiraevttoken "${{ secrets.JIRA_EVENT_TOKEN }}" \
-            '{name: $name, description: $desc, imageUrl: $image,
-              command: [], args: [],
-              environmentVariables: {LLM_API_KEY: $llmkey, LLM_BASE_URL: $llmurl, LLM_MODEL: $llmmodel,
-                                     ATLASSIAN_SITE: $atlsite, ATLASSIAN_EMAIL: $atlemail, ATLASSIAN_TOKEN: $atltoken,
-                                     JIRA_PROJECT_KEY: $jiraproject, CONFLUENCE_SPACE_KEY: $confspace,
-                                     ALLOW_WRITES: $allowwrites, ROUTING_MODE: $routingmode, APP_VERSION: $appversion, TEAMS_WEBHOOK_URL: $teamshook,
-                                     JIRA_EVENT_TOKEN: $jiraevttoken},
-              flavorId: $flavor,
-              imageAuth: {enabled: true, username: $user, password: $pass},
-              autoscaling: {minReplicas: 1, maxReplicas: 1, cpuUtilization: 50, memoryUtilization: 50}}')
+   - name: Create or update runtime
+    id: runtime
+    run: |
+     AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
+     BODY=$(jq -n \
+      --arg name "$RUNTIME_NAME" \
+      --arg desc "Funnel Agent - Claw-a-thon 2026 Team UW (synthetic data only)" \
+      --arg image "${{ steps.cr.outputs.image }}" \
+      --arg flavor "${{ steps.flavor.outputs.id }}" \
+      --arg user "${{ steps.cr.outputs.user }}" \
+      --arg pass "${{ steps.cr.outputs.secret }}" \
+      --arg llmkey "${{ steps.llm.outputs.key }}" \
+      --arg llmurl "$LLM_BASE_URL" \
+      --arg llmmodel "${{ steps.llm.outputs.model }}" \
+      --arg atlsite "${{ secrets.ATLASSIAN_SITE }}" \
+      --arg atlemail "${{ secrets.ATLASSIAN_EMAIL }}" \
+      --arg atltoken "${{ secrets.ATLASSIAN_TOKEN }}" \
+      --arg allowwrites "${{ vars.ALLOW_WRITES || 'true' }}" \
+      --arg routingmode "${{ vars.ROUTING_MODE || 'warn' }}" \
+      --arg appversion "${{ vars.APP_VERSION || 'demo-v26' }}" \
+      --arg jiraproject "${{ vars.JIRA_PROJECT_KEY || 'UW' }}" \
+      --arg confspace "${{ vars.CONFLUENCE_SPACE_KEY || '' }}" \
+      --arg teamshook "${{ secrets.TEAMS_WEBHOOK_URL }}" \
+      --arg jiraevttoken "${{ secrets.JIRA_EVENT_TOKEN }}" \
+      '{name: $name, description: $desc, imageUrl: $image,
+       command: [], args: [],
+       environmentVariables: {LLM_API_KEY: $llmkey, LLM_BASE_URL: $llmurl, LLM_MODEL: $llmmodel,
+                   ATLASSIAN_SITE: $atlsite, ATLASSIAN_EMAIL: $atlemail, ATLASSIAN_TOKEN: $atltoken,
+                   JIRA_PROJECT_KEY: $jiraproject, CONFLUENCE_SPACE_KEY: $confspace,
+                   ALLOW_WRITES: $allowwrites, ROUTING_MODE: $routingmode, APP_VERSION: $appversion, TEAMS_WEBHOOK_URL: $teamshook,
+                   JIRA_EVENT_TOKEN: $jiraevttoken},
+       flavorId: $flavor,
+       imageAuth: {enabled: true, username: $user, password: $pass},
+       autoscaling: {minReplicas: 1, maxReplicas: 1, cpuUtilization: 50, memoryUtilization: 50}}')
 
-          # Does a runtime with our name already exist?
-          EXISTING=$(curl -sf -H "$AUTH" "$RUNTIME_API/agent-runtimes?page=1&size=50" \
-            | jq -r --arg n "$RUNTIME_NAME" '.listData[]? | select(.name == $n) | .id' | head -1)
+     # Does a runtime with our name already exist?
+     EXISTING=$(curl -sf -H "$AUTH" "$RUNTIME_API/agent-runtimes?page=1&size=50" \
+      | jq -r --arg n "$RUNTIME_NAME" '.listData[]? | select(.name == $n) | .id' | head -1)
 
-          if [ -z "$EXISTING" ]; then
-            echo "Creating new runtime..."
-            RESP=$(curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" \
-              -d "$BODY" "$RUNTIME_API/agent-runtimes")
-            RUNTIME_ID=$(echo "$RESP" | jq -r '.id')
-          else
-            echo "Updating runtime $EXISTING (new version)..."
-            # update body = create body minus name
-            curl -sf -X PATCH -H "$AUTH" -H "Content-Type: application/json" \
-              -d "$(echo "$BODY" | jq 'del(.name)')" \
-              "$RUNTIME_API/agent-runtimes/$EXISTING" > /dev/null
-            RUNTIME_ID="$EXISTING"
-          fi
-          echo "Runtime ID: $RUNTIME_ID"
-          echo "id=$RUNTIME_ID" >> "$GITHUB_OUTPUT"
+     if [ -z "$EXISTING" ]; then
+      echo "Creating new runtime..."
+      RESP=$(curl -sf -X POST -H "$AUTH" -H "Content-Type: application/json" \
+       -d "$BODY" "$RUNTIME_API/agent-runtimes")
+      RUNTIME_ID=$(echo "$RESP" | jq -r '.id')
+     else
+      echo "Updating runtime $EXISTING (new version)..."
+      # update body = create body minus name
+      curl -sf -X PATCH -H "$AUTH" -H "Content-Type: application/json" \
+       -d "$(echo "$BODY" | jq 'del(.name)')" \
+       "$RUNTIME_API/agent-runtimes/$EXISTING" > /dev/null
+      RUNTIME_ID="$EXISTING"
+     fi
+     echo "Runtime ID: $RUNTIME_ID"
+     echo "id=$RUNTIME_ID" >> "$GITHUB_OUTPUT"
 
-      - name: Wait for ACTIVE
-        run: |
-          AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
-          # ERROR can be leftover state from a previous bad version while the
-          # new one is still rolling out - keep polling, fail only on timeout.
-          for i in $(seq 1 60); do
-            R=$(curl -sf -H "$AUTH" "$RUNTIME_API/agent-runtimes/${{ steps.runtime.outputs.id }}")
-            STATUS=$(echo "$R" | jq -r '.status')
-            REASON=$(echo "$R" | jq -r '.statusReason // ""')
-            echo "[$i/60] status: $STATUS ${REASON:+($REASON)}"
-            [ "$STATUS" = "ACTIVE" ] && exit 0
-            sleep 10
-          done
-          echo "::error::Runtime not ACTIVE after 10 min. Last status: $STATUS ${REASON:+- $REASON}. Check logs via the Debug agent workflow."
-          exit 1
+   - name: Wait for ACTIVE
+    run: |
+     AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
+     # ERROR can be leftover state from a previous bad version while the
+     # new one is still rolling out - keep polling, fail only on timeout.
+     for i in $(seq 1 60); do
+      R=$(curl -sf -H "$AUTH" "$RUNTIME_API/agent-runtimes/${{ steps.runtime.outputs.id }}")
+      STATUS=$(echo "$R" | jq -r '.status')
+      REASON=$(echo "$R" | jq -r '.statusReason // ""')
+      echo "[$i/60] status: $STATUS ${REASON:+($REASON)}"
+      [ "$STATUS" = "ACTIVE" ] && exit 0
+      sleep 10
+     done
+     echo "::error::Runtime not ACTIVE after 10 min. Last status: $STATUS ${REASON:+- $REASON}. Check logs via the Debug agent workflow."
+     exit 1
 
-      - name: Health check & summary
-        run: |
-          AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
-          EP=$(curl -sf -H "$AUTH" "$RUNTIME_API/agent-runtimes/${{ steps.runtime.outputs.id }}/endpoints")
-          URL=$(echo "$EP" | jq -r '.listData[]? // .[]? | select(.url) | .url' | head -1)
-          echo "Endpoint: $URL"
-          CODE=$(curl -s -o /dev/null -w "%{http_code}" -m 30 "$URL/health" || echo "000")
-          echo "Health check: HTTP $CODE"
-          # Verify the SERVED version matches this commit (no ghost versions:
-          # the platform keeps the old container serving if the new one crashes)
-          WANT="$(echo "${{ github.sha }}" | cut -c1-7)"
-          GOT="unknown"
-          for i in $(seq 1 18); do
-            GOT=$(curl -s -m 20 -X POST "$URL/invocations" -H "Content-Type: application/json" \
-              -d '{"message": "version check"}' | jq -r '.version // "unknown"' || echo "unknown")
-            echo "[$i/18] serving version: $GOT (want $WANT)"
-            [ "$GOT" = "$WANT" ] && break
-            sleep 10
-          done
-          {
-            echo "## Funnel Agent deployed"
-            echo "- **Runtime ID:** ${{ steps.runtime.outputs.id }}"
-            echo "- **Image:** ${{ steps.cr.outputs.image }}"
-            echo "- **Endpoint:** $URL"
-            echo "- **Health:** HTTP $CODE"
-            echo "- **Serving version:** $GOT (this commit: $WANT)"
-          } >> "$GITHUB_STEP_SUMMARY"
-          [ "$CODE" = "200" ] || { echo "::error::Health returned $CODE"; exit 1; }
-          [ "$GOT" = "$WANT" ] || { echo "::error::Old version still serving ($GOT != $WANT) - new container likely crashing. Run the Debug agent workflow for logs."; exit 1; }
+   - name: Health check & summary
+    run: |
+     AUTH="Authorization: Bearer ${{ steps.token.outputs.token }}"
+     EP=$(curl -sf -H "$AUTH" "$RUNTIME_API/agent-runtimes/${{ steps.runtime.outputs.id }}/endpoints")
+     URL=$(echo "$EP" | jq -r '.listData[]? // .[]? | select(.url) | .url' | head -1)
+     echo "Endpoint: $URL"
+     CODE=$(curl -s -o /dev/null -w "%{http_code}" -m 30 "$URL/health" || echo "000")
+     echo "Health check: HTTP $CODE"
+     # Verify the SERVED version matches this commit (no ghost versions:
+     # the platform keeps the old container serving if the new one crashes)
+     WANT="$(echo "${{ github.sha }}" | cut -c1-7)"
+     GOT="unknown"
+     for i in $(seq 1 18); do
+      GOT=$(curl -s -m 20 -X POST "$URL/invocations" -H "Content-Type: application/json" \
+       -d '{"message": "version check"}' | jq -r '.version // "unknown"' || echo "unknown")
+      echo "[$i/18] serving version: $GOT (want $WANT)"
+      [ "$GOT" = "$WANT" ] && break
+      sleep 10
+     done
+     {
+      echo "## Funnel Agent deployed"
+      echo "- **Runtime ID:** ${{ steps.runtime.outputs.id }}"
+      echo "- **Image:** ${{ steps.cr.outputs.image }}"
+      echo "- **Endpoint:** $URL"
+      echo "- **Health:** HTTP $CODE"
+      echo "- **Serving version:** $GOT (this commit: $WANT)"
+     } >> "$GITHUB_STEP_SUMMARY"
+     [ "$CODE" = "200" ] || { echo "::error::Health returned $CODE"; exit 1; }
+     [ "$GOT" = "$WANT" ] || { echo "::error::Old version still serving ($GOT != $WANT) - new container likely crashing. Run the Debug agent workflow for logs."; exit 1; }

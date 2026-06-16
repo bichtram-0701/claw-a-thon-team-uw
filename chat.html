@@ -53,6 +53,7 @@
   .tab-btn { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); color:#cbd5e1; border-radius:999px; padding:7px 12px; font-size:12px; font-weight:650; cursor:pointer; }
   .tab-btn:hover { border-color:rgba(139,92,246,.55); color:#fff; background:rgba(139,92,246,.12); }
   .tab-btn.active { color:#fff; background:linear-gradient(135deg, rgba(139,92,246,.32), rgba(34,197,94,.14)); border-color:rgba(139,92,246,.65); }
+  .sidebar-toggle { min-width: 128px; }
   .app-shell {
     flex: 1;
     min-height: 0;
@@ -79,6 +80,11 @@
   #chat::-webkit-scrollbar-thumb { background: rgba(148,163,184,.28); border-radius: 999px; }
   #chat::-webkit-scrollbar-track { background: transparent; }
 
+  .app-shell.sidebar-collapsed { grid-template-columns: minmax(0, 1fr); }
+  .app-shell.sidebar-collapsed .side-panel { display:none; }
+  .app-shell.sidebar-collapsed .msg,
+  .app-shell.sidebar-collapsed .welcome-card { max-width: min(1200px, 98%); }
+  .app-shell.sidebar-collapsed .msg.bot { width: min(1200px, 98%); }
   .side-panel { display:flex; flex-direction:column; gap:12px; min-height:0; overflow:hidden; padding-right:0; }
   .panel-card {
     background: linear-gradient(180deg, rgba(20,29,41,.82), rgba(16,23,32,.82));
@@ -226,10 +232,11 @@
 <body data-view="chat">
 <header>
   <div class="brand">
-    <h1><span class="logo">🛰️</span> Funnel Agent <small class="version-badge">UI v24</small></h1>
+    <h1><span class="logo">🛰️</span> Funnel Agent <small class="version-badge">UI v26</small></h1>
     <div class="header-actions">
       <button class="tab-btn active" type="button" data-view-target="chat">Chat</button>
       <button class="tab-btn" type="button" data-view-target="pitch">Pitch</button>
+      <button class="tab-btn sidebar-toggle" type="button" id="sidebar-toggle" aria-controls="demo-side-panel" aria-expanded="true">Hide demo panel</button>
       <span class="header-hint">Press <strong>/</strong> for commands</span>
     </div>
   </div>
@@ -239,26 +246,25 @@
   <section class="chat-shell">
     <div id="chat"></div>
   </section>
-  <aside class="side-panel" aria-label="Demo guidance">
+  <aside class="side-panel" id="demo-side-panel" aria-label="Demo guidance">
     <div class="panel-card">
       <div class="panel-title">Demo flow</div>
       <div class="demo-list" id="demo-list">
-        <button class="demo-step" data-prompt="/funnel show me the funnel metrics">1. Detect funnel risk</button>
-        <button class="demo-step" data-prompt="/funnel why is approval the top risk?">2. Diagnose top risk</button>
-        <button class="demo-step" data-prompt="/funnel break May approval drop down by reason">3. Reconcile approval drop</button>
-        <button class="demo-step" data-prompt="/jira explain stage ownership structure">4. Explain ownership</button>
-        <button class="demo-step" data-prompt="/jira flag the drops and assign owners to investigate">5. Create/update Jira work</button>
-        <button class="demo-step" data-prompt="/jira what is critical or off track right now?">6. Execution context</button>
-        <button class="demo-step" data-prompt="/jira what does blocked mean here and what is it blocking?">7. Explain blockers</button>
-        <button class="demo-step" data-prompt="/confluence weekly meeting summary">8. Weekly readout</button>
-        <button class="demo-step" data-prompt="/confluence publish weekly meeting summary to Confluence">9. Publish to Confluence</button>
-        <button class="demo-step" data-prompt="/teams post off-track blockers">10. Notify Teams</button>
+        <button class="demo-step" data-prompt="show me the funnel metrics">1. Detect funnel risk</button>
+        <button class="demo-step" data-prompt="why is approval the top risk?">2. Diagnose top risk</button>
+        <button class="demo-step" data-prompt="break May approval drop down by reason">3. Reconcile approval drop</button>
+        <button class="demo-step" data-prompt="/jira flag the drops and assign owners to investigate">4. Create/update Jira work</button>
+        <button class="demo-step" data-prompt="/jira what is critical or off track right now?">5. Execution context</button>
+        <button class="demo-step" data-prompt="/jira what does blocked mean here and what is it blocking?">6. Explain blockers</button>
+        <button class="demo-step" data-prompt="weekly meeting summary">7. Weekly readout</button>
+        <button class="demo-step" data-prompt="/confluence publish weekly meeting summary to Confluence">8. Publish to Confluence</button>
+        <button class="demo-step" data-prompt="/teams post off-track blockers">9. Notify Teams</button>
       </div>
     </div>
     <div class="panel-card workflow-card">
       <div class="panel-title">Workflow map</div>
       <div class="flow">
-        <div class="flow-row"><span class="dot"></span><div><strong>Funnel</strong><br><span class="muted">Query-backed KPIs, drift, impact, and drilldowns.</span></div></div>
+        <div class="flow-row"><span class="dot"></span><div><strong>Funnel</strong><br><span class="muted">Ask naturally for query-backed KPIs, drift, impact, and drilldowns.</span></div></div>
         <div class="flow-row"><span class="dot"></span><div><strong>Jira</strong><br><span class="muted">Epic → stage owner → task assignee.</span></div></div>
         <div class="flow-row"><span class="dot"></span><div><strong>Confluence</strong><br><span class="muted">Weekly decision and meeting memory.</span></div></div>
         <div class="flow-row"><span class="dot"></span><div><strong>Teams</strong><br><span class="muted">Blocker posts, updates, 09:00 and 17:00 reminders.</span></div></div>
@@ -307,7 +313,7 @@
       <div class="story-step"><strong>Is this just Jira AI?</strong><div>No. Jira knows work items; it does not know the funnel target gap, value-at-risk formula, drop-reason reconciliation, or weekly metric recovery loop.</div></div>
       <div class="story-step"><strong>Does the LLM decide the numbers?</strong><div>No. Query-backed Python/SQL computes metrics, MoM changes, value at risk, drop-reason breakdowns, and write guards. The model routes, extracts bounded fields, and explains verified facts.</div></div>
       <div class="story-step"><strong>Does it prove causality?</strong><div>No. The diagnostic layer shows contribution analysis and reconciliation. It says where the drop is concentrated, not that a reason caused the decline.</div></div>
-      <div class="story-step"><strong>Why /funnel and /query?</strong><div><code>/funnel</code> is the business-facing command for query-backed funnel intelligence. <code>/query</code> is the advanced audit/debug mode for raw tables and SQL templates. Jira, Confluence, and Teams remain separate because they can write to external systems.</div></div>
+      <div class="story-step"><strong>Why no slash command for funnel questions?</strong><div>Funnel questions are read-only intelligence, so users can ask naturally. Slash commands are reserved for external tool boundaries: <code>/jira</code>, <code>/confluence</code>, and <code>/teams</code>. Advanced <code>/query</code> is still available if someone explicitly wants raw/audit SQL.</div></div>
       <div class="story-step"><strong>What is defensible?</strong><div>The Funnel Execution Graph: metric -> target -> stage -> owner -> initiative -> blocker -> decision -> outcome. Over time, this becomes team-specific operating memory.</div></div>
       <div class="story-step"><strong>What is still future work?</strong><div>Closed-loop outcome learning: when a Jira recovery task is completed, compare before/after metrics and classify whether the action worked, partially worked, or was inconclusive.</div></div>
     </div>
@@ -317,7 +323,7 @@
 <div class="composer-wrap">
   <div id="command-menu" class="command-menu" hidden></div>
   <form id="form">
-    <input id="input" placeholder="Type / for commands, or ask about the funnel…" autocomplete="off" autofocus>
+    <input id="input" placeholder="Ask naturally about the funnel, or type / for Jira, Confluence, Teams…" autocomplete="off" autofocus>
     <button id="send" class="send-btn">Send</button>
   </form>
 </div>
@@ -325,23 +331,42 @@
 
 <script>
 marked.setOptions({ breaks: true });
-const UI_VERSION = "v24";
+const UI_VERSION = "v26";
 const ENDPOINT = location.protocol.startsWith("http")
   ? "/invocations"
   : "https://endpoint-2f37c067-4516-4483-ba07-2199f07abb90.agentbase-runtime.aiplatform.vngcloud.vn/invocations";
 const COMMANDS = [
-  { cmd: "/funnel", desc: "Query-backed funnel KPIs, top risk, MoM, drop reasons, daily volume" },
-  { cmd: "/query", desc: "Advanced audit/debug data drilldowns and SQL templates" },
-  { cmd: "/jira", desc: "Stage ownership, blockers, open work, create/update recovery tasks" },
-  { cmd: "/confluence", desc: "Weekly readout, meeting summary, publish to Confluence" },
+  { cmd: "/jira", desc: "Jira ownership, blockers, open work, create/update recovery tasks" },
+  { cmd: "/confluence", desc: "Publish/search/update Confluence weekly memory" },
   { cmd: "/teams", desc: "Post off-track blockers and Jira digests to Teams" },
   { cmd: "/model", desc: "Show app version, model, routing mode, and write mode" },
   { cmd: "/help", desc: "What this solves, workflow principles, and more feature prompts" }
 ];
 const chat = document.getElementById("chat"), form = document.getElementById("form"),
       input = document.getElementById("input"), send = document.getElementById("send"),
-      commandMenu = document.getElementById("command-menu");
+      commandMenu = document.getElementById("command-menu"),
+      appShell = document.querySelector(".app-shell"),
+      sidebarToggle = document.getElementById("sidebar-toggle");
 let busy = false;
+
+function setSidebar(open) {
+  const isOpen = Boolean(open);
+  appShell.classList.toggle("sidebar-collapsed", !isOpen);
+  sidebarToggle.setAttribute("aria-expanded", String(isOpen));
+  sidebarToggle.textContent = isOpen ? "Hide demo panel" : "Show demo panel";
+  sidebarToggle.title = isOpen ? "Hide the Demo flow + Workflow map panel" : "Show the Demo flow + Workflow map panel";
+  try { localStorage.setItem("funnelAgentDemoPanelOpen", isOpen ? "1" : "0"); } catch (_) {}
+  requestAnimationFrame(() => { chat.scrollTop = chat.scrollHeight; });
+}
+
+sidebarToggle.addEventListener("click", () => {
+  setSidebar(appShell.classList.contains("sidebar-collapsed"));
+});
+
+try {
+  const savedPanelState = localStorage.getItem("funnelAgentDemoPanelOpen");
+  if (savedPanelState === "0") setSidebar(false);
+} catch (_) {}
 
 function setView(view) {
   document.body.dataset.view = view;
@@ -409,7 +434,7 @@ document.querySelectorAll(".demo-step").forEach(btn =>
 
 add("bot", `<div class="welcome-card">
   <div class="welcome-title">Welcome to Funnel Agent</div>
-  <div class="welcome-sub">Funnel Agent turns funnel drift into owned recovery work. It connects metric movement to Jira ownership, Confluence weekly memory, and Teams reminders.</div>
+  <div class="welcome-sub">Funnel Agent turns funnel drift into owned recovery work. Ask read-only funnel questions naturally; use slash commands when writing to Jira, Confluence, or Teams.</div>
   <div class="principles">
     <div class="principle"><strong>Problem</strong>Dashboards show what changed; managers still coordinate recovery manually.</div>
     <div class="principle"><strong>Jira</strong>Epic → stage owner → task assignee. Missing assignee defaults to the stage owner.</div>
@@ -437,7 +462,8 @@ form.addEventListener("submit", async e => {
     const secs = ((Date.now() - t0) / 1000).toFixed(1);
     wait.remove();
     const text = data.answer || data.error || ("```json\n" + JSON.stringify(data, null, 2) + "\n```");
-    const label = data.intent || data.status || (res.ok ? "agent" : "error " + res.status);
+    const rawLabel = data.display_intent || data.intent || data.status || (res.ok ? "agent" : "error " + res.status);
+    const label = (rawLabel === "metrics" || rawLabel === "analyst") ? "funnel" : (rawLabel === "weekly" ? "summary" : rawLabel);
     const build = data.app_version ? `${data.app_version} · build ${data.version || "?"}` : `v${data.version || "?"}`;
     const meta = `<div class="meta">${esc(label)} · ${secs}s · ${esc(build)}</div>`;
     add(res.ok ? "bot" : "bot error", meta + renderMarkdown(String(text)));

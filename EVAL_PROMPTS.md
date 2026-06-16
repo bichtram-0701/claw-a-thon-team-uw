@@ -4,40 +4,40 @@ Use this file as a small regression set for LLM routing and answer quality.
 The offline tests cover many of these as deterministic fallbacks; a live MaaS run
 should also check route source, confidence, and final answer quality.
 
-## Prefix-routing checks
+## Routing checks
 
 | Prompt | Expected intent | Notes |
 |---|---|---|
-| /funnel show me the funnel metrics | metrics | Exact prefix route; no routing warning |
-| /funnel break May approval drop down by reason | analyst | Exact data-drilldown route |
+| show me the funnel metrics | metrics | Natural read-only funnel report; no routing warning |
+| break May approval drop down by reason | analyst | Exact data-drilldown route |
 | /jira flag the drops and assign owners to investigate | flag | Exact Jira write route |
 | /jira what does blocked mean here and what is it blocking? | oversight | Blocker semantics, not generic help |
-| /confluence weekly meeting summary | weekly | Read-only weekly pack |
+| weekly meeting summary | weekly | Natural read-only weekly pack |
 | /confluence publish weekly meeting summary to Confluence | weekly | Confluence write route |
 | /teams post off-track blockers | teams | Teams write route |
 | /help how should I ask questions? | help | Usage guide |
 | /model | model | Deterministic runtime/model info, not LLM self-identification |
-| /funnel what was done in March to improve approval? | metrics | Historical Jira/Confluence evidence + outcome caveat |
+| what was done in March to improve approval? | metrics | Historical Jira/Confluence evidence + outcome caveat |
 | flag the drops and assign owners to investigate | flag + prefix_required | Non-slash-command write should be blocked in warn mode |
-| show me the funnel metrics | metrics + warning | Non-slash-command read-only can answer with routing warning |
+| show me the funnel metrics | metrics | Non-slash-command read-only answers naturally with no routing warning |
 | why did it drop? | help + clarification_required | Ambiguous stage should ask clarification |
 
 ## Routing near-collisions
 
 | Prompt | Expected intent | Notes |
 |---|---|---|
-| daily volume in May | analyst + warning | Must not route to standup; warn because no slash command |
-| can you give me the number day over day in May | analyst + warning | Day-over-day wording should trigger daily template; warn because no slash command |
-| show daily volume | analyst + warning | Analytics request; warn because no slash command |
+| daily volume in May | analyst | Must not route to standup; natural read-only; no warning |
+| can you give me the number day over day in May | analyst | Day-over-day wording should trigger daily template; natural read-only; no warning |
+| show daily volume | analyst | Analytics request; natural read-only; no warning |
 | draft my daily standup | standup | Standup keyword must win only with standup context |
 | draft my standup | standup | Standard standup request |
 | daily approval volume by channel | analyst | data-drilldown breakdown |
 | weekly volume in May | analyst | Data aggregation, not weekly meeting |
-| prepare weekly meeting summary | weekly + warning | Meeting summary; warn because no slash command |
+| prepare weekly meeting summary | weekly | Meeting summary; natural read-only; no warning |
 | publish weekly meeting summary to Confluence | weekly + prefix_required | Non-slash-command Confluence write should be blocked |
-| show me the funnel metrics | metrics + warning | Standard metric table; warn because no slash command |
+| show me the funnel metrics | metrics | Standard metric table; natural read-only; no warning |
 | what is the approval rate? | metrics | Narrow metric question |
-| what is critical or off track? | oversight + warning | Manager digest; warn because no slash command |
+| what is critical or off track? | oversight | Manager digest; natural read-only; no warning |
 | who is working on what? | oversight | Ownership / manager execution view |
 | what is on my plate? | briefing | Contributor briefing |
 | draft my standup | standup | Contributor update |
@@ -72,9 +72,9 @@ For Jira flagging:
 For weekly summary:
 
 - Include executive summary, impact-ranked risks, execution follow-up, Confluence
-  context, and proposed agenda.
+ context, and proposed agenda.
 - If asked to publish and writes are disabled, clearly say it drafted but did not
-  publish.
+ publish.
 
 ## Teams workflow checks
 

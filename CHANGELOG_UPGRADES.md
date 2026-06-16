@@ -1,3 +1,17 @@
+## demo-v26 natural read / external action routing
+
+- Removed `/metrics` from the user-facing command set.
+- Main demo now uses natural funnel prompts for read-only insight:
+  - `show me the funnel metrics`
+  - `why is approval the top risk?`
+  - `break May approval drop down by reason`
+  - `weekly meeting summary`
+- Kept slash commands for external systems and utilities: `/jira`, `/confluence`, `/teams`, `/model`, `/help`.
+- Kept `/query` as an optional advanced/audit command for raw SQL-style drilldowns.
+- Non-prefixed read-only prompts no longer add noisy routing warnings; non-prefixed writes are still blocked and ask for the proper external command.
+- Updated the Chat UI demo panel, command menu, help text, README, submission notes, and storyboard to match the simplified command model.
+- Bumped app/UI version to demo-v26 / UI v26.
+
 ## v23 report consistency polish
 
 - Made `/jira what is critical or off track right now?` deterministic instead of LLM-shaped.
@@ -11,23 +25,23 @@
 ## v22 pitch/FAQ and audit SQL polish
 
 - Reworked the in-app Pitch tab to answer product questions instead of duplicating the demo flow:
-  - what Funnel Agent is
-  - what problem it solves
-  - why agent vs normal chat
-  - why this workflow
-  - Jira / Confluence / Teams principles
-  - FAQ
+ - what Funnel Agent is
+ - what problem it solves
+ - why agent vs normal chat
+ - why this workflow
+ - Jira / Confluence / Teams principles
+ - FAQ
 - Kept the demo sequence in the Chat view side panel only.
 - Restored the collapsed `Audit SQL` block for template-backed metric drilldowns by default.
 - Kept normal drilldown answers clean: no visible template line unless the user asks for audit/debug/template details.
-- Bumped app/UI version to demo-v24 / UI v24.
+- Bumped app/UI version to demo-v26 / UI v26.
 
 ## v21 demo package
 
 - Renamed the user-facing bot to **Funnel Agent**.
 - Default MaaS model is now `openai/gpt-oss-20b`; `/model` reports the configured model from runtime config instead of asking the LLM to self-identify.
 - User-facing final-stage wording is **Disbursement**: `Disbursement (4)`, `Disbursement Volume`, and `Disbursement rate (4)/(3)`.
-- `/funnel` is the main read-only command for both KPI readouts and safe data drilldowns; `/query` remains as an optional advanced alias.
+- Natural funnel questions are the main read-only path for both KPI readouts and safe data drilldowns; `/query` remains as an optional advanced alias.
 - Added monthly Jira and Confluence seed evidence for March, April, and May so historical questions can cite prior work and decisions.
 - Added `DEMO_VIDEO_STORYBOARD.md` to show the full workflow across chat, Jira, Confluence, and Teams.
 - Added Teams workflow framing: new-task card, task-update card, 09:00 overdue/stale digest, 17:00 due-tomorrow reminder, and off-track blocker posting.
@@ -70,3 +84,9 @@ The offline suite intentionally avoids live MaaS and Atlassian calls. Before a l
 ## Security packaging
 
 The final ZIP excludes `.env`, `.git`, caches, pyc files, local runtime state, and legacy prototype folders. Use `.env.example` as the only shared credential template.
+
+## demo-v26
+
+- Added a header toggle to show/hide the right-side Demo flow + Workflow map panel.
+- The panel state is saved in the browser so a presenter can keep a clean, full-width chat view while recording.
+- Bumped app/UI version to demo-v26 / UI v26.

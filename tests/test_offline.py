@@ -122,10 +122,10 @@ check("blocked semantics->oversight", m.route("what does blocked mean here and w
 check("unassigned work->oversight", m.route("what are those 9 open tasks without assignee") == "oversight")
 check("gibberish->help", m.route("zzz qwerty") == "help")
 check("slash funnel exact", m.route("/funnel show me the funnel metrics") == "metrics")
-check("slash metrics legacy alias", m.route("/metrics show me the funnel metrics") == "metrics")
+check("slash metrics removed", m.route("/metrics show me the funnel metrics") == "help")
 check("slash query exact", m.route("/query show daily volume in May") == "analyst")
 check("slash jira flag exact", m.route("/jira flag the drops and assign owners to investigate") == "flag")
-check("slash confluence weekly exact", m.route("/confluence weekly meeting summary") == "weekly")
+check("natural weekly summary exact", m.route("weekly meeting summary") == "weekly")
 check("slash teams exact", m.route("/teams post off-track blockers") == "teams")
 
 print("handler:")
@@ -337,10 +337,12 @@ check("teams previews when webhook missing", "did not post" in teams.get("answer
 print("chat UI version:")
 with open(os.path.join(ROOT, "chat.html"), encoding="utf-8") as fh:
     chat_html = fh.read()
-check("chat header has UI version", "UI v24" in chat_html)
+check("chat header has UI version", "UI v26" in chat_html)
 check("chat JS has one UI_VERSION const", chat_html.count("const UI_VERSION") == 1)
 
 check("chat has demo side panel", "Demo flow" in chat_html and "demo-step" in chat_html)
+check("chat has sidebar toggle", "sidebar-toggle" in chat_html and "Hide demo panel" in chat_html and "setSidebar" in chat_html)
+check("sidebar collapsed mode expands chat", "sidebar-collapsed" in chat_html and "grid-template-columns: minmax(0, 1fr)" in chat_html)
 check("chat wraps tables", "table-scroll" in chat_html and "renderMarkdown" in chat_html)
 check("footer minimal", "Powered by GreenNode AgentBase + MaaS." in chat_html and "Synthetic workspace data" not in chat_html)
 check("pitch tab is product FAQ not demo guide", "FAQ" in chat_html and "What problem does Funnel Agent solve?" in chat_html and "Demo storyline" not in chat_html)
@@ -405,7 +407,7 @@ check("database help mentions funnel view", rd.get("intent") == "help" and "`fun
 reo = m.handler({"message": "who's the owner of each epic?"}, None)
 check("epic owner answer distinguishes operational owner", "operational stage owner" in reo.get("answer", ""))
 
-print("v24 model + funnel/query commands:")
+print("v26 model + natural funnel + external commands:")
 check("slash model routes model", m.route("/model") == "model")
 mdl = m.handler({"message": "/model"}, None)
 check("model handler works", mdl.get("intent") == "model" and "Chat model" in mdl.get("answer", ""))
@@ -414,7 +416,7 @@ rdrop = m.handler({"message": "/funnel break May approval drop down by reason"},
 check("/funnel drop reason works", rdrop.get("intent") == "analyst" and ("Submission → Approval reconciliation" in rdrop.get("answer", "") or "application-level dataset is not available" in rdrop.get("answer", "")))
 check("drop reason includes audit sql", "Audit SQL" in rdrop.get("answer", "") or "application-level dataset is not available" in rdrop.get("answer", ""))
 # Regression: this used to fall through to the full metrics table instead of answering the history/outcome question.
-rhist = m.handler({"message": "/funnel what has been done in March to improve the approval rate? or if it's been done at all"}, None)
+rhist = m.handler({"message": "what has been done in March to improve the approval rate? or if it's been done at all"}, None)
 check("stage history question answers with caveat", rhist.get("intent") == "metrics" and "closed-loop outcome tracking" in rhist.get("answer", ""))
 # Regression: broad Jira task list questions should not dump raw JSON.
 rtasks = m.handler({"message": "/jira give me all the tasks along with assignee and due date and status"}, None)
@@ -433,12 +435,21 @@ print("prefix routing guards:")
 np = m.handler({"message": "flag the drops and assign owners to investigate"}, None)
 check("non-prefixed write requires prefix", np.get("result", {}).get("prefix_required") is True and "/jira" in np.get("answer", ""))
 rn = m.handler({"message": "show me the funnel metrics"}, None)
-check("non-prefixed read-only has routing warning", "Routing note" in rn.get("answer", "") and "/funnel" in rn.get("answer", ""))
+check("non-prefixed read-only has no routing warning", "Routing note" not in rn.get("answer", ""))
 rp = m.handler({"message": "/funnel show me the funnel metrics"}, None)
-check("prefixed read-only has no routing warning", "Routing note" not in rp.get("answer", ""))
+check("optional /funnel read-only has no routing warning", "Routing note" not in rp.get("answer", ""))
 check("funnel metrics includes audit query", "Audit query" in rp.get("answer", ""))
 clar = m.handler({"message": "why did it drop"}, None)
 check("ambiguous drop asks clarification", clar.get("result", {}).get("clarification_required") is True and "Which funnel transition" in clar.get("answer", ""))
+
+
+print("capability help guard:")
+rth = m.handler({"message": "/teams what are teams function"}, None)
+check("teams capability question does not post", rth.get("intent") == "help" and "Teams" in rth.get("answer", "") and "Posted" not in rth.get("answer", ""))
+rjh = m.handler({"message": "/jira what are jira function"}, None)
+check("jira capability question routes help", rjh.get("intent") == "help" and "Jira" in rjh.get("answer", ""))
+rch = m.handler({"message": "/confluence what confluence functions?"}, None)
+check("confluence capability question routes help", rch.get("intent") == "help" and "Confluence" in rch.get("answer", ""))
 
 print(f"\n{PASS} passed, {FAIL} failed")
 

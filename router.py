@@ -1,10 +1,10 @@
 """Command-aware semantic router for Funnel Agent.
 
 Reliability rule:
-- Slash-command prompts route deterministically: /funnel, /jira, /confluence, /teams, /help, /model. (/query is kept as an advanced alias for raw/audit drilldowns; /metrics is kept as a legacy alias.)
-- Legacy slash/colon prefixes (/metrics, metrics:, sql:, jira:, confluence:, teams:, help:) are still accepted as aliases.
-- Non-prefixed read-only prompts are still supported in warn mode, but the answer
-  gets an interpretation warning.
+- Read-only funnel intelligence can be asked naturally; /funnel and /query are optional advanced exact-routing aliases.
+- Slash commands are reserved for external systems and utilities: /jira, /confluence, /teams, /help, /model.
+- Legacy colon prefixes (jira:, confluence:, teams:, help:) are accepted as aliases.
+- Non-prefixed read-only prompts are supported in warn mode without noisy routing notes.
 - Non-prefixed write prompts are blocked in warn/strict mode and ask the user to
   resend with the right prefix.
 
@@ -26,7 +26,6 @@ VALID = {
 
 PREFIX_TO_SYSTEM = {
     "funnel": "metrics",
-    "metrics": "metrics",
     "query": "analyst",
     "sql": "analyst",
     "data": "analyst",
@@ -40,16 +39,15 @@ PREFIX_TO_SYSTEM = {
 # Preferred user syntax is slash-command style. Colon prefixes are accepted as
 # backwards-compatible aliases so old demo prompts do not break.
 COMMAND_PREFIX_RE = re.compile(
-    r"^\s*(?:/(funnel|metrics|query|sql|data|jira|confluence|teams|help|model)|"
-    r"(funnel|metrics|query|sql|data|jira|confluence|teams|help|model)\s*:)\s*(.*)$",
+    r"^\s*(?:/(funnel|query|sql|data|jira|confluence|teams|help|model)|"
+    r"(funnel|query|sql|data|jira|confluence|teams|help|model)\s*:)\s*(.*)$",
     re.IGNORECASE | re.DOTALL,
 )
 
 ROUTES: list[tuple[set[str], str]] = [
     ({"help", "how to use", "how should i ask", "how should i use", "guide", "usage", "instructions",
       "what can you do", "prompt examples", "demo prompts", "command", "commands", "prefix", "what model", "which model", "model are you",
-      "difference between metrics", "metrics and sql", "metrics vs sql", "metrics and query",
-      "metrics vs query", "difference between funnel", "funnel and query", "funnel vs query", "what is funnel", "what is /funnel", "what is metrics", "what is query"}, "help"),
+      "difference between funnel", "funnel and query", "funnel vs query", "what is funnel", "what is /funnel", "what is query"}, "help"),
     ({"teams", "microsoft teams", "post to teams", "send to teams", "notify teams",
       "remind on teams", "remind in teams", "teams reminder", "post off-track blockers to teams", "post off-track", "send the off-track work to teams",
       "send off-track work to teams", "send overdue", "remind of overdue"}, "teams"),
@@ -110,8 +108,6 @@ def _normalize_prefix(prefix: str | None) -> str | None:
     if not prefix:
         return None
     p = prefix.lower().strip()
-    if p == "metrics":
-        return "funnel"
     if p in {"sql", "data"}:
         return "query"
     return p
@@ -221,11 +217,28 @@ def _explicit_help_signal(message: str) -> bool:
     return any(k in msg for k in [
         "how to use", "how should i ask", "how should i use", "usage",
         "instructions", "prompt examples", "demo prompts", "what can you do",
-        "difference between metrics", "metrics and sql", "metrics vs sql",
-        "metrics and query", "metrics vs query", "what is metrics", "what is query",
-        "slash command", "commands", "prefix", "what model", "which model", "model are you",
+        "function", "functions", "capability", "capabilities", "explain command",
+        "difference between funnel", "funnel and query", "funnel vs query",
+        "what is funnel", "what is query", "slash command", "commands", "prefix",
+        "what model", "which model", "model are you",
+        "function", "functions", "capability", "capabilities", "what can you do",
     ])
 
+
+
+
+def _capability_help_signal(message: str) -> bool:
+    """True when the user is asking what a command/tool can do, not asking it to execute."""
+    msg = message.lower()
+    if "blocked" in msg or "blocking" in msg:
+        return False
+    return any(k in msg for k in [
+        "function", "functions", "capability", "capabilities", "what can", "what are",
+        "how do i use", "how to use", "help", "explain", "commands", "what does"
+    ]) and not any(k in msg for k in [
+        "post ", "publish", "send ", "notify", "create", "update", "assign", "flag ", "open a ticket",
+        "weekly meeting summary", "show me", "break ", "compare ", "critical", "off track", "off-track"
+    ])
 
 def _explicit_blocker_explanation_signal(message: str) -> bool:
     msg = message.lower()
@@ -283,17 +296,17 @@ def _needs_clarification(message: str, intent: str) -> str | None:
     if ambiguous_drop and not _stage_present(msg):
         return (
             "Which funnel transition should I diagnose?\n\n"
-            "1. `/funnel break May traffic drop down by reason`\n"
-            "2. `/funnel break May approval drop down by reason`\n"
-            "3. `/funnel break May disbursement drop down by reason`\n"
-            "4. `/funnel why is the current top risk?`"
+            "1. `break May traffic drop down by reason`\n"
+            "2. `break May approval drop down by reason`\n"
+            "3. `break May disbursement drop down by reason`\n"
+            "4. `why is the current top risk?`"
         )
     if ambiguous_volume:
         return (
             "What volume do you want? For exact routing, try one of these:\n\n"
-            "- `/funnel show daily volume in May`\n"
-            "- `/funnel show me the funnel metrics`\n"
-            "- `/funnel show May volume by channel`"
+            "- `show daily volume in May`\n"
+            "- `show me the funnel metrics`\n"
+            "- `show May volume by channel`"
         )
     return None
 
@@ -327,8 +340,8 @@ def _prefix_for_intent(intent: str) -> str:
 
 def _metrics_drilldown_signal(message: str) -> bool:
     msg = message.lower()
-    # /funnel is the main user-facing business-funnel command. Under the hood,
-    # it can route to either the KPI report or the safe query/template layer.
+    # Natural funnel questions are the main user-facing path. Under the hood,
+    # they can route to either the KPI report or the safe query/template layer.
     return any(k in msg for k in [
         "daily", "day over day", "day-over-day", "by day", "per day",
         "weekly volume", "by week", "per week", "by product", "per product",
@@ -370,6 +383,8 @@ def _route_within_jira(message: str) -> str:
 
 def _route_within_confluence(message: str) -> str:
     msg = message.lower()
+    if _explicit_help_signal(message):
+        return "help"
     if any(k in msg for k in ["weekly", "meeting", "summary", "agenda", "publish", "post", "save", "recap everything", "summarize everything"]):
         return "weekly"
     if any(k in msg for k in ["decision", "decide", "document", "wiki", "page", "what did we"]):
@@ -379,9 +394,12 @@ def _route_within_confluence(message: str) -> str:
 
 def _explicit_prefix_route(prefix: str, message: str, fallback: str) -> RouteResult:
     p = _normalize_prefix(prefix) or prefix.lower()
-    if p in {"query", "sql", "data"}:
+    # Questions about what a command/tool can do should return guidance, not execute the tool.
+    if p in {"jira", "confluence", "teams", "funnel", "query"} and _explicit_help_signal(message):
+        intent = "help"
+    elif p in {"query", "sql", "data"}:
         intent = "analyst"
-    elif p in {"funnel", "metrics"}:
+    elif p == "funnel":
         intent = _route_within_metrics(message)
     elif p == "teams":
         intent = "teams"
@@ -429,20 +447,46 @@ def _apply_no_prefix_policy(result: RouteResult, original: str) -> RouteResult:
         result.clarification = clarification
         result.reason = "ambiguous prompt needs clarification"
         return result
-    result.warning = (
-        "No slash command detected. I interpreted this as "
-        f"`{interpreted_as}`. For exact routing, start with one of: "
-        "`/funnel`, `/jira`, `/confluence`, `/teams`, `/help`, `/model`."
-    )
     if _write_like(result.intent, original):
+        result.warning = None
         result.needs_prefix = True
         result.reason = "write-like prompt requires explicit slash command"
+    else:
+        # Read-only intelligence is allowed naturally; avoid noisy routing notes.
+        result.warning = None
     return result
 
 
 def route_result(message: str) -> RouteResult:
     original = message or ""
     prefix, stripped = parse_prefix(original)
+    unknown = re.match(r"^\s*/([A-Za-z][A-Za-z0-9_-]*)\b", original)
+    if not prefix and unknown:
+        cmd = unknown.group(1).lower()
+        if cmd == "metrics":
+            return RouteResult(
+                intent="help",
+                source="deprecated_prefix",
+                confidence=1.0,
+                fallback_intent="help",
+                reason="/metrics was removed from the user-facing command set",
+                prefix=None,
+                stripped_message=original,
+                warning="`/metrics` has been removed. Ask naturally instead, for example: `show me the funnel metrics`.",
+                interpreted_as="/help",
+            )
+        if cmd not in {"funnel", "query", "sql", "data", "jira", "confluence", "teams", "help", "model"}:
+            return RouteResult(
+                intent="help",
+                source="unknown_prefix",
+                confidence=1.0,
+                fallback_intent="help",
+                reason=f"unknown slash command /{cmd}",
+                prefix=None,
+                stripped_message=original,
+                warning=f"Unknown command `/{cmd}`. Use `/jira`, `/confluence`, `/teams`, `/model`, or `/help`; ask funnel questions naturally.",
+                interpreted_as="/help",
+            )
     fallback = keyword_route(stripped if prefix else original)
     if prefix:
         return _explicit_prefix_route(prefix, stripped, fallback)
