@@ -183,7 +183,7 @@ jobs:
             --arg atltoken "${{ secrets.ATLASSIAN_TOKEN }}" \
             --arg allowwrites "${{ vars.ALLOW_WRITES || 'true' }}" \
             --arg routingmode "${{ vars.ROUTING_MODE || 'warn' }}" \
-            --arg appversion "${{ vars.APP_VERSION || 'demo-v23' }}" \
+            --arg appversion "${{ vars.APP_VERSION || 'demo-v24' }}" \
             --arg jiraproject "${{ vars.JIRA_PROJECT_KEY || 'UW' }}" \
             --arg confspace "${{ vars.CONFLUENCE_SPACE_KEY || '' }}" \
             --arg teamshook "${{ secrets.TEAMS_WEBHOOK_URL }}" \

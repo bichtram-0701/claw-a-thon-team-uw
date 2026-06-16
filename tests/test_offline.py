@@ -121,7 +121,8 @@ check("usage guide->help", m.route("how to use this chat") == "help")
 check("blocked semantics->oversight", m.route("what does blocked mean here and what is it blocking?") == "oversight")
 check("unassigned work->oversight", m.route("what are those 9 open tasks without assignee") == "oversight")
 check("gibberish->help", m.route("zzz qwerty") == "help")
-check("slash metrics exact", m.route("/metrics show me the funnel metrics") == "metrics")
+check("slash funnel exact", m.route("/funnel show me the funnel metrics") == "metrics")
+check("slash metrics legacy alias", m.route("/metrics show me the funnel metrics") == "metrics")
 check("slash query exact", m.route("/query show daily volume in May") == "analyst")
 check("slash jira flag exact", m.route("/jira flag the drops and assign owners to investigate") == "flag")
 check("slash confluence weekly exact", m.route("/confluence weekly meeting summary") == "weekly")
@@ -204,7 +205,7 @@ check("open_total=5", sp["open_total"] == 5)
 check("In Review counted", sp["by_status"].get("In Review") == 1)
 check("workload Rino=2", sp["workload_by_owner"].get("Rino") == 2)
 
-print("/metrics")
+print("/funnel")
 import csv
 from collections import defaultdict
 import funnel_metrics as fm
@@ -336,7 +337,7 @@ check("teams previews when webhook missing", "did not post" in teams.get("answer
 print("chat UI version:")
 with open(os.path.join(ROOT, "chat.html"), encoding="utf-8") as fh:
     chat_html = fh.read()
-check("chat header has UI version", "UI v23" in chat_html)
+check("chat header has UI version", "UI v24" in chat_html)
 check("chat JS has one UI_VERSION const", chat_html.count("const UI_VERSION") == 1)
 
 check("chat has demo side panel", "Demo flow" in chat_html and "demo-step" in chat_html)
@@ -404,16 +405,16 @@ check("database help mentions funnel view", rd.get("intent") == "help" and "`fun
 reo = m.handler({"message": "who's the owner of each epic?"}, None)
 check("epic owner answer distinguishes operational owner", "operational stage owner" in reo.get("answer", ""))
 
-print("v23 model + combined metrics/query:")
+print("v24 model + funnel/query commands:")
 check("slash model routes model", m.route("/model") == "model")
 mdl = m.handler({"message": "/model"}, None)
 check("model handler works", mdl.get("intent") == "model" and "Chat model" in mdl.get("answer", ""))
-check("/metrics data drilldown routes analyst", m.route("/metrics break May approval drop down by reason") == "analyst")
-rdrop = m.handler({"message": "/metrics break May approval drop down by reason"}, None)
-check("/metrics drop reason works", rdrop.get("intent") == "analyst" and ("Submission → Approval reconciliation" in rdrop.get("answer", "") or "application-level dataset is not available" in rdrop.get("answer", "")))
+check("/funnel data drilldown routes analyst", m.route("/funnel break May approval drop down by reason") == "analyst")
+rdrop = m.handler({"message": "/funnel break May approval drop down by reason"}, None)
+check("/funnel drop reason works", rdrop.get("intent") == "analyst" and ("Submission → Approval reconciliation" in rdrop.get("answer", "") or "application-level dataset is not available" in rdrop.get("answer", "")))
 check("drop reason includes audit sql", "Audit SQL" in rdrop.get("answer", "") or "application-level dataset is not available" in rdrop.get("answer", ""))
 # Regression: this used to fall through to the full metrics table instead of answering the history/outcome question.
-rhist = m.handler({"message": "/metrics what has been done in March to improve the approval rate? or if it's been done at all"}, None)
+rhist = m.handler({"message": "/funnel what has been done in March to improve the approval rate? or if it's been done at all"}, None)
 check("stage history question answers with caveat", rhist.get("intent") == "metrics" and "closed-loop outcome tracking" in rhist.get("answer", ""))
 # Regression: broad Jira task list questions should not dump raw JSON.
 rtasks = m.handler({"message": "/jira give me all the tasks along with assignee and due date and status"}, None)
@@ -432,9 +433,10 @@ print("prefix routing guards:")
 np = m.handler({"message": "flag the drops and assign owners to investigate"}, None)
 check("non-prefixed write requires prefix", np.get("result", {}).get("prefix_required") is True and "/jira" in np.get("answer", ""))
 rn = m.handler({"message": "show me the funnel metrics"}, None)
-check("non-prefixed read-only has routing warning", "Routing note" in rn.get("answer", "") and "/metrics" in rn.get("answer", ""))
-rp = m.handler({"message": "/metrics show me the funnel metrics"}, None)
+check("non-prefixed read-only has routing warning", "Routing note" in rn.get("answer", "") and "/funnel" in rn.get("answer", ""))
+rp = m.handler({"message": "/funnel show me the funnel metrics"}, None)
 check("prefixed read-only has no routing warning", "Routing note" not in rp.get("answer", ""))
+check("funnel metrics includes audit query", "Audit query" in rp.get("answer", ""))
 clar = m.handler({"message": "why did it drop"}, None)
 check("ambiguous drop asks clarification", clar.get("result", {}).get("clarification_required") is True and "Which funnel transition" in clar.get("answer", ""))
 

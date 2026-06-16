@@ -15,9 +15,9 @@ Detect -> Diagnose -> Assign -> Summarize -> Notify
 | Frame | Screen | Prompt / action | Annotation overlay | What to show |
 |---:|---|---|---|---|
 | 1 | Title or chat home | Open Funnel Agent | Every team owns a funnel. The hard part is recovery coordination. | Funnel: Traffic -> Submission -> Approval -> Disbursement |
-| 2 | Chat | `/metrics show me the funnel metrics` | Detect target drift and rank business impact. | Approval is top recovery priority; value at risk; MoM table |
-| 3 | Chat | `/metrics why is approval the top risk?` | Metric -> target gap -> MoM movement -> value at risk -> owner. | Approval 11.1% vs 15.0%, owner bichtram |
-| 4 | Chat | `/metrics break May approval drop down by reason` | Deterministic drilldown, not model guessing. | 216 submitted, 24 approved, 192 dropped; reason table sums to 192 |
+| 2 | Chat | `/funnel show me the funnel metrics` | Detect target drift and rank business impact. | Approval is top recovery priority; value at risk; MoM table |
+| 3 | Chat | `/funnel why is approval the top risk?` | Metric -> target gap -> MoM movement -> value at risk -> owner. | Approval 11.1% vs 15.0%, owner bichtram |
+| 4 | Chat | `/funnel break May approval drop down by reason` | Deterministic drilldown, not model guessing. | 216 submitted, 24 approved, 192 dropped; reason table sums to 192 |
 | 5 | Chat | `/jira explain stage ownership structure` | Epic -> stage owner -> task assignee. | Approval owner, Submission owner, Disbursement owner |
 | 6 | Chat then Jira | `/jira flag the drops and assign owners to investigate` | Metric drift becomes owned recovery work. | Open/update Jira investigations with default assignees |
 | 7 | Jira board / issue detail | Open the generated Jira issue | Jira is the recovery system of record. | Assignee, due date, stage labels, evidence, success check |
@@ -33,9 +33,9 @@ Detect -> Diagnose -> Assign -> Summarize -> Notify
 | Time | Segment |
 |---:|---|
 | 0:00-0:12 | Problem: dashboards show drift; recovery work is fragmented |
-| 0:12-0:35 | `/metrics show me the funnel metrics` |
-| 0:35-0:55 | `/metrics why is approval the top risk?` |
-| 0:55-1:15 | `/metrics break May approval drop down by reason` |
+| 0:12-0:35 | `/funnel show me the funnel metrics` |
+| 0:35-0:55 | `/funnel why is approval the top risk?` |
+| 0:55-1:15 | `/funnel break May approval drop down by reason` |
 | 1:15-1:40 | `/jira flag...`, then show Jira issue |
 | 1:40-2:00 | `/jira what is critical...`, show blocked issue |
 | 2:00-2:25 | Weekly summary + Confluence page |

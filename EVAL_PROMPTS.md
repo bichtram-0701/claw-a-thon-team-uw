@@ -8,8 +8,8 @@ should also check route source, confidence, and final answer quality.
 
 | Prompt | Expected intent | Notes |
 |---|---|---|
-| /metrics show me the funnel metrics | metrics | Exact prefix route; no routing warning |
-| /metrics break May approval drop down by reason | analyst | Exact data-drilldown route |
+| /funnel show me the funnel metrics | metrics | Exact prefix route; no routing warning |
+| /funnel break May approval drop down by reason | analyst | Exact data-drilldown route |
 | /jira flag the drops and assign owners to investigate | flag | Exact Jira write route |
 | /jira what does blocked mean here and what is it blocking? | oversight | Blocker semantics, not generic help |
 | /confluence weekly meeting summary | weekly | Read-only weekly pack |
@@ -17,7 +17,7 @@ should also check route source, confidence, and final answer quality.
 | /teams post off-track blockers | teams | Teams write route |
 | /help how should I ask questions? | help | Usage guide |
 | /model | model | Deterministic runtime/model info, not LLM self-identification |
-| /metrics what was done in March to improve approval? | metrics | Historical Jira/Confluence evidence + outcome caveat |
+| /funnel what was done in March to improve approval? | metrics | Historical Jira/Confluence evidence + outcome caveat |
 | flag the drops and assign owners to investigate | flag + prefix_required | Non-slash-command write should be blocked in warn mode |
 | show me the funnel metrics | metrics + warning | Non-slash-command read-only can answer with routing warning |
 | why did it drop? | help + clarification_required | Ambiguous stage should ask clarification |

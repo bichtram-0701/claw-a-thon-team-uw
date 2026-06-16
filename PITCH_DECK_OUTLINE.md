@@ -62,9 +62,9 @@ Recommended action
 Use this story order:
 
 ```text
-1. /metrics show me the funnel metrics
-2. /metrics why is approval the top risk?
-3. /metrics break May approval drop down by reason
+1. /funnel show me the funnel metrics
+2. /funnel why is approval the top risk?
+3. /funnel break May approval drop down by reason
 4. /jira explain stage ownership structure
 5. /jira flag the drops and assign owners to investigate
 6. /jira what is critical or off track right now?
@@ -77,8 +77,8 @@ Use this story order:
 Optional backup prompts:
 
 ```text
-/metrics compare April and May performance
-/metrics show daily volume in May
+/funnel compare April and May performance
+/funnel show daily volume in May
 /help how should I ask questions?
 ```
 

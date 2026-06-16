@@ -15,7 +15,7 @@ Business teams already have dashboards, Jira, Confluence, and chat. But when a f
 The real bottleneck is metric-to-action translation.
 
 ## Solution
-Funnel Agent is an execution intelligence agent for owned business funnels. Ask `/metrics show me the funnel metrics` and it computes conversion, target gaps, month-over-month anomalies, and estimated value at risk. Ask `/jira what is critical or off track right now?` and it links those risks to Jira owners, blockers, overdue work, and open initiatives. Ask `/jira flag it` and it creates or updates one Jira investigation per stage + metric + month with a structured initiative contract. Ask `/confluence weekly meeting summary` and it drafts, and optionally publishes, a Confluence readout with impact-ranked risks, execution follow-up, decisions, and agenda.
+Funnel Agent is an execution intelligence agent for owned business funnels. Ask `/funnel show me the funnel metrics` and it computes conversion, target gaps, month-over-month anomalies, and estimated value at risk. Ask `/jira what is critical or off track right now?` and it links those risks to Jira owners, blockers, overdue work, and open initiatives. Ask `/jira flag it` and it creates or updates one Jira investigation per stage + metric + month with a structured initiative contract. Ask `/confluence weekly meeting summary` and it drafts, and optionally publishes, a Confluence readout with impact-ranked risks, execution follow-up, decisions, and agenda.
 
 Slash commands and deterministic guards handle primary routing. The LLM handles semantic fallback, bounded extraction, and narration only. Python and SQL compute numbers, rankings, SQL templates, Jira writes, duplicate-ticket prevention, and Confluence publishing guards.
 
@@ -26,9 +26,9 @@ Funnel Agent compresses the manager's operating loop from dashboard -> Jira -> C
 Try:
 
 ```text
-/metrics show me the funnel metrics
-/metrics why is approval the top risk?
-/metrics break May approval drop down by reason
+/funnel show me the funnel metrics
+/funnel why is approval the top risk?
+/funnel break May approval drop down by reason
 /jira explain stage ownership structure
 /jira flag the drops and assign owners to investigate
 /jira what is critical or off track right now?

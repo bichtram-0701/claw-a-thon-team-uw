@@ -78,7 +78,7 @@ e2e_rate        = Disbursement / Traffic
 | `approved` | `approval_to_disbursement` | `customer_withdrew`, `offer_expired`, `ops_timeout`, `partner_unavailable` |
 | `completed` (internal) / `disbursed` | blank | blank |
 
-This means `/metrics break May approval drop down by reason` can answer the Submission -> Approval loss directly:
+This means `/funnel break May approval drop down by reason` can answer the Submission -> Approval loss directly:
 
 ```text
 May submitted: 216

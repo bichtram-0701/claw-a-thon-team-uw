@@ -65,7 +65,7 @@ app.router.routes.append(Route("/version", _version, methods=["GET"]))
 
 JIRA_EVENT_TOKEN = os.environ.get("JIRA_EVENT_TOKEN", "")
 ALLOW_WRITES = os.environ.get("ALLOW_WRITES", "true").lower() in ("1", "true", "yes")
-APP_VERSION = os.environ.get("APP_VERSION", "demo-v23")
+APP_VERSION = os.environ.get("APP_VERSION", "demo-v24")
 BUILD_VERSION = os.environ.get("GIT_SHA", "dev")[:7]
 
 STAGE_TO_EPIC = {
@@ -307,7 +307,7 @@ def _prefix_required_answer(rr, original_message: str) -> str:
     if rr.source == "strict_guard":
         return (
             "⚠️ **Command prefix required.** Start your message with one of: "
-            "`/metrics`, `/jira`, `/confluence`, `/teams`, `/help`, `/model`.\n\n"
+            "`/funnel`, `/jira`, `/confluence`, `/teams`, `/help`, `/model`.\n\n"
             f"Suggested rewrite: `{interpreted}`"
         )
     if rr.intent in {"create", "assign", "flag"}:
@@ -325,7 +325,7 @@ def _prefix_required_answer(rr, original_message: str) -> str:
         f"⚠️ This looks like a **{system} write/action**. For safety, I did not execute it without an explicit slash command.\n\n"
         f"Please resend as: `{interpreted}`\n\n"
         "Read-only questions can still be answered without a slash command, but I will show an interpretation warning. "
-        "For exact routing, use `/metrics`, `/jira`, `/confluence`, `/teams`, `/help`, or `/model`."
+        "For exact routing, use `/funnel`, `/jira`, `/confluence`, `/teams`, `/help`, or `/model`."
     )
 
 
@@ -462,7 +462,7 @@ def _handle(payload: dict) -> dict:
         result["route"] = route_info
     else:
         result = {"route": route_info,
-                  "hint": "Try: /metrics show me the funnel metrics, /metrics show daily volume in May, /jira what is critical or off track, /jira flag it, /confluence weekly meeting summary, /jira create a ticket, /model, or /help how should I ask questions."}
+                  "hint": "Try: /funnel show me the funnel metrics, /funnel show daily volume in May, /jira what is critical or off track, /jira flag it, /confluence weekly meeting summary, /jira create a ticket, /model, or /help how should I ask questions."}
         if _is_database_help_question(message) and not _is_command_help_question(message):
             answer = sa.schema_guide_markdown()
         else:
@@ -476,11 +476,11 @@ def _handle(payload: dict) -> dict:
                 "- **Confluence:** weekly readout and decision memory: risks, blockers, completed work, agenda, and next actions.\n"
                 "- **Teams:** notification layer for new/updated Jira tasks, off-track blockers, 09:00 overdue/stale digest, and 17:00 due-tomorrow reminders.\n\n"
                 "## Main commands\n"
-                "`/metrics`, `/jira`, `/confluence`, `/teams`, `/model`, `/help`. `/query` still works as an advanced alias, but `/metrics` is the preferred demo command for both KPI readouts and safe data drilldowns.\n\n"
+                "`/funnel`, `/jira`, `/confluence`, `/teams`, `/model`, `/help`. `/query` still works as an advanced/audit alias; `/metrics` remains a legacy alias for `/funnel`.\n\n"
                 "## Main demo flow\n"
-                "1. `/metrics show me the funnel metrics`\n"
-                "2. `/metrics why is approval the top risk?`\n"
-                "3. `/metrics break May approval drop down by reason`\n"
+                "1. `/funnel show me the funnel metrics`\n"
+                "2. `/funnel why is approval the top risk?`\n"
+                "3. `/funnel break May approval drop down by reason`\n"
                 "4. `/jira explain stage ownership structure`\n"
                 "5. `/jira flag the drops and assign owners to investigate`\n"
                 "6. `/jira what is critical or off track right now?`\n"
@@ -489,9 +489,9 @@ def _handle(payload: dict) -> dict:
                 "9. `/confluence publish weekly meeting summary to Confluence`\n"
                 "10. `/teams post off-track blockers`\n\n"
                 "## Other useful prompts\n"
-                "- `/metrics compare April and May performance`\n"
-                "- `/metrics show daily volume in May`\n"
-                "- `/metrics what was done in March to improve approval?`\n"
+                "- `/funnel compare April and May performance`\n"
+                "- `/funnel show daily volume in May`\n"
+                "- `/funnel what was done in March to improve approval?`\n"
                 "- `/jira give me all the tasks along with assignee and due date and status`\n"
                 "- `/teams post due-soon reminders`\n"
                 "- `/model`\n\n"
@@ -573,6 +573,52 @@ def _metrics_result(route_info: dict | None = None, month: str | None = None) ->
     return result
 
 
+def _metrics_audit_details(month: str | None = None) -> str:
+    """Collapsed audit trail for the high-level funnel KPI report.
+
+    The implementation aggregates the row-level CSV in Python for speed and
+    portability, but this SQL is the equivalent query against the DuckDB
+    `funnel` view used by the drilldown layer.
+    """
+    where = ""
+    if month:
+        try:
+            y, m = map(int, str(month).split("-", 1))
+            last_day = calendar.monthrange(y, m)[1]
+            where = f"WHERE entered_dt <= DATE '{y:04d}-{m:02d}-{last_day:02d}'"
+        except Exception:  # noqa: BLE001
+            where = f"WHERE strftime(entered_dt, '%Y-%m') <= '{month}'"
+    sql = f"""SELECT
+  strftime(entered_dt, '%Y-%m') AS month,
+  COUNT(*) AS traffic,
+  SUM(CASE WHEN stage_rank >= 2 THEN 1 ELSE 0 END) AS submission,
+  SUM(CASE WHEN stage_rank >= 3 THEN 1 ELSE 0 END) AS approval,
+  SUM(CASE WHEN stage_rank = 4 THEN 1 ELSE 0 END) AS disbursement,
+  SUM(CASE WHEN stage_rank = 4 THEN potential_value_vnd ELSE 0 END) AS disbursement_volume_vnd,
+  ROUND(100.0 * SUM(CASE WHEN stage_rank >= 2 THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 1) AS submission_rate_pct,
+  ROUND(100.0 * SUM(CASE WHEN stage_rank >= 3 THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN stage_rank >= 2 THEN 1 ELSE 0 END), 0), 1) AS approval_rate_pct,
+  ROUND(100.0 * SUM(CASE WHEN stage_rank = 4 THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN stage_rank >= 3 THEN 1 ELSE 0 END), 0), 1) AS disbursement_rate_pct,
+  ROUND(100.0 * SUM(CASE WHEN stage_rank = 4 THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 1) AS traffic_e2e_rate_pct
+FROM funnel
+{where}
+GROUP BY 1
+ORDER BY 1;""".strip()
+    return (
+        "<details><summary>Audit query & formulas</summary>\n\n"
+        "The KPI report is query-backed. The app aggregates the row-level CSV deterministically; "
+        "this is the equivalent SQL against the `funnel` view. The impact ranking then applies deterministic formulas on top of these query results.\n\n"
+        "```sql\n" + sql + "\n```\n\n"
+        "**Formulas**\n"
+        "- `submission_rate_pct = submission / traffic`\n"
+        "- `approval_rate_pct = approval / submission`\n"
+        "- `disbursement_rate_pct = disbursement / approval`\n"
+        "- `traffic_e2e_rate_pct = disbursement / traffic`\n"
+        "- `value_at_risk = stage volume × target gap × downstream conversion × avg ticket`\n"
+        "- `impact ranking = value at risk + target gap + MoM movement + Jira execution risk`\n"
+        "</details>"
+    )
+
+
 def _render_metrics_answer(result: dict, lang: str, month: str | None = None) -> str:
     lang_hint = "Reply in Vietnamese." if lang == "vi" else "Reply in English."
     headline = rp.llm_chat(
@@ -601,7 +647,7 @@ def _render_metrics_answer(result: dict, lang: str, month: str | None = None) ->
             f"Debug: `{result.get('jira_context_error')}`\n\n"
         )
     scope_note = f"> Month-scoped view: treating {month} as the latest visible month; later months are excluded.\n\n" if month else ""
-    return jira_warn + scope_note + heads_up + (headline + "\n\n" if headline else "") + fm.render_markdown(month)
+    return jira_warn + scope_note + heads_up + (headline + "\n\n" if headline else "") + fm.render_markdown(month) + "\n\n" + _metrics_audit_details(month)
 
 
 def _is_top_risk_question(message: str) -> bool:
@@ -618,7 +664,7 @@ def _is_command_help_question(message: str) -> bool:
     q = message.lower()
     return any(k in q for k in [
         "difference between metrics", "metrics and sql", "metrics vs sql",
-        "metrics and query", "metrics vs query", "what is /metrics", "what is /query",
+        "metrics and query", "metrics vs query", "funnel and query", "funnel vs query", "what is /funnel", "what is /metrics", "what is /query",
         "what is metrics", "what is query", "slash command", "prefix",
     ])
 
@@ -636,7 +682,7 @@ def _is_share_of_drop_question(message: str) -> bool:
 def _render_share_of_drop_answer() -> str:
     return (
         "**Share of drop** tells you how the lost rows at one funnel transition are distributed across reasons.\n\n"
-        "For `/metrics break May approval drop down by reason`, the transition is **Submission -> Approval**:\n\n"
+        "For `/funnel break May approval drop down by reason`, the transition is **Submission -> Approval**:\n\n"
         "- Submitted: **216**\n"
         "- Approved: **24**\n"
         "- Dropped before Approval: **192**\n\n"
@@ -733,7 +779,7 @@ def _render_investigation_result_answer(message: str, result: dict) -> str:
         )
     return (
         "I can show the metric trend and Jira recovery work, but this demo does not yet store closed-loop investigation outcomes for that stage. "
-        "Use `/metrics compare April and May performance` for the trend and `/jira what is critical or off track right now?` for current recovery work."
+        "Use `/funnel compare April and May performance` for the trend and `/jira what is critical or off track right now?` for current recovery work."
     )
 
 
@@ -870,7 +916,7 @@ def _render_top_risk_answer(result: dict, month: str | None = None) -> str:
     stage_prompt = stage.lower()
     lines += [
         "",
-        f"This is an impact ranking, not a causal claim. Use `/metrics break {diag_month} {stage_prompt} drop down by reason` or `/metrics why did {stage_prompt} drop?` for diagnostic evidence.",
+        f"This is an impact ranking, not a causal claim. Use `/funnel break {diag_month} {stage_prompt} drop down by reason` or `/funnel why did {stage_prompt} drop?` for diagnostic evidence.",
     ]
     return "\n".join(lines)
 

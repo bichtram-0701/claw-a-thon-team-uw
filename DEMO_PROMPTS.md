@@ -8,30 +8,30 @@ Use the chips in this order. The first 8 prompts are the main 2-3 minute demo; t
 The demo chips intentionally use slash commands. Slash-command prompts route deterministically:
 
 ```text
-/metrics      funnel KPIs + safe data drilldowns (daily volume, drop reasons, channel/product breakdowns)
+/funnel       query-backed funnel KPIs + safe data drilldowns (daily volume, drop reasons, channel/product breakdowns)
 /jira         owner/blocker views and Jira write actions
 /confluence   weekly summaries, Confluence read/publish flows
 /teams        Teams reminders
 /help         usage/database guidance
 /model        runtime/model info
 
-/query        optional advanced alias for /metrics drilldowns
+/query        optional advanced/audit alias for raw tables and SQL templates
 ```
 
 Non-slash-command read-only prompts still work in `ROUTING_MODE=warn`, but the bot shows a routing warning. Non-slash-command write actions are blocked and ask the user to resend with the correct slash command.
 
 ## Main demo sequence
 
-1. `/metrics show me the funnel metrics`
+1. `/funnel show me the funnel metrics`
    - Expected: monthly funnel table with `MoM Abs` and `MoM Pct` columns, impact ranking, and top recovery priority.
    - Latest month should be May 2026: Traffic 800, Submission 216, Approval 24, Disbursement 23.
    - Top recovery priority should be Approval, with about 108.1M VND estimated value at risk.
 
-2. `/metrics why is approval the top risk?`
+2. `/funnel why is approval the top risk?`
    - Expected: concise explanation of the impact ranking: target gap, MoM movement, estimated value at risk, owner/execution context.
    - This is not causal proof; it explains why Approval ranks first.
 
-3. `/metrics break May approval drop down by reason`
+3. `/funnel break May approval drop down by reason`
    - Expected: Submission -> Approval reconciliation.
    - Should state 216 submitted, 24 approved, 192 dropped before Approval.
    - Drop reasons should sum to 192.
@@ -62,13 +62,13 @@ Non-slash-command read-only prompts still work in `ROUTING_MODE=warn`, but the b
   - Posts or previews a Teams reminder for blocked/overdue work.
   - If `TEAMS_WEBHOOK_URL` is configured and `ALLOW_WRITES=true`, it posts to Teams. Otherwise it shows the reminder preview and explains what is missing.
 
-- `/metrics compare April and May performance`
+- `/funnel compare April and May performance`
   - Shows a specific month-pair comparison. Useful if someone asks for MoM details beyond the default metrics table.
 
-- `/metrics show daily volume in May`
+- `/funnel show daily volume in May`
   - Shows daily stage counts that reconcile back to the May monthly totals.
 
-- `/metrics what was done in March to improve approval?`
+- `/funnel what was done in March to improve approval?`
   - Uses seeded historical Jira and Confluence evidence to explain prior recovery work and caveats.
 
 - `/model`

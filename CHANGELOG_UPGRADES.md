@@ -20,14 +20,14 @@
 - Kept the demo sequence in the Chat view side panel only.
 - Restored the collapsed `Audit SQL` block for template-backed metric drilldowns by default.
 - Kept normal drilldown answers clean: no visible template line unless the user asks for audit/debug/template details.
-- Bumped app/UI version to demo-v23 / UI v23.
+- Bumped app/UI version to demo-v24 / UI v24.
 
 ## v21 demo package
 
 - Renamed the user-facing bot to **Funnel Agent**.
 - Default MaaS model is now `openai/gpt-oss-20b`; `/model` reports the configured model from runtime config instead of asking the LLM to self-identify.
 - User-facing final-stage wording is **Disbursement**: `Disbursement (4)`, `Disbursement Volume`, and `Disbursement rate (4)/(3)`.
-- `/metrics` is the main read-only command for both KPI readouts and safe data drilldowns; `/query` remains as an optional advanced alias.
+- `/funnel` is the main read-only command for both KPI readouts and safe data drilldowns; `/query` remains as an optional advanced alias.
 - Added monthly Jira and Confluence seed evidence for March, April, and May so historical questions can cite prior work and decisions.
 - Added `DEMO_VIDEO_STORYBOARD.md` to show the full workflow across chat, Jira, Confluence, and Teams.
 - Added Teams workflow framing: new-task card, task-update card, 09:00 overdue/stale digest, 17:00 due-tomorrow reminder, and off-track blocker posting.

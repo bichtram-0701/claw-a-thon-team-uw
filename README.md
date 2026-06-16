@@ -14,11 +14,11 @@ Think of the final stage as the business outcome. In another team, that could be
 
 Funnel Agent does more than summarize Jira. It detects target drift, estimates business value at risk, ranks the affected funnel stage, checks Jira ownership and execution risk, drafts or updates the recovery task, and prepares weekly meeting notes from metrics, Jira, and Confluence.
 
-The LLM layer is deliberately bounded and replaceable. Prefix routing and deterministic guards own workflow selection for `/metrics`, `/jira`, `/confluence`, `/teams`, `/help`, and `/model`. The LLM helps with semantic fallback, field extraction, and manager-ready narration. Python and SQL own the facts: conversion math, target gaps, value-at-risk sizing, SQL templates, Jira issue keys, owners, write guards, and Confluence publishing.
+The LLM layer is deliberately bounded and replaceable. Prefix routing and deterministic guards own workflow selection for `/funnel`, `/jira`, `/confluence`, `/teams`, `/help`, and `/model`. The LLM helps with semantic fallback, field extraction, and manager-ready narration. Python and SQL own the facts: conversion math, target gaps, value-at-risk sizing, SQL templates, Jira issue keys, owners, write guards, and Confluence publishing.
 
 ## What changed in this upgraded version
 
-- **Slash-command routing with guardrails**: `/metrics`, `/jira`, `/confluence`, `/teams`, `/help`, and `/model` force exact routing. Non-slash-command read-only prompts get a routing warning; non-prefixed writes require the prefix.
+- **Slash-command routing with guardrails**: `/funnel`, `/jira`, `/confluence`, `/teams`, `/help`, and `/model` force exact routing. Non-slash-command read-only prompts get a routing warning; non-prefixed writes require the prefix.
 - **Impact Ranking Engine** (`impact.py`): ranks target misses by value at risk, trend severity, and Jira execution risk.
 - **Initiative contracts** (`contracts.py`): Jira issues include structured stage, metric, owner, due date, confidence, expected value, evidence, and success check.
 - **Template-first SQL analyst** (`sql_analyst.py`): common breakdowns use deterministic SQL templates; LLM SQL is only fallback and still read-only validated. Daily and monthly views now reconcile from the same row-level fixture.
@@ -44,9 +44,9 @@ See `DEMO_PROMPTS.md` for the recommended demo prompts and exact expected output
 ## Example questions
 
 ```text
-/metrics show me the funnel metrics
-/metrics why is approval the top risk?
-/metrics break May approval drop down by reason
+/funnel show me the funnel metrics
+/funnel why is approval the top risk?
+/funnel break May approval drop down by reason
 /jira explain stage ownership structure
 /jira flag the drops and assign owners to investigate
 /jira what is critical or off track right now?
@@ -54,9 +54,9 @@ See `DEMO_PROMPTS.md` for the recommended demo prompts and exact expected output
 /teams post off-track blockers
 /confluence weekly meeting summary
 /confluence publish weekly meeting summary to Confluence
-/metrics compare April and May performance
-/metrics what was done in March to improve approval?
-/metrics show daily volume in May
+/funnel compare April and May performance
+/funnel what was done in March to improve approval?
+/funnel show daily volume in May
 /model
 /help how should I ask questions?
 ```

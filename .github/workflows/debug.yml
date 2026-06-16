@@ -55,8 +55,8 @@ jobs:
             echo "HTTP $HTTP in $(( $(date +%s) - T0 ))s"
             head -c 1500 /tmp/resp.json; echo
           }
-          ask "/metrics show me the funnel metrics"
-          ask "/metrics why did approval drop?"
+          ask "/funnel show me the funnel metrics"
+          ask "/funnel why did approval drop?"
           ask "/confluence weekly meeting summary"
           ask "/jira what does blocked mean here and what is it blocking?"
           echo "================ LOGS AFTER TESTS ================"

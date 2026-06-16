@@ -10,13 +10,13 @@ Funnel Agent supports natural language, but slash commands make routing auditabl
 
 | Command | Use for |
 |---|---|
-| `/metrics` | Funnel KPIs, MoM comparison, top risk, value at risk, and safe data drilldowns such as daily volume/drop reasons |
+| `/funnel` | Funnel KPIs, MoM comparison, top risk, value at risk, and safe data drilldowns such as daily volume/drop reasons |
 | `/jira` | Owners, blockers, off-track work, create/update Jira investigations |
 | `/confluence` | Weekly meeting summaries and Confluence publishing |
 | `/teams` | Teams reminders for blocked/overdue/off-track work |
 | `/model` | Runtime/model info |
 | `/help` | Usage and database guidance |
-| `/query` | Optional alias for data drilldowns; `/metrics` is preferred for the demo |
+| `/query` | Optional alias for data drilldowns; `/funnel` is preferred for the demo |
 
 ## Funnel stages
 
@@ -34,9 +34,9 @@ Traffic -> Submission -> Approval -> Disbursement
 ## Recommended demo prompts
 
 ```text
-/metrics show me the funnel metrics
-/metrics why is approval the top risk?
-/metrics break May approval drop down by reason
+/funnel show me the funnel metrics
+/funnel why is approval the top risk?
+/funnel break May approval drop down by reason
 /jira explain stage ownership structure
 /jira flag the drops and assign owners to investigate
 /jira what is critical or off track right now?
@@ -44,7 +44,7 @@ Traffic -> Submission -> Approval -> Disbursement
 /confluence weekly meeting summary
 /confluence publish weekly meeting summary to Confluence
 /teams post off-track blockers
-/metrics what was done in March to improve approval?
+/funnel what was done in March to improve approval?
 /model
 ```
 
@@ -61,8 +61,8 @@ Funnel Agent uses an **Epic -> stage owner -> task assignee** convention.
 
 | Word | Could mean | Safer prompt |
 |---|---|---|
-| volume | traffic count, stage counts, or VND value | `/metrics show daily volume in May` |
-| drop | any transition or MoM rate decline | `/metrics break May approval drop down by reason` |
+| volume | traffic count, stage counts, or VND value | `/funnel show daily volume in May` |
+| drop | any transition or MoM rate decline | `/funnel break May approval drop down by reason` |
 | owner | Epic assignee or operational stage owner | `/jira explain stage ownership structure` |
 | blocked | Jira label/flag or workflow status | `/jira what does blocked mean here and what is it blocking?` |
 

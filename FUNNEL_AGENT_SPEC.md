@@ -37,7 +37,7 @@ The LLM must not be trusted to compute conversion metrics, target gaps, value at
 
 | Module | Responsibility |
 |---|---|
-| `router.py` | Slash-command routing (`/metrics`, `/jira`, `/confluence`, `/teams`, `/help`, `/model`; `/query` remains an alias) with semantic fallback, warnings, clarification, and write-command guards |
+| `router.py` | Slash-command routing (`/funnel`, `/jira`, `/confluence`, `/teams`, `/help`, `/model`; `/query` remains an alias) with semantic fallback, warnings, clarification, and write-command guards |
 | `funnel_metrics.py` | Monthly funnel metrics, anomalies, target misses |
 | `impact.py` | Value-at-risk and execution-risk ranking |
 | `sql_analyst.py` | Template-first safe SQL analytics and diagnostics |
