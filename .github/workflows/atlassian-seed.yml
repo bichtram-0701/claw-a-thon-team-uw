@@ -20,14 +20,14 @@ jobs:
   steps:
    - uses: actions/checkout@v4
    - uses: actions/setup-python@v5
-    with: { python-version: "3.11" }
+     with: { python-version: "3.11" }
    - run: pip install httpx
    - name: Seed
-    env:
-     ATLASSIAN_SITE: ${{ secrets.ATLASSIAN_SITE }}
-     ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
-     ATLASSIAN_TOKEN: ${{ secrets.ATLASSIAN_TOKEN }}
-     JIRA_PROJECT_KEY: ${{ vars.JIRA_PROJECT_KEY || 'UW' }}
-     CONFLUENCE_SPACE_KEY: ${{ vars.CONFLUENCE_SPACE_KEY || '' }}
-     SEED_RESET: ${{ inputs.reset && '1' || '0' }}
-    run: python scripts/seed_atlassian.py
+     env:
+      ATLASSIAN_SITE: ${{ secrets.ATLASSIAN_SITE }}
+      ATLASSIAN_EMAIL: ${{ secrets.ATLASSIAN_EMAIL }}
+      ATLASSIAN_TOKEN: ${{ secrets.ATLASSIAN_TOKEN }}
+      JIRA_PROJECT_KEY: ${{ vars.JIRA_PROJECT_KEY || 'UW' }}
+      CONFLUENCE_SPACE_KEY: ${{ vars.CONFLUENCE_SPACE_KEY || '' }}
+      SEED_RESET: ${{ inputs.reset && '1' || '0' }}
+     run: python scripts/seed_atlassian.py

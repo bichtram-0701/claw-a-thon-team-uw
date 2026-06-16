@@ -337,7 +337,7 @@ check("teams previews when webhook missing", "did not post" in teams.get("answer
 print("chat UI version:")
 with open(os.path.join(ROOT, "chat.html"), encoding="utf-8") as fh:
     chat_html = fh.read()
-check("chat header has UI version", "UI v26" in chat_html)
+check("chat header has UI version", "UI v27" in chat_html)
 check("chat JS has one UI_VERSION const", chat_html.count("const UI_VERSION") == 1)
 
 check("chat has demo side panel", "Demo flow" in chat_html and "demo-step" in chat_html)
@@ -407,7 +407,7 @@ check("database help mentions funnel view", rd.get("intent") == "help" and "`fun
 reo = m.handler({"message": "who's the owner of each epic?"}, None)
 check("epic owner answer distinguishes operational owner", "operational stage owner" in reo.get("answer", ""))
 
-print("v26 model + natural funnel + external commands:")
+print("v27 model + natural funnel + external commands:")
 check("slash model routes model", m.route("/model") == "model")
 mdl = m.handler({"message": "/model"}, None)
 check("model handler works", mdl.get("intent") == "model" and "Chat model" in mdl.get("answer", ""))

@@ -1,4 +1,4 @@
-## demo-v26 natural read / external action routing
+## demo-v27 natural read / external action routing
 
 - Removed `/metrics` from the user-facing command set.
 - Main demo now uses natural funnel prompts for read-only insight:
@@ -10,7 +10,7 @@
 - Kept `/query` as an optional advanced/audit command for raw SQL-style drilldowns.
 - Non-prefixed read-only prompts no longer add noisy routing warnings; non-prefixed writes are still blocked and ask for the proper external command.
 - Updated the Chat UI demo panel, command menu, help text, README, submission notes, and storyboard to match the simplified command model.
-- Bumped app/UI version to demo-v26 / UI v26.
+- Bumped app/UI version to demo-v27 / UI v27.
 
 ## v23 report consistency polish
 
@@ -34,7 +34,7 @@
 - Kept the demo sequence in the Chat view side panel only.
 - Restored the collapsed `Audit SQL` block for template-backed metric drilldowns by default.
 - Kept normal drilldown answers clean: no visible template line unless the user asks for audit/debug/template details.
-- Bumped app/UI version to demo-v26 / UI v26.
+- Bumped app/UI version to demo-v27 / UI v27.
 
 ## v21 demo package
 
@@ -85,8 +85,8 @@ The offline suite intentionally avoids live MaaS and Atlassian calls. Before a l
 
 The final ZIP excludes `.env`, `.git`, caches, pyc files, local runtime state, and legacy prototype folders. Use `.env.example` as the only shared credential template.
 
-## demo-v26
+## demo-v27
 
 - Added a header toggle to show/hide the right-side Demo flow + Workflow map panel.
 - The panel state is saved in the browser so a presenter can keep a clean, full-width chat view while recording.
-- Bumped app/UI version to demo-v26 / UI v26.
+- Bumped app/UI version to demo-v27 / UI v27.

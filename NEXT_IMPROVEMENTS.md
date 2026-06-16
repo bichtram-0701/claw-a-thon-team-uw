@@ -1,4 +1,4 @@
-# Next improvements beyond demo-v26
+# Next improvements beyond demo-v27
 
 Funnel Agent is strong enough for the Claw-a-thon demo, but it can still improve. The highest-value next steps are:
 

@@ -40,28 +40,28 @@ jobs:
    - uses: actions/checkout@v4
 
    - uses: actions/setup-python@v5
-    with:
-     python-version: "3.12"
+     with:
+      python-version: "3.12"
 
    - name: Install deps
-    run: pip install --quiet httpx
+     run: pip install --quiet httpx
 
    - name: Pick modes
-    id: pick
-    run: |
-     case "${{ github.event.schedule }}" in
-      "0 2 * * 1-5") MODES="overdue" ;;
-      "0 10 * * 1-5") MODES="due-soon" ;;
-      *) # manual run
-        case "${{ github.event.inputs.mode }}" in
-         overdue) MODES="overdue" ;;
-         due-soon) MODES="due-soon" ;;
-         stale)  MODES="stale" ;;
-         *)    MODES="overdue due-soon" ;;
-        esac ;;
-     esac
-     echo "modes=$MODES" >> "$GITHUB_OUTPUT"
-     echo "Running modes: $MODES"
+     id: pick
+     run: |
+      case "${{ github.event.schedule }}" in
+       "0 2 * * 1-5") MODES="overdue" ;;
+       "0 10 * * 1-5") MODES="due-soon" ;;
+       *) # manual run
+         case "${{ github.event.inputs.mode }}" in
+          overdue) MODES="overdue" ;;
+          due-soon) MODES="due-soon" ;;
+          stale)  MODES="stale" ;;
+          *)    MODES="overdue due-soon" ;;
+         esac ;;
+      esac
+      echo "modes=$MODES" >> "$GITHUB_OUTPUT"
+      echo "Running modes: $MODES"
 
    - name: Send reminders
-    run: python scripts/jira_reminders.py ${{ steps.pick.outputs.modes }}
+     run: python scripts/jira_reminders.py ${{ steps.pick.outputs.modes }}
