@@ -337,11 +337,13 @@ check("teams previews when webhook missing", "did not post" in teams.get("answer
 print("chat UI version:")
 with open(os.path.join(ROOT, "chat.html"), encoding="utf-8") as fh:
     chat_html = fh.read()
-check("chat header has UI version", "UI v27" in chat_html)
+check("chat header has UI version", "UI v28" in chat_html)
 check("chat JS has one UI_VERSION const", chat_html.count("const UI_VERSION") == 1)
 
 check("chat has demo side panel", "Demo flow" in chat_html and "demo-step" in chat_html)
 check("chat has sidebar toggle", "sidebar-toggle" in chat_html and "Hide demo panel" in chat_html and "setSidebar" in chat_html)
+check("sidebar toggle is not tab view button", 'id="sidebar-toggle"' in chat_html and 'class="panel-toggle"' in chat_html)
+check("view buttons only bind data-view-target", "document.querySelectorAll('[data-view-target]')" in chat_html and "document.querySelectorAll('.tab-btn').forEach" not in chat_html)
 check("sidebar collapsed mode expands chat", "sidebar-collapsed" in chat_html and "grid-template-columns: minmax(0, 1fr)" in chat_html)
 check("chat wraps tables", "table-scroll" in chat_html and "renderMarkdown" in chat_html)
 check("footer minimal", "Powered by GreenNode AgentBase + MaaS." in chat_html and "Synthetic workspace data" not in chat_html)
@@ -407,7 +409,7 @@ check("database help mentions funnel view", rd.get("intent") == "help" and "`fun
 reo = m.handler({"message": "who's the owner of each epic?"}, None)
 check("epic owner answer distinguishes operational owner", "operational stage owner" in reo.get("answer", ""))
 
-print("v27 model + natural funnel + external commands:")
+print("v28 model + natural funnel + external commands:")
 check("slash model routes model", m.route("/model") == "model")
 mdl = m.handler({"message": "/model"}, None)
 check("model handler works", mdl.get("intent") == "model" and "Chat model" in mdl.get("answer", ""))

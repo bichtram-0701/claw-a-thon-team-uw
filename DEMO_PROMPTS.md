@@ -2,6 +2,8 @@
 
 Use the demo panel in this order. The main demo uses natural language for read-only insight and slash commands only when Funnel Agent touches an external workflow.
 
+For a time-coded voiceover and screen-recording script, see `DEMO_CLIP_SCRIPT_2MIN.md`.
+
 ## Routing policy
 
 ```text
